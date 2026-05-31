@@ -55,7 +55,7 @@ try:
 except Exception:
     raise SystemExit(1)
 
-required = {"packages_strategy", "packages_catalog", "packages_footprint", "production"}
+required = {"packages_strategy", "packages_catalog", "packages_footprint", "production", "language", "language_audit", "first_run"}
 if not required.issubset(data):
     raise SystemExit(1)
 
@@ -64,6 +64,9 @@ schema_checks = {
     "packages_catalog": "sevenos.app-catalog.v1",
     "packages_footprint": "sevenos.sevenpkg-footprint.v1",
     "production": "sevenos.production-readiness.v1",
+    "language": "sevenos.language-doctor.v1",
+    "language_audit": "sevenos.language-runtime-audit.v1",
+    "first_run": "sevenos.public-studio.v1",
 }
 for key, schema in schema_checks.items():
     value = data.get(key)
@@ -239,6 +242,12 @@ json_to_file "$STATE_TMP/installer_portal.json" "$ROOT_DIR/bin/seven-installer" 
 pid_installer_portal=$!
 json_to_file "$STATE_TMP/channel.json" "$ROOT_DIR/scripts/channel.sh" json &
 pid_channel=$!
+json_to_file "$STATE_TMP/language.json" "$ROOT_DIR/bin/seven-language" doctor --json &
+pid_language=$!
+json_to_file "$STATE_TMP/language_audit.json" "$ROOT_DIR/bin/seven-language" audit --json &
+pid_language_audit=$!
+json_to_file "$STATE_TMP/first_run.json" "$ROOT_DIR/bin/seven-public-studio" fresh-install --json &
+pid_first_run=$!
 json_to_file "$STATE_TMP/about.json" env SEVENOS_ABOUT_FAST=1 "$ROOT_DIR/scripts/about.sh" json &
 pid_about=$!
 json_to_file "$STATE_TMP/lifecycle.json" env SEVENOS_LIFECYCLE_FAST=1 "$ROOT_DIR/scripts/lifecycle.sh" json &
@@ -331,7 +340,7 @@ json_to_file "$STATE_TMP/production.json" env SEVENOS_PRODUCTION_FAST=1 "$ROOT_D
 pid_production=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_atlas" "$pid_atlas_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
-  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_installer_portal" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_health" "$pid_support" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_packages_strategy" "$pid_packages_catalog" "$pid_packages_footprint" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_installer_portal" "$pid_channel" "$pid_language" "$pid_language_audit" "$pid_first_run" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_health" "$pid_support" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_packages_strategy" "$pid_packages_catalog" "$pid_packages_footprint" "$pid_manifest" "$pid_ecosystem" \
   "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_shell_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" "$pid_production" || true
 
 ensure_public_contracts() {
@@ -762,6 +771,15 @@ cat "$STATE_TMP/installer_portal.json"
 printf ','
 printf '"channel":'
 cat "$STATE_TMP/channel.json"
+printf ','
+printf '"language":'
+cat "$STATE_TMP/language.json"
+printf ','
+printf '"language_audit":'
+cat "$STATE_TMP/language_audit.json"
+printf ','
+printf '"first_run":'
+cat "$STATE_TMP/first_run.json"
 printf ','
 printf '"about":'
 cat "$STATE_TMP/about.json"

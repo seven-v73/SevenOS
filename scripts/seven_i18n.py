@@ -154,6 +154,116 @@ ENGLISH_TRANSLATIONS = {
     "settings.desktop_launchers": "System launchers",
     "settings.package_engine": "Package engine",
     "settings.before_install": "Before installation",
+    "settings.appearance": "Appearance",
+    "settings.appearance.button": "Appearance",
+    "settings.appearance.subtitle": "Liquid glass, dock, terminal and SevenOS visual identity.",
+    "settings.apps": "Apps",
+    "settings.apps.subtitle": "SevenOS software sources, Launchpad and app management.",
+    "settings.apps_data": "Apps and data",
+    "settings.audio": "Audio",
+    "settings.backup_restore": "Backup and restore",
+    "settings.connectivity": "Connectivity",
+    "settings.control_prism.note": "Prism Center · live settings",
+    "settings.default_apps": "Default apps",
+    "settings.desktop_picture": "Desktop picture",
+    "settings.display.subtitle": "Brightness, display tools and SevenOS screen configuration.",
+    "settings.displays": "Displays",
+    "settings.energy": "Energy",
+    "settings.family.apps": "Apps",
+    "settings.family.devices": "Devices",
+    "settings.family.home": "Control",
+    "settings.family.identity": "Identity",
+    "settings.family.maintenance": "Maintenance",
+    "settings.family.settings": "Settings",
+    "settings.family.spaces": "Spaces",
+    "settings.family.system": "System",
+    "settings.family.trust": "Trust",
+    "settings.files": "Files",
+    "settings.files.note": "Open Seven Files.",
+    "settings.fonts": "Fonts",
+    "settings.fonts.subtitle": "Choose, import and refresh SevenOS typography roles without using the terminal.",
+    "settings.hero.note": "Essential controls are here. Spotlight remains global search; Settings remains the place for preferences.",
+    "settings.hero.title": "Adjust SevenOS without the terminal",
+    "settings.identity.impact": "Low impact",
+    "settings.identity.impact.tooltip": "Impact level of common actions on this page.",
+    "settings.identity.mission": "System mission",
+    "settings.identity.page_ready": "{page} ready",
+    "settings.identity.profile": "{space} · active space",
+    "settings.identity.ready": "Controls ready",
+    "settings.identity.theme": "{mode} theme",
+    "settings.input": "Input",
+    "settings.jump.mini_os": "Mini OS",
+    "settings.keyboard": "Keyboard",
+    "settings.keyboard.subtitle": "US/FR layouts with Alt+Shift switching.",
+    "settings.launchpad": "Launchpad",
+    "settings.launchpad.note": "Open the SevenOS application grid.",
+    "settings.light_mode": "Light mode",
+    "settings.light_mode.note": "A bright SevenOS space for productivity, reading and daytime use.",
+    "settings.maintenance": "Maintenance",
+    "settings.mini_os": "Mini OS",
+    "settings.mini_os_profiles": "Mini OS",
+    "settings.mission.appearance": "Style and visual comfort",
+    "settings.mission.apps": "Install and manage",
+    "settings.mission.backup": "Restore and migrate",
+    "settings.mission.defaults": "Default apps",
+    "settings.mission.display": "Displays and brightness",
+    "settings.mission.experience": "Guided journeys",
+    "settings.mission.fonts": "Reading and typography",
+    "settings.mission.general": "Everyday behavior",
+    "settings.mission.keyboard": "Input and shortcuts",
+    "settings.mission.network": "Connection and Wi-Fi",
+    "settings.mission.overview": "Clear view of SevenOS status",
+    "settings.mission.power": "Sleep and performance",
+    "settings.mission.prism": "SevenOS floating control",
+    "settings.mission.privacy": "Data and permissions",
+    "settings.mission.profiles": "Switch spaces without friction",
+    "settings.mission.security": "Shield protection",
+    "settings.mission.shortcuts": "Fast gestures",
+    "settings.mission.sound": "Audio and inputs",
+    "settings.mission.system": "Health and updates",
+    "settings.mission.wallpaper": "Dynamic ambiences",
+    "settings.nav.apps_data": "Apps and data",
+    "settings.nav.back": "Go back to the previous page",
+    "settings.nav.back_done_named": "Back to {page}.",
+    "settings.nav.back_to_shortcut": "Back to {page} · Alt+Left",
+    "settings.nav.devices": "Devices",
+    "settings.nav.essential": "Essential",
+    "settings.nav.forward": "Go to the next page",
+    "settings.nav.forward_done_named": "Forward to {page}.",
+    "settings.nav.forward_to_shortcut": "Forward to {page} · Alt+Right",
+    "settings.nav.maintenance": "Maintenance",
+    "settings.nav.no_back": "No previous page.",
+    "settings.nav.no_forward": "No next page.",
+    "settings.nav.personalization": "Personalization",
+    "settings.nav.position": "Page {index} of {total}",
+    "settings.nav.tooltip": "Open {page}",
+    "settings.network": "Wi-Fi and network",
+    "settings.network.subtitle": "Connection, diagnostics and SevenOS network configuration.",
+    "settings.power": "Power",
+    "settings.power.subtitle": "Battery, lock, sleep and power modes.",
+    "settings.privacy": "Privacy",
+    "settings.prism": "Prism",
+    "settings.prism.page": "Prism",
+    "settings.prism.page.subtitle": "Manage SevenDecor Prism, effects, target and window actions.",
+    "settings.profiles": "Mini OS",
+    "settings.profiles.subtitle": "Switch SevenOS work modes and open Mini OS spaces.",
+    "settings.screen": "Screen",
+    "settings.search.placeholder": "Search settings, defaults, language, Wi-Fi...",
+    "settings.security": "Security",
+    "settings.security.subtitle": "Shield, firewall, sandbox and CyberSpace controls.",
+    "settings.set_wallpaper": "Set wallpaper",
+    "settings.shortcuts": "Shortcuts",
+    "settings.sound": "Sound",
+    "settings.sound.subtitle": "Volume, mixer, mute and PipeWire status.",
+    "settings.software": "Software",
+    "settings.system": "System",
+    "settings.system.subtitle": "Daily status, diagnostics, logs, updates and services.",
+    "settings.trust": "Trust",
+    "settings.typography_roles": "Typography roles",
+    "settings.visual_system": "Visual system",
+    "settings.wallpaper": "Wallpaper",
+    "settings.wallpaper.subtitle": "Choose a wallpaper, refresh Hyprpaper and open the library.",
+    "settings.work_modes": "Work modes",
 }
 
 
@@ -203,8 +313,36 @@ def _humanize_key(key: str) -> str:
     return text[:1].upper() + text[1:] if text else key
 
 
+_FRENCH_HINTS = {
+    "accueil", "actif", "activer", "afficher", "ajouter", "anglais", "apparence",
+    "appliquer", "au", "aux", "avec", "bureau", "choisir", "clair", "clavier",
+    "compte", "confidentialité", "connecté", "début", "définir", "désactiver",
+    "écran", "écrans", "énergie", "état", "fenêtre", "fermer", "fichier",
+    "fond", "français", "général", "généraux", "jour", "langue", "lundi",
+    "maintenant", "mise", "mini", "ouvrir", "paramètres", "polices", "prêt",
+    "profil", "profils", "raccourcis", "rafraîchir", "rechercher", "réglages",
+    "région", "réseau", "sauvegarde", "sécurité", "semaine", "sombre", "son",
+    "système", "thème", "unités", "veille", "vue",
+}
+
+
+def _looks_french(text: str) -> bool:
+    lowered = text.strip().lower()
+    if not lowered:
+        return False
+    if re.search(r"[àâçéèêëîïôùûüÿœ]", lowered):
+        return True
+    words = set(re.findall(r"[a-zA-Z]+", lowered))
+    return bool(words & _FRENCH_HINTS)
+
+
 def _source_fallbacks() -> dict[str, str]:
-    """Collect simple English fallbacks from tr("key", "English") calls."""
+    """Collect simple English fallbacks from tr("key", "English") calls.
+
+    Older SevenOS surfaces sometimes passed French as the fallback string.
+    Those values must not poison the English catalog; otherwise switching to
+    English still shows French labels for missing keys.
+    """
     out: dict[str, str] = {}
     pattern = re.compile(r"tr\(\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]")
     for directory in (ROOT_DIR / "bin", ROOT_DIR / "scripts"):
@@ -218,6 +356,8 @@ def _source_fallbacks() -> dict[str, str]:
             except Exception:
                 continue
             for key, fallback in pattern.findall(text):
+                if _looks_french(fallback):
+                    continue
                 out.setdefault(key, fallback)
     return out
 
@@ -941,7 +1081,10 @@ def tr(key: str, fallback: str | None = None, **values: object) -> str:
     if text is None and lang != "en":
         text = TRANSLATIONS.get("en", {}).get(key)
     if text is None:
-        text = fallback or _humanize_key(key)
+        if lang == "en" and fallback and _looks_french(fallback):
+            text = _humanize_key(key)
+        else:
+            text = fallback or _humanize_key(key)
     return text.format(**values) if values else text
 
 

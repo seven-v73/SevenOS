@@ -195,6 +195,42 @@ connects five parts that must feel like one OS flow:
 The command is intentionally safe: it reports and recommends. Package changes
 stay behind explicit commands and installer confirmations.
 
+## Language Readiness
+
+The installer must not leave SevenOS half translated after first boot. Locale,
+session environment and generated runtime labels are part of the install
+contract.
+
+After the live session or a finished installation, use:
+
+```bash
+seven language doctor
+seven language audit
+seven first-run verify
+```
+
+Expected result:
+
+- English and French catalogues are available.
+- The active locale is projected into the user session and systemd user
+  environment.
+- Waybar, Prism, widgets and Mini OS profile configs do not keep stale labels
+  from the previous language.
+- `seven first-run verify` reports the language contract and runtime label audit
+  as OK.
+
+Machine-readable consumers should use the stable first-run keys
+`language-contract` and `runtime-labels` instead of localized titles.
+
+If a machine feels inconsistent after switching languages, run:
+
+```bash
+seven language repair
+```
+
+This is the supported public repair path. Users should not need to edit
+`~/.profile`, Waybar configs or Mini OS files by hand.
+
 ## Options Under Review
 
 ### Scripted TUI Installer

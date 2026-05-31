@@ -6,8 +6,8 @@ WORKSPACE_STATE_FILE="$WORKSPACE_STATE_DIR/current.json"
 
 workspace_title() {
   case "$1" in
-    1) printf 'Focus' ;;
-    2) printf 'Build' ;;
+    1) printf 'Accueil' ;;
+    2) printf 'Travail' ;;
     3) printf 'Web' ;;
     4) printf 'Create' ;;
     5) printf 'System' ;;
@@ -38,8 +38,8 @@ workspace_icon() {
 
 workspace_hint() {
   case "$1" in
-    1) printf 'calme, lecture, concentration' ;;
-    2) printf 'code, build, terminal, Forge' ;;
+    1) printf 'bureau SevenOS, widgets, accueil sans apps' ;;
+    2) printf 'applications, fichiers, terminal, travail courant' ;;
     3) printf 'web, recherche, documentation' ;;
     4) printf 'création, design, média, Studio' ;;
     5) printf 'réglages, fichiers, système' ;;

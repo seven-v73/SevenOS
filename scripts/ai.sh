@@ -13,17 +13,21 @@ Usage:
   seven ai open blender
   seven ai "mon wifi ne marche pas"
   seven ai intent "open blender" --json
+  seven ai operate "installe blender" --json
   seven ai apps --json
   seven ai context --json
   seven ai memory --json
+  seven ai memory --compact --json
   seven ai shortcuts --json
   seven ai llm --json
+  seven ai models --json
+  seven ai manager --json
   seven ai diagnose system --json
   seven ai playbook wifi_repair --json
   seven ai provider "mon wifi ne marche pas" --json
   seven ai research "Hyprland release notes" --json --web
   SEVENAI_WEB=1 seven ai web "SevenOS Hyprland" --json
-  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|apps|context|memory|knowledge|shortcuts|workflow|llm|web|research|diagnose|playbook|provider]
+  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|operate|apps|context|memory|knowledge|shortcuts|workflow|llm|models|manager|web|research|diagnose|playbook|provider]
 
 SevenAI Local is a provider-neutral system assistant preview. It does not call
 an online model; it reads SevenOS state, insights and actions, then turns them
@@ -48,7 +52,7 @@ import sys
 
 fallback = json.loads(sys.argv[1])
 try:
-    result = subprocess.run(sys.argv[2:], text=True, capture_output=True, check=False, timeout=2)
+    result = subprocess.run(sys.argv[2:], text=True, capture_output=True, check=False, timeout=8)
 except subprocess.TimeoutExpired:
     print(json.dumps(fallback))
     raise SystemExit(0)
@@ -72,6 +76,7 @@ payload_json() {
   command_json '{"actions":[]}' "$ROOT_DIR/scripts/actions.sh" --json > "$tmp_dir/actions.json"
   command_json '{}' "$ROOT_DIR/scripts/shell.sh" status --json > "$tmp_dir/shell.json"
   command_json '{}' "$ROOT_DIR/scripts/installer-stack.sh" status --json > "$tmp_dir/installer.json"
+  command_json '{"state":"unknown"}' "$ROOT_DIR/bin/seven" installer release --json > "$tmp_dir/installer-release.json"
   command_json '{"summary":{},"next":[]}' "$ROOT_DIR/profiles/profile-manager.sh" plan --json > "$tmp_dir/profiles.json"
   command_json '{"summary":{},"next":[]}' "$ROOT_DIR/bin/sevenpkg" plan --json > "$tmp_dir/packages.json"
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/store.sh" json > "$tmp_dir/store.json"
@@ -104,6 +109,7 @@ insights = as_dict(load_file("insights.json", {"insights": [], "summary": {}}), 
 actions = as_dict(load_file("actions.json", {"actions": []}), {"actions": []})
 shell = as_dict(load_file("shell.json", {}))
 installer = as_dict(load_file("installer.json", {}))
+installer_release = as_dict(load_file("installer-release.json", {"state": "unknown"}), {"state": "unknown"})
 profiles = as_dict(load_file("profiles.json", {"summary": {}, "next": []}), {"summary": {}, "next": []})
 packages = as_dict(load_file("packages.json", {"summary": {}, "next": []}), {"summary": {}, "next": []})
 store = as_dict(load_file("store.json", {"summary": {}}), {"summary": {}})
@@ -174,7 +180,10 @@ cluster_summary = cluster.get("summary") or {}
 ecosystem_maturity = (ecosystem.get("maturity") or {})
 ecosystem_maturity_summary = ecosystem_maturity.get("summary") or {}
 ecosystem_maturity_modules = ecosystem_maturity.get("modules") or []
-installer_release = installer.get("release") or {}
+installer_status_release = installer.get("release") or {}
+if installer_release.get("state") == "unknown" and isinstance(installer_status_release, dict):
+    installer_release = installer_status_release
+installer_mode = "graphical-ready" if installer_release.get("state") == "graphical-ready" else installer.get("mode", "unknown")
 
 required_modules = max(store_summary.get("modules", 0) - store_summary.get("optional_modules", 0), 0)
 if store_summary and store_summary.get("modules_ready", 0) < required_modules:
@@ -228,12 +237,12 @@ for item in actions.get("actions", actions.get("items", []))[:8]:
 print(json.dumps({
     "schema": "sevenos.ai-local.v1",
     "mode": "local",
-    "provider": "none",
+    "provider": "seven-local",
     "summary": {
         "decision": decision,
         "readiness": readiness,
         "shell": shell_state,
-        "installer": installer.get("mode", "unknown"),
+        "installer": installer_mode,
         "installer_release": installer_release.get("state", "unknown"),
         "ecosystem_maturity": ecosystem_maturity_summary.get("average", 0),
         "ecosystem_guided_preview": ecosystem_maturity_summary.get("guided_preview", 0),
@@ -328,7 +337,87 @@ else:
 PY
 }
 
+doctor_json() {
+  local payload
+  payload="$(payload_json)"
+  SEVENAI_PAYLOAD="$payload" SEVENAI_ROOT="$ROOT_DIR" python - <<'PY'
+import json
+import os
+import subprocess
+
+payload = json.loads(os.environ.get("SEVENAI_PAYLOAD", "{}"))
+root = os.environ.get("SEVENAI_ROOT", ".")
+
+def run_json(command, fallback):
+    try:
+        result = subprocess.run(command, text=True, capture_output=True, check=False, timeout=8)
+        if result.returncode != 0 or not result.stdout.strip():
+            return fallback
+        return json.loads(result.stdout)
+    except Exception:
+        return fallback
+
+llm = run_json([f"{root}/scripts/ai.sh", "llm", "--json"], {})
+provider = run_json([f"{root}/scripts/ai.sh", "provider", "mon wifi ne marche pas", "--json"], {})
+memory = run_json([f"{root}/scripts/ai.sh", "memory", "--json"], {})
+context = run_json([f"{root}/scripts/ai.sh", "context", "--json"], {})
+operator = run_json([f"{root}/scripts/ai.sh", "operate", "installe blender", "--json"], {})
+
+providers = llm.get("providers") if isinstance(llm.get("providers"), list) else []
+active_providers = [item.get("key") for item in providers if item.get("status") == "active"]
+available_providers = [item.get("key") for item in providers if item.get("status") in {"active", "available"}]
+runtime = llm.get("runtime") if isinstance(llm.get("runtime"), dict) else {}
+memory_health = memory.get("health") if isinstance(memory.get("health"), dict) else {}
+events = memory_health.get("total_events", 0)
+warnings = []
+if payload.get("provider") != "seven-local":
+    warnings.append("primary payload should expose seven-local provider")
+if "seven-local" not in active_providers:
+    warnings.append("seven-local provider is not active")
+if events and events > 5000:
+    warnings.append("memory event store is large; compacting is recommended")
+if memory_health.get("retention") == "compact-recommended":
+    warnings.append("memory contains repeated test-like intents; compacting is recommended")
+if provider.get("external_calls"):
+    warnings.append("local provider made external calls")
+if operator.get("schema") != "sevenos.ai.operation-plan.v1":
+    warnings.append("operation planner is not available")
+
+print(json.dumps({
+    "schema": "sevenos.ai.doctor.v1",
+    "state": "ready" if not warnings else "needs-attention",
+    "score": 100 if not warnings else 88,
+    "provider": payload.get("provider", "unknown"),
+    "active_providers": active_providers,
+    "available_providers": available_providers,
+    "model_runtime": runtime,
+    "privacy": provider.get("privacy", "unknown"),
+    "web_default": (llm.get("web_policy") or {}).get("default", "unknown"),
+    "memory": memory_health,
+    "operator": {
+        "ready": operator.get("schema") == "sevenos.ai.operation-plan.v1",
+        "domain": operator.get("domain"),
+        "requires_confirmation": ((operator.get("summary") or {}).get("requires_confirmation")),
+        "contract": list((operator.get("contract") or {}).keys()),
+    },
+    "context_available": bool(context.get("active_window") or context.get("shell_context")),
+    "native_surface": "bin/seven-ai-native",
+    "warnings": warnings,
+    "limits": [
+        "Local provider is deterministic and rule/context based; model-backed reasoning is future work.",
+        "Memory is local SQLite and needs periodic compaction on heavy test machines.",
+        "Web research is explicit opt-in and not part of the default local context.",
+        "System-changing actions require preview/apply confirmation and should stay routed through SevenOS commands.",
+    ],
+}, indent=2))
+PY
+}
+
 doctor() {
+  if [[ "${1:-}" == "--json" ]]; then
+    doctor_json
+    return
+  fi
   local failures=0
   printf 'SevenAI Local Doctor\n'
   printf '====================\n'
@@ -361,9 +450,9 @@ case "$action" in
   brief|status) brief ;;
   plan) plan ;;
   focus) focus ;;
-  doctor) doctor ;;
+  doctor) shift || true; doctor "$@" ;;
   json|--json) payload_json ;;
-  ask|run|intent|apps|context|memory|knowledge|shortcuts|workflow|llm|web|research|diagnose|playbook|provider)
+  ask|run|intent|operate|apps|context|memory|knowledge|shortcuts|workflow|llm|models|manager|web|research|diagnose|playbook|provider)
     shift
     agent "$action" "$@"
     ;;

@@ -80,6 +80,8 @@ Required capabilities:
 - Calamares profile
 - user creation
 - locale and keyboard selection
+- SevenOS language projection into user session, Mini OS profiles and runtime
+  labels
 - disk planning
 - SevenOS profile selection
 - automatic theme, CLI, Hub and session setup
@@ -105,11 +107,26 @@ Required steps:
 - verify internet
 - verify audio
 - verify GPU/session
+- verify active language and generated runtime labels
 - select primary profile
 - apply theme
 - install app essentials
 - explain Seven Hub, Apps, Files and Power
 - finish with a readiness score
+
+Language is a first-run contract, not a cosmetic preference. A new machine must
+pass:
+
+```bash
+seven language doctor
+seven language audit
+seven first-run verify
+```
+
+`doctor` checks the installed language system, session projection and Mini OS
+profiles. `audit` checks generated runtime labels such as Waybar, Prism and
+workspace surfaces, so a French-to-English or English-to-French switch cannot
+leave stale interface text behind.
 
 ### 5. SevenPkg As User Software Layer
 
@@ -141,3 +158,8 @@ Can a normal user discover, understand and control this without reading scripts?
 ```
 
 If the answer is no, the feature is not productized yet.
+
+The same rule applies to language, theme and profile changes: the user should
+not need to restart blindly or edit shell files. SevenOS must project the active
+language into graphical surfaces, terminal sessions, Mini OS profiles and
+generated runtime configs through `seven language repair`.

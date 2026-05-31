@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS Tools
+Comment=Native dashboard for core SevenOS tools
+Exec=seven tools open
+Icon=preferences-system
+Terminal=false
+Categories=System;
+StartupNotify=true
+StartupWMClass=SevenToolsNative

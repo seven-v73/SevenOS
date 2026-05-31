@@ -1,0 +1,705 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk
+
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
+
+
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "sevenos" / "widgets"
+DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "sevenos"
+CONFIG_FILE = CONFIG_DIR / "widgets.json"
+NOTE_FILE = STATE_DIR / "notes.txt"
+SEVEN_NOTES_FILE = DATA_DIR / "notes" / "notes.json"
+DEFAULT_WIDGETS = ["clock", "system", "doctor", "prism", "notes"]
+HOME_WORKSPACE = "1"
+
+
+CATALOG = [
+    {"key": "clock", "title": "Horloge", "title_en": "Clock", "note": "Heure, date et langue active.", "note_en": "Time, date and active language."},
+    {"key": "system", "title": "Système", "title_en": "System", "note": "CPU, mémoire et disque.", "note_en": "CPU, memory and disk."},
+    {"key": "doctor", "title": "Seven Doctor", "title_en": "Seven Doctor", "note": "Santé système et alertes.", "note_en": "System health and alerts."},
+    {"key": "prism", "title": "Prism", "title_en": "Prism", "note": "Mini OS actif et identité.", "note_en": "Active Mini OS and identity."},
+    {"key": "notes", "title": "Notes", "title_en": "Notes", "note": "Mémo local rapide.", "note_en": "Small local memo."},
+    {"key": "network", "title": "Réseau", "title_en": "Network", "note": "État réseau et raccourci Wi-Fi.", "note_en": "Network state and Wi-Fi shortcut."},
+    {"key": "quick", "title": "Actions", "title_en": "Actions", "note": "Raccourcis SevenOS utiles.", "note_en": "Useful SevenOS shortcuts."},
+]
+
+
+def lang_is_fr() -> bool:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "")
+    return language.lower().startswith("fr")
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if lang_is_fr() else en
+
+
+def run(command: list[str], timeout: float = 1.5) -> str:
+    try:
+        return subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout).stdout.strip()
+    except Exception:
+        return ""
+
+
+def config() -> dict:
+    if CONFIG_FILE.exists():
+        try:
+            data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                if data.get("schema") != "sevenos.widgets.config.v2":
+                    data["schema"] = "sevenos.widgets.config.v2"
+                    data["desktop_right_click"] = False
+                data.setdefault("enabled", DEFAULT_WIDGETS)
+                data.setdefault("visible", False)
+                data.setdefault("desktop_right_click", False)
+                data.setdefault("home_workspace", HOME_WORKSPACE)
+                save_config(data)
+                return data
+        except json.JSONDecodeError:
+            pass
+    return {
+        "schema": "sevenos.widgets.config.v2",
+        "enabled": DEFAULT_WIDGETS,
+        "visible": False,
+        "desktop_right_click": False,
+        "home_workspace": HOME_WORKSPACE,
+        "layout": "calm-grid",
+    }
+
+
+def save_config(data: dict) -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    CONFIG_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def current_profile() -> str:
+    text = run([str(ROOT / "profiles/profile-manager.sh"), "current", "--json"], timeout=1.0)
+    try:
+        return str(json.loads(text or "{}").get("key") or "equinox")
+    except json.JSONDecodeError:
+        return os.environ.get("SEVENOS_PROFILE", "equinox")
+
+
+def cpu_percent() -> int:
+    def read() -> tuple[int, int]:
+        try:
+            fields = Path("/proc/stat").read_text(encoding="utf-8").splitlines()[0].split()[1:]
+            values = [int(item) for item in fields]
+        except Exception:
+            return 0, 0
+        idle = values[3] + (values[4] if len(values) > 4 else 0)
+        return idle, sum(values)
+
+    idle_a, total_a = read()
+    time.sleep(0.05)
+    idle_b, total_b = read()
+    total_delta = max(total_b - total_a, 1)
+    return max(0, min(100, round(100 * (1 - max(idle_b - idle_a, 0) / total_delta))))
+
+
+def memory_percent() -> int:
+    values: dict[str, int] = {}
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            key, raw = line.split(":", 1)
+            values[key] = int(raw.strip().split()[0])
+    except Exception:
+        return 0
+    total = values.get("MemTotal", 0)
+    available = values.get("MemAvailable", 0)
+    return round((total - available) / total * 100) if total else 0
+
+
+def disk_percent() -> int:
+    try:
+        usage = shutil.disk_usage(str(Path.home()))
+    except OSError:
+        return 0
+    return round(usage.used / usage.total * 100) if usage.total else 0
+
+
+def doctor_state() -> dict:
+    text = run([str(ROOT / "bin/seven"), "doctor", "check", "--json"], timeout=6.0)
+    try:
+        return json.loads(text or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def network_state() -> str:
+    text = run(["nmcli", "-t", "-f", "STATE", "general"], timeout=1.0)
+    return text or "unknown"
+
+
+def seven_notes() -> list[dict]:
+    if SEVEN_NOTES_FILE.exists():
+        try:
+            data = json.loads(SEVEN_NOTES_FILE.read_text(encoding="utf-8"))
+            notes = data.get("notes") if isinstance(data, dict) else data
+            if isinstance(notes, list):
+                return [item for item in notes if isinstance(item, dict)]
+        except Exception:
+            pass
+    if NOTE_FILE.exists():
+        text = NOTE_FILE.read_text(encoding="utf-8", errors="ignore").strip()
+        if text:
+            return [{"id": "legacy", "title": tr("Mémo rapide", "Quick memo"), "body": text, "updated": int(NOTE_FILE.stat().st_mtime)}]
+    return []
+
+
+def add_widget_note(text: str) -> None:
+    text = text.strip()
+    if not text:
+        return
+    subprocess.run([str(ROOT / "bin/seven-notes"), "add", text], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def current_workspace() -> str:
+    text = run(["hyprctl", "activeworkspace", "-j"], timeout=0.5)
+    try:
+        data = json.loads(text or "{}")
+    except json.JSONDecodeError:
+        return "unknown"
+    return str(data.get("id") or data.get("name") or "unknown")
+
+
+def switch_home_workspace() -> None:
+    target = str(config().get("home_workspace") or HOME_WORKSPACE)
+    if shutil.which("hyprctl"):
+        subprocess.run(["hyprctl", "dispatch", "workspace", target], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def active_window_present() -> bool:
+    text = run(["hyprctl", "activewindow", "-j"], timeout=0.5)
+    try:
+        data = json.loads(text or "{}")
+    except json.JSONDecodeError:
+        return False
+    return bool(data.get("class") or data.get("title") or data.get("address"))
+
+
+def widget_payload() -> dict:
+    data = config()
+    doctor = doctor_state()
+    summary = doctor.get("summary") if isinstance(doctor.get("summary"), dict) else {}
+    return {
+        "schema": "sevenos.widgets.status.v1",
+        "config": data,
+        "catalog": CATALOG,
+        "profile": current_profile(),
+        "runtime": {
+            "cpu": cpu_percent(),
+            "memory": memory_percent(),
+            "disk": disk_percent(),
+            "network": network_state(),
+            "doctor": {"decision": doctor.get("decision", "unknown"), "issues": summary.get("issues", 0)},
+            "workspace": current_workspace(),
+            "updated": int(time.time()),
+        },
+    }
+
+
+CSS = """
+window {
+  background: transparent;
+  color: @seven_text;
+  font-family: "SF Pro Display", "Inter", sans-serif;
+}
+.root {
+  padding: 16px;
+}
+.settings-root {
+  padding: 18px;
+  border-radius: 28px;
+  background: alpha(@seven_panel, 0.985);
+  border: 1px solid alpha(@seven_border, 0.96);
+}
+.desktop-root {
+  padding: 14px;
+  border-radius: 28px;
+  background: alpha(@seven_panel, 0.82);
+  border: 1px solid alpha(@seven_border, 0.92);
+}
+.panel {
+  padding: 16px;
+  border-radius: 24px;
+  background: alpha(@seven_panel, 0.985);
+  border: 1px solid alpha(@seven_border, 0.96);
+}
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  color: @seven_text;
+}
+.subtitle {
+  color: @seven_muted;
+  font-size: 13px;
+}
+.widget {
+  padding: 15px;
+  border-radius: 20px;
+  color: @seven_text;
+  background: alpha(@seven_panel_2, 0.96);
+  border: 1px solid alpha(@seven_border, 0.96);
+}
+.widget:hover {
+  background: alpha(@seven_hover, 0.72);
+}
+.widget label {
+  color: @seven_text;
+}
+.widget .subtitle {
+  color: @seven_muted;
+}
+.widget entry {
+  color: @seven_text;
+  background: alpha(@seven_panel, 0.70);
+  border-radius: 999px;
+  border: 1px solid alpha(@seven_border, 0.82);
+  padding: 7px 10px;
+}
+.note-chip {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: alpha(@seven_accent, 0.10);
+  color: @seven_text;
+}
+.value {
+  font-size: 25px;
+  font-weight: 600;
+  color: @seven_text;
+}
+.home-header {
+  padding: 12px 14px;
+  border-radius: 22px;
+  color: @seven_text;
+  background: alpha(@seven_panel_2, 0.90);
+  border: 1px solid alpha(@seven_border, 0.90);
+}
+.micro {
+  color: @seven_muted;
+  font-size: 12px;
+}
+button {
+  border: 1px solid alpha(@seven_border, 0.96);
+  border-radius: 999px;
+  padding: 8px 13px;
+  color: @seven_text;
+  background: alpha(@seven_panel_2, 0.98);
+}
+button.compact {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+button:hover {
+  background: @seven_hover;
+}
+switch {
+  border-radius: 999px;
+}
+progressbar trough {
+  min-height: 7px;
+  border-radius: 999px;
+  background: alpha(@seven_border, 0.68);
+}
+progressbar progress {
+  min-height: 7px;
+  border-radius: 999px;
+  background: @seven_accent;
+}
+"""
+
+
+def install_css() -> None:
+    mode = seven_theme.current_theme_mode() if seven_theme else os.environ.get("SEVENOS_THEME_MODE", "dark")
+    base = seven_theme.gtk_app_css("widgets", mode) if seven_theme else ""
+    provider = Gtk.CssProvider()
+    provider.load_from_data((base + CSS).encode())
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+
+class WidgetsWindow(Gtk.Window):
+    def __init__(self, mode: str):
+        title = {
+            "desktop": "Seven Widgets Desktop",
+            "settings": "Seven Widgets",
+            "menu": "Seven Desktop Menu",
+        }.get(mode, "Seven Widgets")
+        super().__init__(title=title)
+        self.mode = mode
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_default_size(380 if mode == "menu" else 760, 420 if mode == "menu" else 520)
+        self.set_keep_above(False)
+        self.set_skip_taskbar_hint(mode == "desktop")
+        self.set_decorated(mode != "desktop")
+        install_css()
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        root.get_style_context().add_class("root")
+        root.get_style_context().add_class("desktop-root" if mode == "desktop" else "settings-root")
+        self.add(root)
+        self.root = root
+        self.render()
+        if mode == "desktop":
+            GLib.timeout_add_seconds(20, self.refresh)
+
+    def refresh(self):
+        self.render()
+        self.show_all()
+        return self.mode == "desktop"
+
+    def render(self):
+        for child in list(self.root.get_children()):
+            self.root.remove(child)
+        if self.mode == "menu":
+            self.render_menu()
+        elif self.mode == "settings":
+            self.render_settings()
+        else:
+            self.render_desktop()
+
+    def render_header(self, title: str, note: str):
+        header = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        label = Gtk.Label(label=title, xalign=0)
+        label.get_style_context().add_class("title")
+        sub = Gtk.Label(label=note, xalign=0)
+        sub.get_style_context().add_class("subtitle")
+        header.pack_start(label, False, False, 0)
+        header.pack_start(sub, False, False, 0)
+        self.root.pack_start(header, False, False, 0)
+
+    def render_menu(self):
+        self.render_header(tr("Bureau SevenOS", "SevenOS Desktop"), tr("Widgets, apparence et actions rapides.", "Widgets, appearance and quick actions."))
+        actions = [
+            (tr("Ajouter un widget", "Add widget"), lambda: launch_native("settings")),
+            (tr("Afficher les widgets", "Show widgets"), lambda: show_widgets()),
+            (tr("Masquer les widgets", "Hide widgets"), lambda: hide_widgets()),
+            (tr("Fond d’écran", "Wallpaper"), lambda: subprocess.Popen(["seven-settings", "wallpaper"])),
+            (tr("Réglages", "Settings"), lambda: subprocess.Popen(["seven-settings", "general"])),
+        ]
+        for label, callback in actions:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", lambda _b, cb=callback: (cb(), Gtk.main_quit()))
+            self.root.pack_start(button, False, False, 0)
+
+    def render_settings(self):
+        self.render_header(tr("Widgets SevenOS", "SevenOS Widgets"), tr("Choisis ce qui reste visible sur l’écran d’accueil.", "Choose what stays visible on the home screen."))
+        state = config()
+        enabled = set(state.get("enabled", []))
+        menu_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        menu_row.get_style_context().add_class("widget")
+        menu_labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        menu_labels.pack_start(Gtk.Label(label=tr("Menu au clic droit", "Right-click menu"), xalign=0), False, False, 0)
+        menu_note = Gtk.Label(
+            label=tr(
+                "Ouvre Ajouter un widget depuis le bureau, avec garde-fou si une app est active.",
+                "Open Add widget from the desktop, guarded when an app is active.",
+            ),
+            xalign=0,
+        )
+        menu_note.get_style_context().add_class("subtitle")
+        menu_labels.pack_start(menu_note, False, False, 0)
+        menu_row.pack_start(menu_labels, True, True, 0)
+        menu_switch = Gtk.Switch()
+        menu_switch.set_active(bool(state.get("desktop_right_click", False)))
+        menu_switch.connect("notify::active", lambda sw, _p: set_right_click(sw.get_active()))
+        menu_row.pack_start(menu_switch, False, False, 0)
+        self.root.pack_start(menu_row, False, False, 0)
+        home_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        home_row.get_style_context().add_class("widget")
+        home_labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        home_labels.pack_start(Gtk.Label(label=tr("Workspace d’accueil", "Home workspace"), xalign=0), False, False, 0)
+        home_note = Gtk.Label(
+            label=tr(
+                "Les widgets s’ouvrent uniquement sur cet espace. 1 est recommandé.",
+                "Widgets open only on this workspace. 1 is recommended.",
+            ),
+            xalign=0,
+        )
+        home_note.get_style_context().add_class("subtitle")
+        home_labels.pack_start(home_note, False, False, 0)
+        home_row.pack_start(home_labels, True, True, 0)
+        home_combo = Gtk.ComboBoxText()
+        for number in range(1, 8):
+            home_combo.append(str(number), str(number))
+        home_combo.set_active_id(str(state.get("home_workspace") or HOME_WORKSPACE))
+        home_combo.connect("changed", lambda combo: set_home_workspace(combo.get_active_id() or HOME_WORKSPACE))
+        home_row.pack_start(home_combo, False, False, 0)
+        self.root.pack_start(home_row, False, False, 0)
+        for item in CATALOG:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            row.get_style_context().add_class("widget")
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+            title = item["title"] if lang_is_fr() else item["title_en"]
+            note = item["note"] if lang_is_fr() else item["note_en"]
+            labels.pack_start(Gtk.Label(label=title, xalign=0), False, False, 0)
+            note_label = Gtk.Label(label=note, xalign=0)
+            note_label.get_style_context().add_class("subtitle")
+            labels.pack_start(note_label, False, False, 0)
+            row.pack_start(labels, True, True, 0)
+            switch = Gtk.Switch()
+            switch.set_active(item["key"] in enabled)
+            switch.connect("notify::active", lambda sw, _p, key=item["key"]: set_widget(key, sw.get_active()))
+            row.pack_start(switch, False, False, 0)
+            self.root.pack_start(row, False, False, 0)
+        footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        show = Gtk.Button(label=tr("Afficher", "Show"))
+        show.connect("clicked", lambda *_: show_widgets())
+        close = Gtk.Button(label=tr("Fermer", "Close"))
+        close.connect("clicked", lambda *_: Gtk.main_quit())
+        footer.pack_start(show, True, True, 0)
+        footer.pack_start(close, True, True, 0)
+        self.root.pack_end(footer, False, False, 0)
+
+    def render_desktop(self):
+        payload = widget_payload()
+        state = payload["config"]
+        enabled = [key for key in state.get("enabled", []) if key in {item["key"] for item in CATALOG}]
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        header.get_style_context().add_class("home-header")
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        title = Gtk.Label(label=tr("Accueil SevenOS", "SevenOS Home"), xalign=0)
+        title.get_style_context().add_class("title")
+        updated = time.strftime("%H:%M", time.localtime(payload["runtime"].get("updated", time.time())))
+        subtitle = Gtk.Label(
+            label=tr(
+                f"Workspace {state.get('home_workspace', HOME_WORKSPACE)} · {payload['profile'].title()} · mis à jour {updated}",
+                f"Workspace {state.get('home_workspace', HOME_WORKSPACE)} · {payload['profile'].title()} · updated {updated}",
+            ),
+            xalign=0,
+        )
+        subtitle.get_style_context().add_class("micro")
+        labels.pack_start(title, False, False, 0)
+        labels.pack_start(subtitle, False, False, 0)
+        header.pack_start(labels, True, True, 0)
+        settings = Gtk.Button(label=tr("Ajuster", "Adjust"))
+        settings.get_style_context().add_class("compact")
+        settings.connect("clicked", lambda *_: launch_native("settings"))
+        hide = Gtk.Button(label=tr("Masquer", "Hide"))
+        hide.get_style_context().add_class("compact")
+        hide.connect("clicked", lambda *_: hide_widgets())
+        header.pack_start(settings, False, False, 0)
+        header.pack_start(hide, False, False, 0)
+        self.root.pack_start(header, False, False, 0)
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_column_homogeneous(True)
+        for index, key in enumerate(enabled):
+            grid.attach(self.widget_card(key, payload), index % 2, index // 2, 1, 1)
+        self.root.pack_start(grid, True, True, 0)
+
+    def widget_card(self, key: str, payload: dict):
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.get_style_context().add_class("widget")
+        runtime = payload["runtime"]
+        profile = payload["profile"]
+        if key == "notes":
+            return self.notes_widget_card(payload)
+        title, value, note, fraction, action = {
+            "clock": (tr("Horloge", "Clock"), time.strftime("%H:%M"), time.strftime("%A %d %B"), None, None),
+            "system": (tr("Système", "System"), f"CPU {runtime['cpu']}%", f"RAM {runtime['memory']}% · Disk {runtime['disk']}%", runtime["cpu"] / 100, ["seven", "doctor"]),
+            "doctor": ("Seven Doctor", str(runtime["doctor"]["decision"]), f"{runtime['doctor']['issues']} issue(s)", None, ["seven", "doctor"]),
+            "prism": ("Prism", profile.title(), tr("Mini OS actif", "Active Mini OS"), None, ["seven-settings", "prism"]),
+            "notes": (tr("Notes", "Notes"), NOTE_FILE.read_text(encoding="utf-8", errors="ignore").strip()[:42] if NOTE_FILE.exists() else tr("Rien à noter", "Nothing yet"), tr("Mémo local", "Local memo"), None, ["seven", "widgets", "settings"]),
+            "network": (tr("Réseau", "Network"), runtime["network"], tr("Wi-Fi et connexions", "Wi-Fi and connections"), None, ["seven-wifi"]),
+            "quick": (tr("Actions", "Actions"), "SevenOS", tr("Réglages · Doctor · Store", "Settings · Doctor · Store"), None, ["seven-settings", "general"]),
+        }.get(key, (key, "", "", None, None))
+        title_label = Gtk.Label(label=title, xalign=0)
+        title_label.get_style_context().add_class("subtitle")
+        value_label = Gtk.Label(label=str(value), xalign=0)
+        value_label.get_style_context().add_class("value")
+        note_label = Gtk.Label(label=str(note), xalign=0)
+        note_label.get_style_context().add_class("subtitle")
+        card.pack_start(title_label, False, False, 0)
+        card.pack_start(value_label, False, False, 0)
+        if fraction is not None:
+            progress = Gtk.ProgressBar()
+            progress.set_fraction(max(0, min(1, float(fraction))))
+            card.pack_start(progress, False, False, 0)
+        card.pack_start(note_label, False, False, 0)
+        if action:
+            button = Gtk.Button(label=tr("Ouvrir", "Open"))
+            button.get_style_context().add_class("compact")
+            button.connect("clicked", lambda *_a, command=action: subprocess.Popen(command))
+            card.pack_start(button, False, False, 0)
+        return card
+
+    def notes_widget_card(self, payload: dict):
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.get_style_context().add_class("widget")
+        notes = sorted(seven_notes(), key=lambda item: (bool(item.get("pinned")), int(item.get("updated") or 0)), reverse=True)
+        title_label = Gtk.Label(label=tr("Notes", "Notes"), xalign=0)
+        title_label.get_style_context().add_class("subtitle")
+        value_label = Gtk.Label(label=notes[0].get("title", tr("Rien à noter", "Nothing yet")) if notes else tr("Rien à noter", "Nothing yet"), xalign=0)
+        value_label.get_style_context().add_class("value")
+        value_label.set_line_wrap(True)
+        card.pack_start(title_label, False, False, 0)
+        card.pack_start(value_label, False, False, 0)
+        for item in notes[:3]:
+            body = str(item.get("body") or "").replace("\n", " ").strip()
+            chip = Gtk.Label(label=(body or str(item.get("title") or ""))[:52], xalign=0)
+            chip.get_style_context().add_class("note-chip")
+            card.pack_start(chip, False, False, 0)
+        entry = Gtk.Entry()
+        entry.set_placeholder_text(tr("Note rapide…", "Quick note…"))
+        save = Gtk.Button(label=tr("Ajouter", "Add"))
+        save.get_style_context().add_class("compact")
+
+        def submit(*_args):
+            text = entry.get_text().strip()
+            if text:
+                add_widget_note(text)
+                entry.set_text("")
+                self.render()
+
+        entry.connect("activate", submit)
+        save.connect("clicked", submit)
+        card.pack_start(entry, False, False, 0)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        open_button = Gtk.Button(label=tr("Ouvrir", "Open"))
+        open_button.get_style_context().add_class("compact")
+        open_button.connect("clicked", lambda *_a: subprocess.Popen(["seven-notes"]))
+        row.pack_start(save, True, True, 0)
+        row.pack_start(open_button, True, True, 0)
+        card.pack_start(row, False, False, 0)
+        return card
+
+
+def set_widget(key: str, enabled: bool) -> dict:
+    data = config()
+    current = [item for item in data.get("enabled", []) if item in {entry["key"] for entry in CATALOG}]
+    if enabled and key not in current:
+        current.append(key)
+    if not enabled:
+        current = [item for item in current if item != key]
+    data["enabled"] = current
+    save_config(data)
+    return data
+
+
+def set_right_click(enabled: bool) -> dict:
+    data = config()
+    data["desktop_right_click"] = bool(enabled)
+    save_config(data)
+    return data
+
+
+def set_home_workspace(workspace: str) -> dict:
+    data = config()
+    data["home_workspace"] = str(workspace or HOME_WORKSPACE)
+    save_config(data)
+    return data
+
+
+def launch_native(mode: str) -> None:
+    subprocess.Popen([str(ROOT / "bin/seven-widgets-native"), mode])
+
+
+def show_widgets() -> None:
+    data = config()
+    data["visible"] = True
+    save_config(data)
+    close_desktop_widgets()
+    switch_home_workspace()
+    subprocess.Popen([str(ROOT / "bin/seven-widgets-native"), "desktop"])
+
+
+def close_desktop_widgets() -> None:
+    subprocess.run(["pkill", "-f", "[s]even-widgets-native desktop"], check=False)
+    if shutil.which("hyprctl"):
+        subprocess.run(["hyprctl", "dispatch", "closewindow", "title:^(Seven Widgets Desktop)$"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def hide_widgets() -> None:
+    data = config()
+    data["visible"] = False
+    save_config(data)
+    close_desktop_widgets()
+
+
+def doctor() -> dict:
+    data = config()
+    keys = {item["key"] for item in CATALOG}
+    invalid = [item for item in data.get("enabled", []) if item not in keys]
+    return {
+        "schema": "sevenos.widgets.doctor.v1",
+        "state": "ready" if not invalid else "needs-attention",
+        "score": 100 if not invalid else 82,
+        "config": str(CONFIG_FILE),
+        "catalog": len(CATALOG),
+        "enabled": data.get("enabled", []),
+        "invalid": invalid,
+        "commands": {
+            "menu": "seven widgets menu",
+            "add": "seven widgets add clock",
+            "settings": "seven widgets settings",
+            "open": "seven widgets open",
+            "hide": "seven widgets hide",
+            "home": "seven widgets home 1",
+        },
+    }
+
+
+def main() -> int:
+    action = sys.argv[1] if len(sys.argv) > 1 else "menu"
+    if "--probe" in sys.argv:
+        print("OK")
+        return 0
+    if action in {"json", "status"} or "--json" in sys.argv and action not in {"doctor", "catalog"}:
+        print(json.dumps(widget_payload(), ensure_ascii=False, indent=2))
+        return 0
+    if action == "catalog":
+        print(json.dumps({"schema": "sevenos.widgets.catalog.v1", "catalog": CATALOG}, ensure_ascii=False, indent=2))
+        return 0
+    if action == "doctor":
+        print(json.dumps(doctor(), ensure_ascii=False, indent=2))
+        return 0
+    if action == "add" and len(sys.argv) > 2:
+        print(json.dumps(set_widget(sys.argv[2], True), ensure_ascii=False, indent=2))
+        return 0
+    if action in {"remove", "rm"} and len(sys.argv) > 2:
+        print(json.dumps(set_widget(sys.argv[2], False), ensure_ascii=False, indent=2))
+        return 0
+    if action == "home" and len(sys.argv) > 2:
+        print(json.dumps(set_home_workspace(sys.argv[2]), ensure_ascii=False, indent=2))
+        return 0
+    if action == "right-click" and len(sys.argv) > 2:
+        print(json.dumps(set_right_click(sys.argv[2].lower() in {"1", "on", "true", "yes", "enable", "enabled"}), ensure_ascii=False, indent=2))
+        return 0
+    if action in {"open", "show"}:
+        show_widgets()
+        return 0
+    if action == "hide":
+        hide_widgets()
+        return 0
+    if action in {"desktop-menu", "right-click"}:
+        if not config().get("desktop_right_click", True) or active_window_present():
+            return 0
+    mode = "settings" if action in {"settings", "config"} else "desktop" if action == "desktop" else "menu"
+    win = WidgetsWindow(mode)
+    win.connect("destroy", Gtk.main_quit)
+    win.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

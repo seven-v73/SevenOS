@@ -32,6 +32,98 @@ pid_file="$runtime_dir/sevenos-dock.pid"
 state_file="$runtime_dir/sevenos-dock-state.json"
 profile_change_scope="scope=closing-on-profile-change"
 
+default_config_json() {
+  cat <<'JSON'
+{
+  "enabled": true,
+  "position": "bottom",
+  "size": "compact",
+  "magnification": true,
+  "effect": "magnetic",
+  "autohide": true,
+  "autohide_delay": 2.25,
+  "reserve_space": false,
+  "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+  "profile_pins": {},
+  "folders": ["downloads", "home"]
+}
+JSON
+}
+
+ensure_config() {
+  mkdir -p "$(dirname "$config_file")"
+  if [[ ! -s "$config_file" ]]; then
+    default_config_json > "$config_file"
+  fi
+}
+
+config_enabled() {
+  ensure_config
+  python - "$config_file" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+print("yes" if data.get("enabled", True) is not False else "no")
+PY
+}
+
+set_config_value() {
+  local key="$1"
+  local value="$2"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'DRY-RUN > Dock > Set %s %s\n' "$key" "$value"
+    return 0
+  fi
+  ensure_config
+  python - "$config_file" "$key" "$value" <<'PY'
+import json, sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+key = sys.argv[2]
+raw = sys.argv[3]
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+
+def as_bool(value):
+    return str(value).lower() in {"1", "true", "yes", "on", "enable", "enabled"}
+
+if key in {"enabled", "autohide", "reserve_space", "magnification"}:
+    data[key] = as_bool(raw)
+elif key == "autohide_delay":
+    try:
+        data[key] = max(0.5, min(8.0, float(raw)))
+    except Exception:
+        data[key] = 2.25
+elif key == "effect":
+    value = str(raw).lower()
+    if value in {"off", "disabled", "disable"}:
+        value = "none"
+    if value in {"soft", "calm", "focus"}:
+        value = "gentle"
+    data[key] = value if value in {"magnetic", "gentle", "none"} else "magnetic"
+    data["magnification"] = data[key] != "none"
+else:
+    data[key] = raw
+
+data.setdefault("enabled", True)
+data.setdefault("position", "bottom")
+data.setdefault("size", "compact")
+data.setdefault("effect", "magnetic" if data.get("magnification", True) else "none")
+data.setdefault("autohide_delay", 2.25)
+data.setdefault("pinned", ["files", "apps", "browser", "terminal", "spotlight", "hub"])
+data.setdefault("profile_pins", {})
+data.setdefault("folders", ["downloads", "home"])
+path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+PY
+}
+
 dock_binary() {
   local renderer="${SEVENOS_DOCK_RENDERER:-canvas}"
   case "$renderer" in
@@ -104,6 +196,10 @@ kill_dock_processes() {
 open_dock() {
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'DRY-RUN > Dock > Open SevenOS Dock\n'
+    return 0
+  fi
+  if [[ "$(config_enabled)" != "yes" ]]; then
+    printf 'SevenOS Dock: disabled\n'
     return 0
   fi
   experience_event launch "Seven Dock"
@@ -182,24 +278,80 @@ PY
     fi
     ;;
   settings)
-    mkdir -p "$(dirname "$config_file")"
-    if [[ ! -s "$config_file" ]]; then
-      cat > "$config_file" <<'JSON'
-{
-  "position": "bottom",
-  "size": "compact",
-  "magnification": true,
-  "autohide": false,
-  "reserve_space": true,
-  "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
-  "profile_pins": {},
-  "folders": ["downloads", "home"]
-}
-JSON
-    fi
+    ensure_config
     printf 'SevenOS Dock Settings\n'
     printf '=====================\n'
     cat "$config_file"
+    ;;
+  enable)
+    set_config_value enabled true
+    open_dock
+    ;;
+  disable)
+    set_config_value enabled false
+    close_dock
+    ;;
+  set)
+    shift || true
+    key="${1:-}"
+    value="${2:-}"
+    case "$key" in
+      enabled|autohide|reserve_space|magnification|effect|autohide_delay)
+        [[ -n "$value" ]] || { printf 'Usage: seven-dock set %s <value>\n' "$key" >&2; exit 1; }
+        set_config_value "$key" "$value"
+        if is_running; then
+          close_dock
+          open_dock
+        fi
+        ;;
+      delay)
+        [[ -n "$value" ]] || { printf 'Usage: seven-dock set delay <seconds>\n' >&2; exit 1; }
+        set_config_value autohide_delay "$value"
+        if is_running; then close_dock; open_dock; fi
+        ;;
+      *)
+        printf 'Usage: seven-dock set <enabled|autohide|autohide_delay|delay|effect|magnification|reserve_space> <value>\n' >&2
+        exit 1
+        ;;
+    esac
+    ;;
+  autohide)
+    shift || true
+    value="${1:-toggle}"
+    if [[ "$value" == "toggle" ]]; then
+      current="$(python - "$config_file" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+print("off" if data.get("autohide", True) else "on")
+PY
+)"
+      value="$current"
+    fi
+    case "$value" in
+      on|true|1|enable|enabled) set_config_value autohide true ;;
+      off|false|0|disable|disabled) set_config_value autohide false ;;
+      *) printf 'Usage: seven-dock autohide <on|off|toggle>\n' >&2; exit 1 ;;
+    esac
+    if is_running; then close_dock; open_dock; fi
+    ;;
+  delay|hide-delay|autohide-delay)
+    shift || true
+    value="${1:-}"
+    [[ -n "$value" ]] || { printf 'Usage: seven-dock delay <seconds>\n' >&2; exit 1; }
+    set_config_value autohide_delay "$value"
+    if is_running; then close_dock; open_dock; fi
+    ;;
+  effect)
+    shift || true
+    value="${1:-}"
+    [[ -n "$value" ]] || { printf 'Usage: seven-dock effect <magnetic|gentle|none>\n' >&2; exit 1; }
+    set_config_value effect "$value"
+    if is_running; then close_dock; open_dock; fi
     ;;
   limits|doctor)
     if binary="$(dock_binary)"; then
@@ -228,11 +380,14 @@ if tile not in pinned:
     pinned.append(tile)
 data["pinned"] = pinned
 data.setdefault("profile_pins", {})
+data.setdefault("enabled", True)
 data.setdefault("position", "bottom")
 data.setdefault("size", "compact")
 data.setdefault("magnification", True)
-data.setdefault("autohide", False)
-data.setdefault("reserve_space", True)
+data.setdefault("effect", "magnetic")
+data.setdefault("autohide", True)
+data.setdefault("autohide_delay", 2.25)
+data.setdefault("reserve_space", False)
 data.setdefault("folders", ["downloads", "home"])
 path.write_text(json.dumps(data, indent=2) + "\n")
 PY
@@ -264,7 +419,7 @@ PY
     fi
     ;;
   *)
-    printf 'Usage: seven-dock [toggle|open|close|restart|repair|status|settings|limits|doctor|pin <id>|unpin <id>|--probe]\n' >&2
+    printf 'Usage: seven-dock [toggle|open|close|enable|disable|autohide <on|off|toggle>|delay <seconds>|effect <magnetic|gentle|none>|set <key> <value>|restart|repair|status|settings|limits|doctor|pin <id>|unpin <id>|--probe]\n' >&2
     printf 'Env: SEVENOS_DOCK_RENDERER=canvas|native\n' >&2
     exit 1
     ;;

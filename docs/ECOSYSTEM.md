@@ -47,6 +47,7 @@ integration, continuity and predictable defaults.
 | Adaptive UI | profile-aware desktop behavior and visual modes | 4 | preview |
 | Windows Integration | guided VM, Wine, Bottles and future app integration | 2-4 | preview |
 | SevenDoctor | auto-repair and guided remediation through Control Plane | 3-4 | preview |
+| Seven Widgets | optional desktop widgets opened from the home-screen context menu | 4 | active contract |
 | Seven Profiles | Baobab, Forge DevOps, Shield, Studio, Windows, Pulse and Griot | 2-4 | active |
 | Baobab Cultural Mini OS | Heritage, African languages, story, sound, map, museum, fashion, food, wisdom and market | 2-4 | active contract |
 | SevenIdentity | user identity, cultural accents, permissions and environment | 5 | preview |
@@ -62,6 +63,7 @@ cannot be reached from Seven Hub or `seven`, it is not productized yet.
 | --- | --- | --- | --- | --- |
 | First Run | experience | active | welcome, profile choice, theme, readiness, Hub | `seven welcome` |
 | Daily Control | desktop | active | Waybar, Quick Settings, Seven Hub, actions registry | `seven hub` |
+| Desktop Widgets | desktop | active contract | right-click home screen, add widget, show/hide calm desktop layer | `seven widgets menu` |
 | Install Apps | software | preview | SevenStore, SevenPkg, Flatpak, profile apps | `seven store` |
 | Work Profiles | productivity | active | profile context, workspace, app readiness, next actions | `seven profile current` |
 | Windows Apps | compatibility | preview | Windows profile, Bottles/Wine, KVM VM | `seven windows guide` |
@@ -93,6 +95,7 @@ seven identity --json
 seven identity packs --json
 seven identity current --json
 seven actions --json
+seven widgets doctor --json
 seven stack --json
 seven shell status --json
 seven shell plan --json
@@ -285,17 +288,34 @@ SevenAI Agent adds the first executable OS-agent foundation:
 - `seven ai apps --json` exposes the app registry used for launch decisions.
 - `seven ai context --json` exposes local process and Hyprland context.
 - `seven ai memory --json` exposes a local-only event log for short-term
-  behavior learning.
+  behavior learning, its retention state and noisy repeated intents.
+- `seven ai memory --compact --json` trims heavy local test history and old
+  research cache entries without sending anything outside the machine.
+- `seven ai doctor --json` validates the provider, privacy mode, context,
+  memory health and current SevenAI limits for Hub or release checks.
 - `seven ai "mets le thème light"` and `seven ai "workspace 2"` expose natural
   desktop control for SevenOS theme and Hyprland workspaces.
 - `seven ai shortcuts`, `seven ai knowledge` and `seven ai workflow` let the
   assistant explain SevenOS, keyboard-first workflows and workspace discipline
   without needing the web.
 - `seven ai llm --json` exposes the complete provider-neutral LLM contract.
+- `seven ai models --json` exposes the local model manager: Ollama state,
+  llama.cpp state, recommended provider and guarded setup actions.
+- `seven ai manager --json` exposes SevenAI as an OS manager contract: health,
+  public quality, Mini OS, Store, Files, Reader, Windows compatibility, USB,
+  security, privacy, installer, action registry, playbooks and model state.
+- `seven ai operate "installe blender" --json` turns a natural request into an
+  OS operation contract before execution: domain, intent, safety level,
+  pre-checks, preview command, confirmation requirement and rollback hints.
 - `seven ai web "query" --json --web` can perform an explicit web lookup; web
   access stays disabled by default and never sends system context implicitly.
 - `seven ai provider "question" --json` runs the active SevenOS local provider:
   deterministic, no account, no token cost, no external data flow.
+- `SEVENAI_PROVIDER=ollama seven ai provider "question" --json` can use an
+  installed local Ollama model. This is opt-in, local-only and falls back to
+  `seven-local` if the runtime or model is unavailable.
+  `seven ai llm --json` reports whether Ollama is missing, installed but
+  stopped, or actually available with local models.
 - `seven ai diagnose system --json` inspects load, memory, disk, top processes,
   failed units and NetworkManager state.
 - `seven ai playbook wifi_repair --json` exposes confirmed auto-healing steps
@@ -311,9 +331,34 @@ French guidance, and `SEVENAI_LANG=fr|en` can override that for tests.
 
 The safety contract is simple: app/UI actions can run directly, system actions
 are previewed unless `--apply` is present, privileged package/root actions must
-remain explicit and explain their command before execution, and the provider
+remain explicit and explain their command before execution, software installs
+route through SevenPkg instead of raw package-manager commands, and the provider
 layer must stay local-only unless a future user-controlled adapter is explicitly
 installed by the user.
+
+Model-backed answers are treated as an explanation layer, not as an execution
+engine. The deterministic intent parser, confirmation contract, SevenPkg routing
+and playbooks remain responsible for actions. The model receives only reduced
+local context, not raw process lists, full files, logs or secrets.
+
+SevenAI Manager is the long-term control contract for SevenOS. Its rule is:
+observe every domain, explain the current state, preview the safest route,
+then execute only through existing SevenOS commands. This keeps SevenAI useful
+as an OS manager without turning it into an unsafe shell wrapper.
+
+For any request that might change the machine, SevenAI should prefer the
+operator route first:
+
+```bash
+seven ai operate "mets le thème clair" --json
+seven ai operate "installe blender" --json
+seven ai operate "répare le wifi" --json
+```
+
+The operator output is deliberately boring and machine-readable: `observe`,
+`explain`, `preview`, `confirm`, `execute`, `rollback`. This is the bridge used
+by future Hub, Spotlight and Settings surfaces to show an elegant confirmation
+screen instead of exposing raw shell commands.
 
 ### Phase 5: Connected Ecosystem
 
@@ -363,6 +408,8 @@ seven ai context --json
 seven ai shortcuts
 seven ai knowledge
 seven ai llm --json
+seven ai models --json
+seven ai manager --json
 seven ai provider "mon wifi ne marche pas" --json
 seven ai diagnose system --json
 seven ai playbook wifi_repair --json

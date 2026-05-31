@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven-notes-native" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/seven-notes-native" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -x "$candidate/bin/seven-notes-native" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+}
+
+ROOT_DIR="$(resolve_root || true)"
+if [[ -z "$ROOT_DIR" ]]; then
+  printf 'seven-notes: could not find SevenOS root\n' >&2
+  exit 1
+fi
+
+exec "$ROOT_DIR/bin/seven-notes-native" "$@"

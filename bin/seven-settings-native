@@ -68,6 +68,7 @@ REGION_ENV = CONFIG_DIR / "region.env"
 # Public Settings route contract: seven.*mini-os.*activate stays visible to the
 # design gate while the UI presents it as a compact Mini OS workflow.
 PROFILE_AVATAR_PREFS = CONFIG_DIR / "profile-avatar.json"
+DOCK_PREFS = CONFIG_DIR / "dock.json"
 HYPR_CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "hypr" / "conf"
 MONITOR_PREFS = HYPR_CONFIG_DIR / "monitor.conf"
 MONITOR_BACKUP = HYPR_CONFIG_DIR / "monitor.conf.sevenos.bak"
@@ -201,7 +202,7 @@ def theme_apply_command(mode: str = "current") -> str:
 
 
 def language_apply_command() -> str:
-    return root_shell("seven language apply --live && ./install.sh theme current")
+    return root_shell("seven language repair && ./install.sh theme current")
 
 
 def session_refresh_command() -> str:
@@ -220,6 +221,13 @@ def command_exists(command: str) -> bool:
     return shutil.which(command) is not None
 
 
+def line_buffered_shell(command: str) -> str:
+    """Wrap composed commands so stdbuf never receives shell builtins directly."""
+    if command_exists("stdbuf"):
+        return f"stdbuf -oL -eL bash -lc {shlex.quote(command)}"
+    return command
+
+
 def current_theme_mode() -> str:
     theme_file = CONFIG_DIR / "theme.conf"
     if theme_file.exists():
@@ -233,6 +241,35 @@ def current_theme_mode() -> str:
     if env_mode in {"dark", "light"}:
         return env_mode
     return "dark"
+
+
+def dock_preferences() -> dict:
+    defaults = {
+        "enabled": True,
+        "autohide": True,
+        "autohide_delay": 2.25,
+        "effect": "magnetic",
+        "magnification": True,
+        "reserve_space": False,
+    }
+    try:
+        if DOCK_PREFS.exists():
+            data = json.loads(DOCK_PREFS.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                defaults.update({key: data[key] for key in defaults if key in data})
+    except Exception:
+        pass
+    effect = str(defaults.get("effect") or "magnetic").lower()
+    if effect in {"off", "disabled", "disable"}:
+        effect = "none"
+    if effect in {"soft", "calm", "focus"}:
+        effect = "gentle"
+    defaults["effect"] = effect if effect in {"magnetic", "gentle", "none"} else "magnetic"
+    try:
+        defaults["autohide_delay"] = max(0.5, min(8.0, float(defaults.get("autohide_delay", 2.25))))
+    except Exception:
+        defaults["autohide_delay"] = 2.25
+    return defaults
 
 
 def read_region_prefs() -> dict[str, str]:
@@ -2879,26 +2916,6 @@ def run(initial_page: str = "overview") -> int:
         button.connect("clicked", lambda _button, callback=action: callback())
         traffic.pack_start(button, False, False, 0)
     sidebar.pack_start(traffic, False, False, 0)
-
-    brand_card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-    brand_card.get_style_context().add_class("settings-prism-brand")
-    brand_mark = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-    brand_mark.get_style_context().add_class("settings-prism-brand-mark")
-    brand_mark.pack_start(prism_canvas(34, thin=True), True, True, 0)
-    brand_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-    brand_title = Gtk.Label(label=tr("settings.title", "Réglages SevenOS"))
-    brand_title.set_xalign(0)
-    brand_title.set_ellipsize(Pango.EllipsizeMode.END)
-    brand_title.get_style_context().add_class("settings-prism-brand-title")
-    brand_note = Gtk.Label(label=tr("settings.control_prism.note", "Centre Prism · réglages vivants"))
-    brand_note.set_xalign(0)
-    brand_note.set_ellipsize(Pango.EllipsizeMode.END)
-    brand_note.get_style_context().add_class("settings-prism-brand-note")
-    brand_text.pack_start(brand_title, False, False, 0)
-    brand_text.pack_start(brand_note, False, False, 0)
-    brand_card.pack_start(brand_mark, False, False, 0)
-    brand_card.pack_start(brand_text, True, True, 0)
-    sidebar.pack_start(brand_card, False, False, 0)
 
     stack = Gtk.Stack()
     stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
@@ -6343,7 +6360,8 @@ def run(initial_page: str = "overview") -> int:
         "seven language status",
         "seven language list",
         "seven language ensure",
-        "seven language set",
+        "seven language switch",
+        "seven language repair",
         "seven-files resources status",
         "seven fonts status",
         "sevenpkg status",
@@ -7241,7 +7259,7 @@ def run(initial_page: str = "overview") -> int:
                 return False
 
             try:
-                runner = f"stdbuf -oL -eL {ui_command}" if command_exists("stdbuf") else ui_command
+                runner = line_buffered_shell(ui_command)
                 process = subprocess.Popen(
                     ["bash", "-lc", runner],
                     cwd=ROOT,
@@ -9658,6 +9676,94 @@ def run(initial_page: str = "overview") -> int:
             ],
         )
 
+    def dock_settings_group(container: Gtk.Box) -> Gtk.Box:
+        prefs = dock_preferences()
+        limits = run_json_timeout([str(ROOT / "bin/seven-dock"), "limits"], {}, timeout=1.0)
+        dock_info = limits.get("dock", {}) if isinstance(limits.get("dock"), dict) else {}
+        running = out([str(ROOT / "bin/seven-dock"), "status"], "", timeout=0.6)
+        enabled = bool(prefs.get("enabled", True))
+        autohide = bool(prefs.get("autohide", True))
+        delay = float(prefs.get("autohide_delay", 2.25))
+        effect = str(prefs.get("effect") or dock_info.get("effect") or "magnetic").lower()
+        effect_names = {
+            "magnetic": tr("settings.dock.effect.magnetic", "Magnétique"),
+            "gentle": tr("settings.dock.effect.gentle", "Doux"),
+            "none": tr("settings.dock.effect.none", "Désactivé"),
+        }
+        effect_label = effect_names.get(effect, effect)
+        status_label = tr("settings.enabled", "Activé") if enabled else tr("settings.disabled", "Désactivé")
+        run_label = tr("settings.running", "En cours") if "RUN" in running else tr("settings.stopped", "Arrêté")
+        autohide_label = tr("settings.enabled", "Activé") if autohide else tr("settings.disabled", "Désactivé")
+
+        def dock_command(command: str, message: str) -> None:
+            run_prism_setting(f"{shlex.quote(str(ROOT / 'bin/seven-dock'))} {command}", message)
+
+        def dock_button(label: str, command: str, message: str) -> Gtk.Button:
+            return callback_button(label, f"seven-dock {command}", lambda c=command, m=message: dock_command(c, m))
+
+        return settings_group(
+            container,
+            tr("settings.dock.section", "Dock"),
+            [
+                settings_row(
+                    "󰃣",
+                    tr("settings.dock.visibility", "Dock SevenOS"),
+                    tr(
+                        "settings.dock.visibility.note",
+                        "État : {state} · Processus : {run}. Désactive-le si tu préfères un bureau sans Dock.",
+                        state=status_label,
+                        run=run_label,
+                    ),
+                    [
+                        dock_button(tr("settings.enable", "Activer"), "enable", tr("settings.dock.enabled", "Dock activé.")),
+                        dock_button(tr("settings.disable", "Désactiver"), "disable", tr("settings.dock.disabled", "Dock désactivé.")),
+                        dock_button(tr("settings.restart", "Relancer"), "restart", tr("settings.dock.restarted", "Dock relancé.")),
+                    ],
+                ),
+                settings_row(
+                    "󰜗",
+                    tr("settings.dock.autohide", "Masquage automatique"),
+                    tr(
+                        "settings.dock.autohide.note",
+                        "État : {state}. Choisis Toujours visible pour annuler complètement l’auto-hide.",
+                        state=autohide_label,
+                    ),
+                    [
+                        dock_button(tr("settings.dock.autohide_auto", "Auto-hide"), "autohide on", tr("settings.dock.autohide_on", "Masquage automatique activé.")),
+                        dock_button(tr("settings.dock.always_visible", "Toujours visible"), "autohide off", tr("settings.dock.autohide_off", "Le Dock reste visible en permanence.")),
+                    ],
+                ),
+                settings_row(
+                    "󰔚",
+                    tr("settings.dock.hide_delay", "Temps avant masquage"),
+                    tr(
+                        "settings.dock.hide_delay.note",
+                        "Délai actuel : {delay:.1f}s. Ce réglage ne s’applique que lorsque l’auto-hide est actif.",
+                        delay=delay,
+                    ),
+                    [
+                        dock_button("1.5s", "delay 1.5", tr("settings.dock.delay_short", "Délai du Dock réglé sur 1.5 seconde.")),
+                        dock_button("2.5s", "delay 2.5", tr("settings.dock.delay_normal", "Délai du Dock réglé sur 2.5 secondes.")),
+                        dock_button("4s", "delay 4", tr("settings.dock.delay_long", "Délai du Dock réglé sur 4 secondes.")),
+                    ],
+                ),
+                settings_row(
+                    "󰐊",
+                    tr("settings.dock.effect", "Effet du Dock"),
+                    tr(
+                        "settings.dock.effect.note",
+                        "Effet actuel : {effect}. Magnétique pour l’effet vivant, doux pour plus de calme, désactivé pour une barre stable.",
+                        effect=effect_label,
+                    ),
+                    [
+                        dock_button(tr("settings.dock.effect.magnetic", "Magnétique"), "effect magnetic", tr("settings.dock.effect_magnetic", "Effet magnétique appliqué.")),
+                        dock_button(tr("settings.dock.effect.gentle", "Doux"), "effect gentle", tr("settings.dock.effect_gentle", "Effet doux appliqué.")),
+                        dock_button(tr("settings.disable", "Désactiver"), "effect none", tr("settings.dock.effect_none", "Effet du Dock désactivé.")),
+                    ],
+                ),
+            ],
+        )
+
     def mini_os_capability_panel() -> Gtk.Box:
         catalog = profile_catalog()
         profile_defs = catalog.get("profiles", {}) if isinstance(catalog.get("profiles"), dict) else {}
@@ -9979,7 +10085,7 @@ def run(initial_page: str = "overview") -> int:
             if locale_name == current or item.get("current"):
                 active_index = index
         selector.set_active(active_index)
-        selector.set_tooltip_text("seven language set <locale>")
+        selector.set_tooltip_text("seven language switch <locale>")
 
         ready = {"value": False}
 
@@ -9993,10 +10099,13 @@ def run(initial_page: str = "overview") -> int:
             locale_name = widget.get_active_id()
             if not locale_name:
                 return
-            run_detached(f"seven language set {locale_name}")
+            global LANGUAGE_CACHE
+            LANGUAGE_CACHE = None
+            command = root_shell(f"seven language switch {shlex.quote(locale_name)}")
+            run_detached(command)
             if installed_by_locale.get(locale_name, True):
-                notify("SevenOS Language", tr_text("Langue actualisée pour les nouvelles fenêtres.") + " " + tr("language.needs_restart", "Certaines apps ouvertes doivent être relancées pour appliquer toute la langue."))
-                show_feedback(tr("language.needs_restart", "Certaines apps ouvertes doivent être relancées pour appliquer toute la langue."))
+                notify("SevenOS Language", tr("language.apply_live.note", "Restart visible SevenOS surfaces so new windows use the active language."))
+                show_feedback(tr("language.apply_live.note", "Restart visible SevenOS surfaces so new windows use the active language."))
             else:
                 notify("SevenOS Language", tr("settings.language_generate_apply", "SevenOS prépare cette langue, puis l’applique."))
                 show_feedback(tr("settings.language_generate_apply", "SevenOS prépare cette langue, puis l’applique."))
@@ -10373,7 +10482,7 @@ def run(initial_page: str = "overview") -> int:
                 f"seven profile activate {profile} && "
                 f"seven-wallpaper profile {profile} && "
                 "seven-profile-theme apply && "
-                "seven language apply --live"
+                "seven language repair"
             )
             show_command_output(root_shell(command), tr("settings.theme_apply", "Appliquer le thème"))
             show_feedback(tr("settings.theme_apply_requested", "Theme, profile and wallpaper changes are being applied."))
@@ -10410,6 +10519,7 @@ def run(initial_page: str = "overview") -> int:
         "general": page(tr("settings.general", "Général"), tr("settings.general.subtitle", "Langue, région, thèmes et comportement quotidien de SevenOS.")),
         "experience": page(tr("settings.experience_center.title", "Experience Center"), tr("settings.experience_center.subtitle", "Secours, Time Machine, timeline, permissions, parcours focus et mémoire de travail.")),
         "prism": page(tr("settings.prism.page", "Prism"), tr("settings.prism.page.subtitle", "Gérer le Prism SevenDecor, ses effets, sa cible et les actions fenêtre.")),
+        "dock": page(tr("settings.dock.page", "Dock"), tr("settings.dock.page.subtitle", "Gérer la présence, le masquage automatique, le délai et l’effet du Dock SevenOS.")),
         "appearance": page(tr("settings.appearance", "Apparence"), tr("settings.appearance.subtitle", "Verre liquide, Dock, terminal et identité visuelle SevenOS.")),
         "wallpaper": page(tr("settings.wallpaper", "Fond d’écran"), tr("settings.wallpaper.subtitle", "Choisir une image et l’appliquer au bureau SevenOS.")),
         "display": page(tr("settings.displays", "Écrans"), tr("settings.display.subtitle", "Luminosité, organisation des écrans et affichage SevenOS.")),
@@ -10433,13 +10543,14 @@ def run(initial_page: str = "overview") -> int:
     sidebar_section(tr("settings.nav.essential", "Essentiel"))
     nav("overview", "󰕮", tr("settings.overview", "Vue d’ensemble"), "overview")
     nav("general", "󰒓", tr("settings.general", "Général"), "general")
-    nav("experience", "◈", tr("settings.experience_center.nav", "Expérience"), "experience", visible=False)
+    nav("experience", "󰛨", tr("settings.experience_center.nav", "Expérience"), "experience", visible=False)
     nav("profiles", "󰐃", tr("settings.profiles", "Mini OS"), "profiles")
     nav("power", "󰁹", tr("settings.power", "Énergie"), "power")
     sidebar_section(tr("settings.nav.personalization", "Personnalisation"))
     nav("prism", "◈", tr("settings.prism.page", "Prism"), "prism")
-    nav("appearance", "󰸉", tr("settings.appearance", "Apparence"), "appearance")
-    nav("wallpaper", "󰸉", tr("settings.wallpaper", "Fond d’écran"), "wallpaper")
+    nav("dock", "󰀻", tr("settings.dock.page", "Dock"), "dock")
+    nav("appearance", "󰏘", tr("settings.appearance", "Apparence"), "appearance")
+    nav("wallpaper", "󰋩", tr("settings.wallpaper", "Fond d’écran"), "wallpaper")
     nav("fonts", "󰛖", tr("settings.fonts", "Polices"), "fonts", visible=False)
     sidebar_section(tr("settings.nav.devices", "Appareils"))
     nav("display", "󰍹", tr("settings.displays", "Écrans"), "display")
@@ -10447,14 +10558,14 @@ def run(initial_page: str = "overview") -> int:
     nav("sound", "󰕾", tr("settings.sound", "Son"), "sound")
     nav("keyboard", "󰌌", tr("settings.keyboard", "Clavier"), "keyboard", visible=False)
     sidebar_section(tr("settings.nav.apps_data", "Apps et données"))
-    nav("defaults", "󰒓", tr("settings.default_apps", "Apps par défaut"), "defaults", visible=False)
+    nav("defaults", "󰣆", tr("settings.default_apps", "Apps par défaut"), "defaults", visible=False)
     nav("apps", "󰀻", tr("settings.apps", "Apps"), "apps")
     nav("privacy", "󰌾", tr("settings.privacy", "Confidentialité"), "privacy")
     nav("security", "󰒃", tr("settings.security", "Sécurité"), "security")
     sidebar_section(tr("settings.nav.maintenance", "Maintenance"))
     nav("backup", "󰁯", tr("settings.backup_restore", "Sauvegarde"), "backup", visible=False)
-    nav("shortcuts", "󰌌", tr("settings.shortcuts", "Raccourcis"), "shortcuts", visible=False)
-    nav("system", "󰒓", tr("settings.system", "Système"), "system")
+    nav("shortcuts", "󰘳", tr("settings.shortcuts", "Raccourcis"), "shortcuts", visible=False)
+    nav("system", "󰌢", tr("settings.system", "Système"), "system")
     rebuild_recent_pages()
     initial_page = initial_page if initial_page in pages else "overview"
 
@@ -10462,7 +10573,8 @@ def run(initial_page: str = "overview") -> int:
         "general": "general language langue region région formats about a propos clavier keyboard essential essentiel mini os collaboration capabilities capacités injection fonctionnalités entretien maintenance vérifier installer supprimer suppression désinstaller desinstaller paquets update mise à jour réparer atlas bridge sauvegarde backup animations motion usage quotidien développement création sécurité gaming culture compte utilisateur avatar profil image",
         "experience": "experience center expérience centre secours rescue time machine timeline historique permissions focus journeys parcours mémoire workspace memory restaurer revenir arrière confiance comprendre changé changement diagnostic",
         "prism": "prism sevencor sevenDecor window controls smart window pastilles fenêtre fenetre rouge jaune vert electric électrique electrique cible target lock flottant tiling maximize fullscreen deplacer déplacer fermer agrandir reduire réduire bouton fenetre",
-        "appearance": "appearance theme thème theme dark light clair sombre glass dock terminal visual design rendu interface trop clair trop sombre navigateur noir app noire app sombre coherence cohérence couleurs",
+        "dock": "dock barre applications auto-hide autohide masquage automatique toujours visible délai delay effet magnétique doux désactiver cacher afficher",
+        "appearance": "appearance theme thème theme dark light clair sombre glass terminal visual design rendu interface trop clair trop sombre navigateur noir app noire app sombre coherence cohérence couleurs",
         "wallpaper": "wallpaper fond écran ecran hyprpaper matugen wallust image collection dynamique clair sombre équilibré equilibre sevenos rotation fond change image bureau",
         "display": "display screen écran ecran monitor brightness luminosité luminosite hyprland résolution resolution echelle échelle trop grand trop petit agrandir texte flou",
         "network": "wifi wi-fi network réseau reseau ethernet internet nmcli connection connexion connecté connecte deconnecte déconnecté coupe coupé pas internet mot de passe wifi",
@@ -10736,6 +10848,36 @@ def run(initial_page: str = "overview") -> int:
         0,
     )
     prism_settings_group(prism_page)
+    settings_group(
+        prism_page,
+        tr("settings.related", "Lié"),
+        [
+            settings_row(
+                "󰃣",
+                tr("settings.dock.page", "Dock"),
+                tr(
+                    "settings.dock.related_note",
+                    "Le Dock possède maintenant sa propre section juste sous Prism pour gérer présence, auto-hide et effet.",
+                ),
+                [page_button(tr("settings.open", "Ouvrir"), "dock")],
+            ),
+        ],
+    )
+
+    dock_page = pages["dock"][0]
+    dock_page.pack_start(
+        hero_card(
+            tr("settings.dock.hero.title", "Un Dock stable selon ton rythme"),
+            tr(
+                "settings.dock.hero.note",
+                "Active le Dock, rends-le toujours visible ou garde l’auto-hide avec un délai précis. Les changements s’appliquent sans quitter les Réglages.",
+            ),
+        ),
+        False,
+        False,
+        0,
+    )
+    dock_settings_group(dock_page)
 
     # General
     general = pages["general"][0]
@@ -10942,7 +11084,7 @@ def run(initial_page: str = "overview") -> int:
         [
             settings_row("󰗊", tr("settings.available_languages", "Langues disponibles"), tr("settings.available_languages.note", "{count} langue(s) prêtes ou installables sur cette machine.", count=len(lang_payload.get("languages", []))), [action_button(tr("settings.list", "Voir"), "seven language list")]),
             settings_row("󰄬", tr("settings.language_doctor", "Vérification des langues"), tr("settings.language_doctor.note", "Vérifie que français et anglais sont prêts dans l’ISO, l’installateur, la session et Waybar."), [action_button(tr("settings.check", "Vérifier"), "seven language doctor")]),
-            settings_row("󰗊", "Français", tr("settings.french.note", "Installer le français si besoin, puis l’utiliser pour l’interface SevenOS."), [action_button(tr("settings.install_apply", "Installer et appliquer"), "seven language set fr_FR.UTF-8")]),
+            settings_row("󰗊", "Français", tr("settings.french.note", "Installer le français si besoin, puis l’utiliser pour l’interface SevenOS."), [action_button(tr("settings.install_apply", "Installer et appliquer"), "seven language switch fr_FR.UTF-8")]),
             settings_row("󰜉", tr("settings.apply_now", "Appliquer maintenant"), tr("settings.apply_now.note", "Actualise les surfaces SevenOS après un changement de langue, thème ou région."), [action_button(tr("language.apply_live", "Appliquer"), language_apply_command(), tr("language.needs_restart", "Certaines apps ouvertes doivent être relancées pour appliquer toute la langue."))]),
             settings_row("󰅐", tr("settings.region_contract", "Formats régionaux"), f"{REGION_PREFS.name} · {REGION_ENV.name}", [action_button(tr("settings.reload", "Actualiser"), session_refresh_command(), tr("settings.action_started", "Action lancée."))]),
         ],
@@ -11010,7 +11152,7 @@ def run(initial_page: str = "overview") -> int:
             settings_row("󰔎", tr("settings.light_mode", "Mode clair"), tr("settings.light_mode.note", "Espace SevenOS lisible pour lecture, productivité et usage en journée."), [action_button(tr("settings.apply", "Appliquer"), theme_apply_command("light"))]),
             settings_row("󰏘", tr("settings.design_engine", "Style SevenOS"), tr("settings.design_engine.note", "Voir les couleurs, icônes et préférences visuelles actives."), [action_button(tr("settings.open", "Ouvrir"), "seven identity design")]),
             settings_row("󰀻", tr("settings.native_icons", "Icônes SevenOS"), tr("settings.native_icons.note", "Voir les icônes natives utilisées par les apps SevenOS."), [action_button(tr("settings.open", "Ouvrir"), "seven identity icons")]),
-            settings_row("󰃣", tr("settings.dock", "Dock"), tr("settings.dock.note", "Afficher ou masquer le Dock SevenOS."), [action_button(tr("settings.toggle", "Basculer"), "seven-dock toggle")]),
+            settings_row("󰃣", tr("settings.dock", "Dock"), tr("settings.dock.note", "Présence, masquage automatique et effet du Dock SevenOS."), [page_button(tr("settings.open", "Ouvrir"), "dock"), action_button(tr("settings.toggle", "Basculer"), "seven-dock toggle")]),
             settings_row("󰆍", tr("settings.terminal_style", "Style du terminal"), tr("settings.terminal_style.note", "Choisir l’apparence du terminal SevenOS."), [action_button(tr("settings.choose", "Choisir"), "seven-terminal menu")]),
             settings_row("󰇄", tr("settings.shell_bar", "Barre de menu"), tr("settings.shell_bar.note", "Réparer et relancer la barre de menu SevenOS."), [action_button(tr("settings.repair", "Réparer"), repair_interface_command())]),
         ],

@@ -292,6 +292,8 @@ step "applying font roles and refreshing font cache"
 step "preparing French and English language packs"
 "$ROOT_DIR/bin/seven-language" ensure en_US.UTF-8
 "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8
+"$ROOT_DIR/bin/seven-language" repair || true
+"$ROOT_DIR/bin/seven-language" audit || true
 
 step "installing visual polish packages when available"
 run_optional "$ROOT_DIR/scripts/visual-packages.sh" install "${yes_args[@]}"

@@ -76,8 +76,10 @@ Language repair route:
 ```bash
 ./install.sh language
 seven language doctor
-seven language set fr_FR.UTF-8
-seven language set en_US.UTF-8
+seven language audit
+seven language switch fr_FR.UTF-8
+seven language switch en_US.UTF-8
+seven language repair
 ```
 
 Build a live ISO from a prepared host:

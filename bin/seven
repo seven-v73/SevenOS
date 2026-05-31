@@ -40,6 +40,8 @@ def run(command, args):
     try:
         subprocess.run(command, check=True)
     except subprocess.CalledProcessError as exc:
+        if getattr(args, "json", False):
+            sys.exit(exc.returncode)
         short = " ".join(shlex.quote(str(part)) for part in command[:4])
         print(f"seven: command failed with exit code {exc.returncode}: {short}", file=sys.stderr)
         if len(command) > 4:
@@ -627,6 +629,20 @@ def handle_flatpak(args):
     run_script(args, "scripts/flatpak.sh", args.action, *args.extra)
 
 
+def handle_widgets(args):
+    extra = [args.action, *args.extra]
+    if args.json and "--json" not in extra:
+        extra.append("--json")
+    run_script(args, "bin/seven-widgets-native", *extra)
+
+
+def handle_notes(args):
+    extra = [args.action, *args.extra]
+    if args.json and "--json" not in extra:
+        extra.append("--json")
+    run_script(args, "bin/seven-notes", *extra)
+
+
 def handle_deploy(args):
     run_script(args, "server/seven-deploy.sh", args.action, *args.extra)
 
@@ -639,7 +655,16 @@ def handle_ecosystem(args):
 
 
 def handle_ai(args):
-    extra = [args.action, *args.extra]
+    ai_actions = {
+        "brief", "status", "plan", "focus", "doctor", "json", "ask", "run",
+        "intent", "apps", "context", "memory", "knowledge", "shortcuts",
+        "workflow", "llm", "models", "manager", "operate", "web", "research", "diagnose", "playbook",
+        "provider", "open", "native", "gui", "interface", "agent",
+    }
+    if args.action not in ai_actions:
+        extra = ["ask", args.action, *args.extra]
+    else:
+        extra = [args.action, *args.extra]
     if args.json and args.action == "brief" and not args.extra:
         extra = ["json"]
     elif args.json:
@@ -779,6 +804,9 @@ def handle_theme(args):
         extra = ["doctor"]
     elif args.action in {"status", "json"}:
         extra = ["json" if args.json or args.action == "json" else "status"]
+    elif args.action in {"dark", "light"}:
+        run_script(args, "scripts/apply-theme.sh", args.action)
+        return
     elif args.action == "apply":
         extra = ["apply"]
     else:
@@ -1189,6 +1217,22 @@ def handle_launchpad(args):
     sys.exit(2)
 
 
+def handle_tools(args):
+    extra = [args.action, *args.extra]
+    if args.json and "--json" not in extra:
+        extra.append("--json")
+    run_script(args, "scripts/tools.sh", *extra)
+
+
+def handle_ux(args):
+    extra = []
+    if args.action in {"fast", "status", "json"}:
+        extra.append("--fast")
+    if args.action == "json" or args.json:
+        extra.append("--json")
+    run_script(args, "scripts/ux-check.sh", *extra)
+
+
 def main():
     dry_run_requested = "--dry-run" in sys.argv[1:]
     if dry_run_requested:
@@ -1334,7 +1378,7 @@ def main():
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
     identity_parser.add_argument("extra", nargs=argparse.REMAINDER)
     theme_parser = subparsers.add_parser("theme", help="inspect SevenOS light/dark runtime theme coherence")
-    theme_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "doctor", "theme-doctor", "apply", "sync", "repair", "session"))
+    theme_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "doctor", "theme-doctor", "apply", "sync", "repair", "session", "dark", "light"))
     theme_parser.add_argument("--json", action="store_true", help="print machine-readable theme runtime state")
     hypr_parser = subparsers.add_parser("hypr", help="inspect or install the SevenOS window system layer")
     hypr_parser.add_argument("action", nargs="?", default="status", choices=("status", "install", "apply", "lua"))
@@ -1465,7 +1509,7 @@ def main():
     login_theme_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "apply", "theme"))
     login_theme_parser.add_argument("extra", nargs=argparse.REMAINDER)
     language_parser = subparsers.add_parser("language", help="inspect and apply SevenOS user language")
-    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply", "doctor"))
+    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "switch", "ensure", "menu", "apply", "repair", "audit", "doctor"))
     language_parser.add_argument("locale", nargs="?")
     language_parser.add_argument("--json", action="store_true", help="print machine-readable language state")
     language_parser.add_argument("--live", action="store_true", help="restart visible SevenOS surfaces after a language change")
@@ -1498,6 +1542,13 @@ def main():
     actions_parser.add_argument("action", nargs="?", default="list")
     actions_parser.add_argument("--json", action="store_true", help="print machine-readable action registry")
     actions_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    tools_parser = subparsers.add_parser("tools", help="inspect native SevenOS user tools")
+    tools_parser.add_argument("action", nargs="?", default="status", choices=("open", "gui", "status", "doctor", "plan", "detail", "json"))
+    tools_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS tools contract")
+    tools_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    ux_parser = subparsers.add_parser("ux", help="run bounded SevenOS UX coherence checks")
+    ux_parser.add_argument("action", nargs="?", default="fast", choices=("fast", "status", "doctor", "full", "json"))
+    ux_parser.add_argument("--json", action="store_true", help="print machine-readable UX gate status")
     spotlight_parser = subparsers.add_parser("spotlight", help="open, index or diagnose SevenOS Spotlight")
     spotlight_parser.add_argument("action", nargs="?", default="open")
     spotlight_parser.add_argument("--json", action="store_true", help="print machine-readable Spotlight diagnostics where supported")
@@ -1684,6 +1735,16 @@ def main():
     flatpak_parser.add_argument("action", nargs="?", default="status")
     flatpak_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
+    widgets_parser = subparsers.add_parser("widgets", help="manage SevenOS desktop widgets")
+    widgets_parser.add_argument("action", nargs="?", default="menu")
+    widgets_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    widgets_parser.add_argument("--json", action="store_true", help="print machine-readable widget state")
+
+    notes_parser = subparsers.add_parser("notes", help="open Seven Notes or create quick notes")
+    notes_parser.add_argument("action", nargs="?", default="open")
+    notes_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    notes_parser.add_argument("--json", action="store_true", help="print machine-readable Seven Notes state")
+
     deploy_parser = subparsers.add_parser("deploy", help="detect and prepare project deployments")
     deploy_parser.add_argument("action", nargs="?", default="plan")
     deploy_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -1841,6 +1902,10 @@ def main():
         handle_new(args)
     elif args.command == "actions":
         handle_actions(args)
+    elif args.command == "tools":
+        handle_tools(args)
+    elif args.command == "ux":
+        handle_ux(args)
     elif args.command == "spotlight":
         handle_spotlight(args)
     elif args.command == "launchpad":
@@ -1902,7 +1967,10 @@ def main():
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)
-        elif args.action in ("open", "dashboard"):
+        elif args.action in ("open", "dashboard", "task", "tasks", "monitor"):
+            if args.json:
+                run_script(args, "bin/seven-doctor-native", "--json")
+                return
             run_script(args, "bin/seven-doctor-native")
         elif args.action in ("release", "release-freeze"):
             extra = ["release"]
@@ -1974,6 +2042,10 @@ def main():
         handle_settings(args)
     elif args.command == "flatpak":
         handle_flatpak(args)
+    elif args.command == "widgets":
+        handle_widgets(args)
+    elif args.command == "notes":
+        handle_notes(args)
     elif args.command == "deploy":
         handle_deploy(args)
     else:

@@ -114,10 +114,13 @@ CLASS_TILE_HINTS = {
 }
 
 DEFAULT_CONFIG = {
+    "enabled": True,
     "position": "bottom",
     "size": "compact",
     "magnification": True,
+    "effect": "magnetic",
     "autohide": True,
+    "autohide_delay": HIDE_DELAY,
     "reserve_space": False,
     "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
     "profile_pins": {},
@@ -125,6 +128,25 @@ DEFAULT_CONFIG = {
 }
 
 DRAG_THRESHOLD = 8
+
+
+def clamp_float(value, minimum: float, maximum: float) -> float:
+    try:
+        number = float(value)
+    except Exception:
+        number = minimum
+    return max(minimum, min(maximum, number))
+
+
+def normalize_effect(value) -> str:
+    effect = str(value or "magnetic").strip().lower()
+    if effect in {"off", "disabled", "disable", "false", "0"}:
+        return "none"
+    if effect in {"soft", "calm", "focus"}:
+        return "gentle"
+    if effect not in {"magnetic", "gentle", "none"}:
+        return "magnetic"
+    return effect
 
 
 def command_available(command: str) -> bool:
@@ -440,6 +462,10 @@ class CanvasDock:
         self.layer_shell = False
         self.reserve_space = bool(self.config.get("reserve_space", False))
         self.autohide = bool(self.config.get("autohide", True))
+        self.hide_delay = clamp_float(self.config.get("autohide_delay", HIDE_DELAY), 0.5, 8.0)
+        self.effect = normalize_effect(self.config.get("effect") or ("magnetic" if self.config.get("magnification", True) else "none"))
+        self.effect_strength = {"magnetic": 1.0, "gentle": 0.42, "none": 0.0}.get(self.effect, 1.0)
+        self.magnification_enabled = self.effect != "none" and bool(self.config.get("magnification", True))
         self.layer_shell_api = None
         self.revealed = not self.autohide
         self.reveal_target = 1.0 if self.revealed else 0.0
@@ -720,6 +746,9 @@ class CanvasDock:
         return None
 
     def update_targets(self, x_root: float) -> None:
+        if not self.magnification_enabled:
+            self.targets = [0.0 for _ in self.tiles]
+            return
         for index, tile in enumerate(self.tiles):
             if tile.get("separator"):
                 self.targets[index] = 0.0
@@ -729,7 +758,7 @@ class CanvasDock:
             center = wx + rx + rw / 2
             distance = abs(x_root - center)
             scale = math.exp(-((distance * distance) / (2 * SIGMA * SIGMA)))
-            self.targets[index] = 0.0 if scale < 0.14 else scale
+            self.targets[index] = 0.0 if scale < 0.14 else scale * self.effect_strength
 
     def animate(self) -> bool:
         moving = False
@@ -816,7 +845,7 @@ class CanvasDock:
         self.press_xy = None
         self.dragging = False
         if self.autohide:
-            self.hide_at = time.monotonic() + HIDE_DELAY
+            self.hide_at = time.monotonic() + self.hide_delay
         return False
 
     def on_button_press(self, _area, event) -> bool:
@@ -1127,6 +1156,8 @@ def limits(json_output: bool) -> int:
     width = min(max(300, PADDING_X * 2 + tile_count * BASE_TILE + max(0, tile_count - 1) * GAP + sep_count * SEP), mon_w - DOCK_MARGIN * 2)
     reserve_space = bool(config.get("reserve_space", False))
     autohide = bool(config.get("autohide", True))
+    effect = normalize_effect(config.get("effect") or ("magnetic" if config.get("magnification", True) else "none"))
+    hide_delay = clamp_float(config.get("autohide_delay", HIDE_DELAY), 0.5, 8.0)
     payload = {
         "schema": "sevenos.dock.limits.v1",
         "renderer": "canvas",
@@ -1138,8 +1169,9 @@ def limits(json_output: bool) -> int:
             "reserve_space": reserve_space,
             "exclusive_zone": DOCK_HEIGHT + DOCK_MARGIN if reserve_space else 0,
             "layout": "floating-overlay",
-            "effect": "magnetic-focus",
+            "effect": effect,
             "autohide": autohide,
+            "autohide_delay": hide_delay,
             "hidden_margin": -(DOCK_HEIGHT - HIDDEN_PEEK) if autohide else DOCK_MARGIN,
             "hidden_peek": HIDDEN_PEEK,
         },
@@ -1165,6 +1197,7 @@ def limits(json_output: bool) -> int:
                 "edge-handle",
                 "spring-motion",
                 "delayed-hide",
+                "settings-dock-controls",
                 "hover-intent-preview",
                 "direct-native-spotlight",
             ],

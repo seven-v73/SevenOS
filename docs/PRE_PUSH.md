@@ -15,6 +15,10 @@ smoke/state contracts, native surface legacy-screen guards, `seven new` dry-run
 and Windows Bridge first-run dry-run. It also runs the public quality aggregate
 as an optional warning gate.
 
+The language contract is part of the public gate. English/French packs,
+session projection, generated runtime labels and Waybar language state must be
+green before a public claim.
+
 ## Release Audit
 
 Use this only before a release tag or a major phase claim:
@@ -37,6 +41,9 @@ seven identity experience
 seven identity open --probe
 seven surfaces doctor
 seven quality doctor
+seven language doctor
+seven language audit
+seven first-run verify
 seven state --json | python -m json.tool
 seven system-profile doctor
 seven post-install

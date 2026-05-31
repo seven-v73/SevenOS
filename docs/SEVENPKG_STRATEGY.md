@@ -223,7 +223,12 @@ model.
 The state cache treats this contract as semantic, not just syntactic: a cached
 snapshot without the package strategy schemas or with an empty curated catalog
 is considered stale and is regenerated. This prevents Store, Hub and Helper from
-showing old package truth after a SevenOS upgrade.
+rendering stale package information.
+
+The same global state cache also validates language and first-run contracts.
+Package dashboards should therefore consume `seven state --json` as the first
+OS snapshot, then call SevenPkg-specific commands only when the user asks for a
+package action or a detailed package audit.
 
 ## Footprint And Duplication
 

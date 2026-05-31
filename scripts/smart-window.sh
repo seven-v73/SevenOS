@@ -771,10 +771,13 @@ gtk_decoration_layout() {
 copy_gtk_decor_theme() {
   local theme_mode source_dir config_home
   config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
-  theme_mode="${SEVENOS_THEME_MODE:-}"
-  if [[ -z "$theme_mode" && -r "$STATE_DIR/theme.conf" ]]; then
+  theme_mode=""
+  if [[ -r "$STATE_DIR/theme.conf" ]]; then
     # shellcheck disable=SC1090
     source "$STATE_DIR/theme.conf" || true
+    theme_mode="${SEVENOS_THEME_MODE:-}"
+  fi
+  if [[ -z "$theme_mode" ]]; then
     theme_mode="${SEVENOS_THEME_MODE:-}"
   fi
   if [[ "$theme_mode" == "light" ]]; then

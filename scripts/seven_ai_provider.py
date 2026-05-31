@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -61,6 +63,163 @@ def unique_items(items: list[str]) -> list[str]:
             seen.add(clean)
             result.append(clean)
     return result
+
+
+def requested_provider() -> str:
+    requested = os.environ.get("SEVENAI_PROVIDER", "").strip().lower()
+    if requested:
+        return requested
+    if os.environ.get("SEVENAI_OLLAMA") == "1":
+        return "ollama"
+    if os.environ.get("SEVENAI_LLAMA_CPP") == "1":
+        return "llama.cpp"
+    return "seven-local"
+
+
+def model_runtime_status() -> dict[str, Any]:
+    ollama = shutil.which("ollama")
+    llama_cli = shutil.which("llama-cli") or shutil.which("llama")
+    active = requested_provider()
+    ollama_running = False
+    ollama_models: list[str] = []
+    if ollama:
+        try:
+            result = subprocess.run(
+                [ollama, "list"],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=2,
+            )
+            ollama_running = result.returncode == 0
+            if ollama_running:
+                for line in result.stdout.splitlines()[1:]:
+                    parts = line.split()
+                    if parts:
+                        ollama_models.append(parts[0])
+        except Exception:
+            ollama_running = False
+    llama_model = os.environ.get("SEVENAI_LLAMA_MODEL", "")
+    return {
+        "schema": "sevenos.ai.model-runtime.v1",
+        "active": active,
+        "default": "seven-local",
+        "ollama": {
+            "installed": bool(ollama),
+            "running": ollama_running,
+            "available": bool(ollama and ollama_running),
+            "command": ollama or "",
+            "active": active == "ollama",
+            "model": os.environ.get("SEVENAI_OLLAMA_MODEL", "llama3.2:3b"),
+            "models": ollama_models[:8],
+            "start": "ollama serve",
+        },
+        "llama_cpp": {
+            "installed": bool(llama_cli),
+            "available": bool(llama_cli and llama_model),
+            "command": llama_cli or "",
+            "active": active in {"llama.cpp", "llama-cpp", "llamacpp"},
+            "model": llama_model,
+        },
+        "policy": {
+            "local_only": True,
+            "explicit_activation": "SEVENAI_PROVIDER=ollama or SEVENAI_OLLAMA=1",
+            "fallback": "seven-local",
+        },
+    }
+
+
+def compact_context(context: dict[str, Any] | None, language: str) -> dict[str, Any]:
+    context = context or {}
+    system_context = context.get("system_context") if isinstance(context.get("system_context"), dict) else {}
+    shell_context = system_context.get("shell_context") if isinstance(system_context.get("shell_context"), dict) else {}
+    diagnostics = context.get("diagnostics") if isinstance(context.get("diagnostics"), dict) else {}
+    network = diagnostics.get("network") if isinstance(diagnostics.get("network"), dict) else {}
+    memory = diagnostics.get("memory") if isinstance(diagnostics.get("memory"), dict) else {}
+    disk = diagnostics.get("disk_home") if isinstance(diagnostics.get("disk_home"), dict) else {}
+    load = system_context.get("load") if isinstance(system_context.get("load"), dict) else {}
+    shell_profile = shell_context.get("profile") if isinstance(shell_context.get("profile"), dict) else {}
+    shell_app = shell_context.get("app") if isinstance(shell_context.get("app"), dict) else {}
+    return {
+        "language": language,
+        "profile": shell_profile.get("key") or active_profile(),
+        "app": shell_app.get("label") or shell_app.get("key") or "",
+        "load": {key: load.get(key) for key in ("1m", "5m", "15m") if key in load},
+        "memory_used_percent": memory.get("used_percent"),
+        "home_disk_used_percent": disk.get("used_percent"),
+        "networkmanager": network.get("networkmanager"),
+        "failed_units": diagnostics.get("failed_units", [])[:4],
+    }
+
+
+def ollama_answer(prompt: str, context: dict[str, Any] | None, fallback: dict[str, Any]) -> dict[str, Any]:
+    runtime = model_runtime_status()
+    if not runtime["ollama"]["available"]:
+        payload = dict(fallback)
+        payload["model_provider"] = runtime
+        payload["provider_status"] = "fallback"
+        signal = "ollama:not-running" if runtime["ollama"]["installed"] else "ollama:missing"
+        payload["why"]["signals"].append(signal)
+        return payload
+    language = active_language(context)
+    model = runtime["ollama"]["model"]
+    safe_context = compact_context(context, language)
+    system = (
+        "Tu es SevenAI, l'assistant local de SevenOS. Réponds en français, de façon courte, utile et prudente. "
+        "Ne propose jamais de commande destructive. Pour les actions système, demande une confirmation SevenOS."
+        if language == "fr"
+        else "You are SevenAI, the local SevenOS assistant. Answer in English, briefly, usefully and cautiously. "
+        "Never suggest destructive commands. For system changes, ask for SevenOS confirmation."
+    )
+    model_prompt = (
+        f"{system}\n\n"
+        f"Contexte local réduit JSON:\n{json.dumps(safe_context, ensure_ascii=False)}\n\n"
+        f"Demande utilisateur:\n{prompt}\n\n"
+        "Réponse:"
+    )
+    try:
+        result = subprocess.run(
+            ["ollama", "run", model, model_prompt],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=float(os.environ.get("SEVENAI_MODEL_TIMEOUT", "18")),
+        )
+    except Exception as exc:
+        payload = dict(fallback)
+        payload["model_provider"] = runtime
+        payload["provider_status"] = "fallback"
+        payload["why"]["signals"].append(f"ollama:error:{type(exc).__name__}")
+        return payload
+    answer = result.stdout.strip()
+    if result.returncode != 0 or not answer:
+        payload = dict(fallback)
+        payload["model_provider"] = runtime
+        payload["provider_status"] = "fallback"
+        payload["why"]["signals"].append("ollama:unavailable-model")
+        payload["model_error"] = result.stderr.strip()[:500]
+        return payload
+    suggestions = list(fallback.get("suggestions", []))
+    return {
+        **fallback,
+        "schema": "sevenos.ai.provider.model.v1",
+        "provider": "ollama",
+        "privacy": "local-only",
+        "model": model,
+        "model_provider": runtime,
+        "provider_status": "model",
+        "answer": answer,
+        "suggestions": suggestions[:6],
+        "why": {
+            "summary": (
+                "Réponse générée par un modèle local Ollama avec contexte SevenOS réduit."
+                if language == "fr"
+                else "Answer generated by a local Ollama model with reduced SevenOS context."
+            ),
+            "signals": unique_items([*fallback.get("why", {}).get("signals", []), "ollama:local-model"])[:8],
+        },
+        "external_calls": [],
+    }
 
 
 def local_answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -260,6 +419,22 @@ def local_answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str
     }
 
 
+def answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    fallback = local_answer(prompt, context)
+    provider = requested_provider()
+    if provider == "ollama":
+        return ollama_answer(prompt, context, fallback)
+    if provider in {"llama.cpp", "llama-cpp", "llamacpp"}:
+        payload = dict(fallback)
+        payload["model_provider"] = model_runtime_status()
+        payload["provider_status"] = "fallback"
+        payload["why"]["signals"].append("llama.cpp:adapter-planned")
+        return payload
+    fallback["model_provider"] = model_runtime_status()
+    fallback["provider_status"] = "deterministic"
+    return fallback
+
+
 def main() -> int:
     payload = {}
     if not sys.stdin.isatty():
@@ -268,7 +443,7 @@ def main() -> int:
         except json.JSONDecodeError:
             payload = {}
     prompt = " ".join(sys.argv[1:]).strip() or payload.get("prompt", "")
-    print(json.dumps(local_answer(prompt, payload.get("context")), indent=2, ensure_ascii=False))
+    print(json.dumps(answer(prompt, payload.get("context")), indent=2, ensure_ascii=False))
     return 0
 
 

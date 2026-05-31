@@ -86,6 +86,57 @@ classify_context() {
   esac
 }
 
+workspace_id_from_snapshot() {
+  sed -nE 's/.*workspace=([^ ]+).*/\1/p' <<<"${1:-}" | head -n1
+}
+
+home_guard_enabled() {
+  local prefs="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/workspace-home.env"
+  if [[ -r "$prefs" ]]; then
+    # shellcheck disable=SC1090
+    source "$prefs"
+  fi
+  [[ "${SEVENOS_HOME_WORKSPACE_GUARD:-0}" == "1" ]]
+}
+
+home_allowed_window() {
+  local text="$1"
+  case "$text" in
+    *"Seven Widgets Desktop"*|*"Seven Desktop Menu"*|*"Seven Widgets"*) return 0 ;;
+    *"Seven Dock"*|*"Seven Window Controls"*|*"Seven Window Traffic Lights"*) return 0 ;;
+    *"SevenOS Spotlight"*|*"SevenOS Launchpad"*|*"SevenOS Quick Settings"*|*"SevenOS Notifications"*) return 0 ;;
+    *"swaync"*|*"waybar"*|*"hyprpaper"*|*"xdg-desktop-portal"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+home_target_workspace() {
+  local text="$1"
+  case "$text" in
+    *firefox*|*Google-chrome*|*chromium*|*brave*|*zen*|*Web*|*Browser*) printf '3' ;;
+    *SevenReader*|*Foliate*|*Evince*|*zathura*|*calibre*|*LibreOffice*) printf '3' ;;
+    *vlc*|*mpv*|*Spotify*|*obs*|*kdenlive*) printf '4' ;;
+    *Wireshark*|*BurpSuite*|*burpsuite*|*Nmap*) printf '7' ;;
+    *) printf '2' ;;
+  esac
+}
+
+protect_home_workspace() {
+  local event="$1" raw="$2" snapshot="$3"
+  home_guard_enabled || return 0
+  [[ "$event" == "openwindow" || "$event" == "activewindow" ]] || return 0
+  [[ "$(workspace_id_from_snapshot "$snapshot")" == "1" ]] || return 0
+  local text="$raw $snapshot"
+  home_allowed_window "$text" && return 0
+  local target
+  target="$(home_target_workspace "$text")"
+  if command -v hyprctl >/dev/null 2>&1; then
+    hyprctl dispatch movetoworkspacesilent "$target" >/dev/null 2>&1 || true
+    hyprctl dispatch workspace "$target" >/dev/null 2>&1 || true
+    write_event "home-guard" "moved-to=$target raw=$raw snapshot=$snapshot"
+  fi
+}
+
 write_current_state() {
   local event="$1" raw="$2" snapshot="${3:-}"
   mkdir -p "$STATE_DIR"
@@ -126,6 +177,7 @@ handle_event() {
       snapshot="$(snapshot_state 2>/dev/null || true)"
       write_event "$event" "$line"
       write_current_state "$event" "$line" "$snapshot"
+      protect_home_workspace "$event" "$line" "$snapshot"
       ;;
   esac
 }

@@ -60,7 +60,8 @@ Rules:
 - `seven state --json` is the unified machine snapshot for native UI,
   automation and future Seven Server endpoints. It includes Control Plane
   priorities so UI surfaces can show the next best actions without recomputing
-  decisions locally.
+  decisions locally. See `docs/STATE.md` for the required state blocks,
+  including language, runtime-label and first-run contracts.
 - `seven actions --json` is the shared action registry for Seven Hub, Waybar,
   Quick Settings and future native surfaces. UI code should prefer action IDs
   over hardcoded command strings when possible.

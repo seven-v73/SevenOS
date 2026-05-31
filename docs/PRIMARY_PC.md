@@ -235,6 +235,7 @@ seven-terminal menu
 Desktop shortcuts:
 
 ```text
+Super+T           SevenOS Tools
 Super+Enter       Terminal Classic
 Super+Shift+Enter Terminal Dark
 Super+Ctrl+Enter  Terminal theme menu

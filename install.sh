@@ -240,6 +240,8 @@ case "$TARGET" in
     if [[ "${#TARGET_ARGS[@]}" -eq 0 || "${TARGET_ARGS[0]}" == "prepare" || "${TARGET_ARGS[0]}" == "apply" || "${TARGET_ARGS[0]}" == "defaults" ]]; then
       "$ROOT_DIR/bin/seven-language" ensure en_US.UTF-8
       "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8
+      "$ROOT_DIR/bin/seven-language" repair
+      "$ROOT_DIR/bin/seven-language" audit
       "$ROOT_DIR/bin/seven-language" doctor
     else
       "$ROOT_DIR/bin/seven-language" "${TARGET_ARGS[@]}"

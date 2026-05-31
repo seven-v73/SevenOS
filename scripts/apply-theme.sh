@@ -331,15 +331,20 @@ sync_theme_environment() {
   fi
 
   export SEVENOS_THEME_MODE="$THEME_MODE"
+  if [[ "$THEME_MODE" == "light" ]]; then
+    export SEVENOS_COLOR_SCHEME="prefer-light"
+  else
+    export SEVENOS_COLOR_SCHEME="prefer-dark"
+  fi
   export GTK_THEME="$GTK_THEME"
   export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
   export QT_STYLE_OVERRIDE="${QT_STYLE_OVERRIDE:-kvantum}"
   export ELECTRON_OZONE_PLATFORM_HINT="${ELECTRON_OZONE_PLATFORM_HINT:-auto}"
   if command -v systemctl >/dev/null 2>&1; then
-    systemctl --user import-environment SEVENOS_THEME_MODE GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE ELECTRON_OZONE_PLATFORM_HINT >/dev/null 2>&1 || true
+    systemctl --user import-environment SEVENOS_THEME_MODE SEVENOS_COLOR_SCHEME GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE ELECTRON_OZONE_PLATFORM_HINT >/dev/null 2>&1 || true
   fi
   if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-    dbus-update-activation-environment --systemd SEVENOS_THEME_MODE GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE ELECTRON_OZONE_PLATFORM_HINT >/dev/null 2>&1 || true
+    dbus-update-activation-environment --systemd SEVENOS_THEME_MODE SEVENOS_COLOR_SCHEME GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE ELECTRON_OZONE_PLATFORM_HINT >/dev/null 2>&1 || true
   fi
 }
 
@@ -458,7 +463,7 @@ reload_desktop_session() {
   if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
     if command -v systemctl >/dev/null 2>&1; then
       systemctl --user daemon-reload >/dev/null 2>&1 || true
-      systemctl --user import-environment SEVENOS_THEME_MODE GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE ELECTRON_OZONE_PLATFORM_HINT XDG_CURRENT_DESKTOP XDG_SESSION_TYPE >/dev/null 2>&1 || true
+      systemctl --user import-environment SEVENOS_THEME_MODE SEVENOS_COLOR_SCHEME GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE ELECTRON_OZONE_PLATFORM_HINT XDG_CURRENT_DESKTOP XDG_SESSION_TYPE >/dev/null 2>&1 || true
       systemctl --user try-restart \
         sevenos-waybar.service \
         sevenos-notifications.service \
@@ -537,7 +542,7 @@ configure_file_experience() {
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'install Seven Files desktop entry\n'
-    printf 'install SevenOS Spotlight, AI, Reader, Recorder, Terminal, Experience Center and Public Readiness desktop entries\n'
+    printf 'install SevenOS Spotlight, AI, Reader, Notes, Recorder, Terminal, Experience Center and Public Readiness desktop entries\n'
     printf 'install SevenOS Windows Apps and USB Writer desktop entries and MIME defaults\n'
     printf 'install SevenOS Mini OS Boundaries desktop entry\n'
     printf 'write SevenOS default terminal contract\n'
@@ -564,6 +569,8 @@ configure_file_experience() {
   cp "$ROOT_DIR/seven-hub/seven-ai.desktop" "$HOME/.local/share/applications/seven-ai.desktop"
   cp "$ROOT_DIR/seven-hub/seven-baobab.desktop" "$HOME/.local/share/applications/seven-baobab.desktop"
   cp "$ROOT_DIR/seven-hub/seven-reader.desktop" "$HOME/.local/share/applications/seven-reader.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-notes.desktop" "$HOME/.local/share/applications/seven-notes.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-tools.desktop" "$HOME/.local/share/applications/seven-tools.desktop"
   cp "$ROOT_DIR/seven-hub/seven-recorder.desktop" "$HOME/.local/share/applications/seven-recorder.desktop"
   cp "$ROOT_DIR/seven-hub/seven-store.desktop" "$HOME/.local/share/applications/seven-store.desktop"
   cp "$ROOT_DIR/seven-hub/seven-terminal.desktop" "$HOME/.local/share/applications/seven-terminal.desktop"
@@ -591,6 +598,7 @@ configure_file_experience() {
     xdg-mime default seven-reader.desktop application/epub+zip >/dev/null 2>&1 || true
     xdg-mime default seven-reader.desktop text/markdown >/dev/null 2>&1 || true
     xdg-mime default seven-reader.desktop application/x-cbz >/dev/null 2>&1 || true
+    xdg-mime default seven-notes.desktop text/plain >/dev/null 2>&1 || true
     xdg-mime default seven-wincompat.desktop application/x-ms-dos-executable >/dev/null 2>&1 || true
     xdg-mime default seven-wincompat.desktop application/x-msdownload >/dev/null 2>&1 || true
     xdg-mime default seven-wincompat.desktop application/x-msi >/dev/null 2>&1 || true

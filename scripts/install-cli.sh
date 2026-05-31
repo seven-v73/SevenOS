@@ -169,6 +169,7 @@ install_user_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_user_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_user_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
 install_user_command "$ROOT_DIR/bin/seven-ai-native" seven-ai-native
+install_user_command "$ROOT_DIR/bin/seven-widgets-native" seven-widgets-native
 install_user_command "$ROOT_DIR/bin/seven-help" seven-help
 install_user_command "$ROOT_DIR/bin/seven-help-native" seven-help-native
 install_user_command "$ROOT_DIR/bin/seven-apps" seven-apps
@@ -193,6 +194,10 @@ install_user_command "$ROOT_DIR/bin/seven-wincompat" seven-wincompat
 install_user_command "$ROOT_DIR/bin/seven-usb-writer" seven-usb-writer
 install_user_command "$ROOT_DIR/bin/seven-reader" seven-reader
 install_user_command "$ROOT_DIR/bin/seven-reader-native" seven-reader-native
+install_user_command "$ROOT_DIR/bin/seven-notes" seven-notes
+install_user_command "$ROOT_DIR/bin/seven-notes-native" seven-notes-native
+install_user_command "$ROOT_DIR/bin/seven-tools" seven-tools
+install_user_command "$ROOT_DIR/bin/seven-tools-native" seven-tools-native
 install_user_command "$ROOT_DIR/bin/seven-store" seven-store
 install_user_command "$ROOT_DIR/bin/seven-store-native" seven-store-native
 install_user_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
@@ -259,6 +264,7 @@ install_system_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_system_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_system_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
 install_system_command "$ROOT_DIR/bin/seven-ai-native" seven-ai-native
+install_system_command "$ROOT_DIR/bin/seven-widgets-native" seven-widgets-native
 install_system_command "$ROOT_DIR/bin/seven-help" seven-help
 install_system_command "$ROOT_DIR/bin/seven-help-native" seven-help-native
 install_system_command "$ROOT_DIR/bin/seven-apps" seven-apps
@@ -283,6 +289,10 @@ install_system_command "$ROOT_DIR/bin/seven-wincompat" seven-wincompat
 install_system_command "$ROOT_DIR/bin/seven-usb-writer" seven-usb-writer
 install_system_command "$ROOT_DIR/bin/seven-reader" seven-reader
 install_system_command "$ROOT_DIR/bin/seven-reader-native" seven-reader-native
+install_system_command "$ROOT_DIR/bin/seven-notes" seven-notes
+install_system_command "$ROOT_DIR/bin/seven-notes-native" seven-notes-native
+install_system_command "$ROOT_DIR/bin/seven-tools" seven-tools
+install_system_command "$ROOT_DIR/bin/seven-tools-native" seven-tools-native
 install_system_command "$ROOT_DIR/bin/seven-store" seven-store
 install_system_command "$ROOT_DIR/bin/seven-store-native" seven-store-native
 install_system_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper

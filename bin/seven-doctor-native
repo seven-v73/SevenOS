@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, GLib, Pango
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -26,6 +29,10 @@ def lang_is_fr() -> bool:
 
 def tr(fr: str, en: str) -> str:
     return fr if lang_is_fr() else en
+
+
+def shlex_quote(value: str) -> str:
+    return shlex.quote(value)
 
 
 def load_doctor():
@@ -52,6 +59,138 @@ def load_doctor():
     return json.loads(result.stdout)
 
 
+def run_text(command: list[str], timeout: float = 2.0) -> str:
+    try:
+        result = subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout)
+        return result.stdout.strip()
+    except Exception:
+        return ""
+
+
+def read_cpu_total() -> tuple[int, int]:
+    try:
+        fields = Path("/proc/stat").read_text(encoding="utf-8").splitlines()[0].split()[1:]
+        values = [int(item) for item in fields]
+    except Exception:
+        return (0, 0)
+    idle = values[3] + (values[4] if len(values) > 4 else 0)
+    total = sum(values)
+    return idle, total
+
+
+def cpu_percent() -> int:
+    idle_a, total_a = read_cpu_total()
+    time.sleep(0.08)
+    idle_b, total_b = read_cpu_total()
+    total_delta = max(total_b - total_a, 1)
+    idle_delta = max(idle_b - idle_a, 0)
+    return max(0, min(100, round(100 * (1 - idle_delta / total_delta))))
+
+
+def memory_percent() -> tuple[int, str]:
+    values: dict[str, int] = {}
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            key, raw = line.split(":", 1)
+            values[key] = int(raw.strip().split()[0])
+    except Exception:
+        return 0, "0 / 0 GiB"
+    total = values.get("MemTotal", 0)
+    available = values.get("MemAvailable", 0)
+    used = max(total - available, 0)
+    percent = round(used / total * 100) if total else 0
+    detail = f"{used / 1024 / 1024:.1f} / {total / 1024 / 1024:.1f} GiB"
+    return percent, detail
+
+
+def disk_percent(path: str = str(Path.home())) -> tuple[int, str]:
+    try:
+        usage = shutil.disk_usage(path)
+    except OSError:
+        return 0, "0 / 0 GiB"
+    percent = round(usage.used / usage.total * 100) if usage.total else 0
+    detail = f"{usage.used / 1024**3:.0f} / {usage.total / 1024**3:.0f} GiB"
+    return percent, detail
+
+
+def process_rows(limit: int = 22) -> list[dict[str, object]]:
+    output = run_text(["ps", "-eo", "pid=,comm=,pcpu=,pmem=,stat=,args=", "--sort=-pcpu"], timeout=2.5)
+    rows = []
+    current_pid = os.getpid()
+    for line in output.splitlines():
+        parts = line.strip().split(None, 5)
+        if len(parts) < 6:
+            continue
+        try:
+            pid = int(parts[0])
+            cpu = float(parts[2])
+            mem = float(parts[3])
+        except ValueError:
+            continue
+        if pid == current_pid:
+            continue
+        rows.append({
+            "pid": pid,
+            "name": parts[1],
+            "cpu": cpu,
+            "memory": mem,
+            "state": parts[4],
+            "command": parts[5],
+        })
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def service_rows(limit: int = 26) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    failed = run_text(["systemctl", "--failed", "--plain", "--no-legend"], timeout=2.5)
+    for line in failed.splitlines():
+        parts = line.split(None, 4)
+        if not parts:
+            continue
+        rows.append({"unit": parts[0], "state": "failed", "scope": "system", "detail": parts[4] if len(parts) > 4 else ""})
+    user_failed = run_text(["systemctl", "--user", "--failed", "--plain", "--no-legend"], timeout=2.5)
+    for line in user_failed.splitlines():
+        parts = line.split(None, 4)
+        if not parts:
+            continue
+        rows.append({"unit": parts[0], "state": "failed", "scope": "user", "detail": parts[4] if len(parts) > 4 else ""})
+    active = run_text(["systemctl", "list-units", "--type=service", "--state=running", "--plain", "--no-legend"], timeout=2.5)
+    for line in active.splitlines():
+        parts = line.split(None, 4)
+        if not parts:
+            continue
+        rows.append({"unit": parts[0], "state": "running", "scope": "system", "detail": parts[4] if len(parts) > 4 else ""})
+        if len(rows) >= limit:
+            break
+    return rows[:limit]
+
+
+def task_snapshot(doctor: dict) -> dict[str, object]:
+    mem, mem_detail = memory_percent()
+    disk, disk_detail = disk_percent()
+    processes = process_rows()
+    services = service_rows()
+    failed_services = [item for item in services if item.get("state") == "failed"]
+    return {
+        "schema": "sevenos.doctor-task-manager.v1",
+        "resources": {
+            "cpu": {"percent": cpu_percent(), "detail": run_text(["uptime", "-p"], timeout=1.0) or tr("Charge système", "System load")},
+            "memory": {"percent": mem, "detail": mem_detail},
+            "disk": {"percent": disk, "detail": disk_detail},
+            "processes": {"count": len(run_text(["ps", "-e", "-o", "pid="], timeout=1.5).splitlines()), "shown": len(processes)},
+        },
+        "processes": processes,
+        "top_processes": processes[:5],
+        "services": services,
+        "alerts": {
+            "issues": len(doctor.get("issues") or []),
+            "failed_services": len(failed_services),
+        },
+    }
+
+
 CSS_COMMON = """
 window {
   background: @seven_bg;
@@ -70,6 +209,11 @@ window {
 .subtitle {
   color: @seven_muted;
   font-size: 13px;
+}
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: @seven_text;
 }
 .card {
   padding: 16px;
@@ -93,6 +237,72 @@ window {
 }
 .label-detail {
   color: @seven_muted;
+}
+.metric-value {
+  font-size: 26px;
+  font-weight: 600;
+  color: @seven_text;
+}
+.row-card {
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: alpha(@seven_text, 0.045);
+  border: 1px solid alpha(@seven_border, 0.72);
+}
+.row-card:hover {
+  background: alpha(@seven_text, 0.075);
+}
+.toolbar {
+  padding: 8px;
+  border-radius: 999px;
+  background: alpha(@seven_text, 0.045);
+  border: 1px solid alpha(@seven_border, 0.72);
+}
+.pill {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: alpha(@seven_accent, 0.12);
+  color: @seven_text;
+}
+.danger-pill {
+  background: alpha(@seven_danger, 0.18);
+}
+.mini-meter trough {
+  min-width: 96px;
+  min-height: 6px;
+}
+.mini-meter progress {
+  min-height: 6px;
+}
+.search {
+  min-width: 220px;
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+.switcher {
+  padding: 3px;
+  border-radius: 999px;
+  background: alpha(@seven_text, 0.055);
+}
+.switcher button {
+  border-radius: 999px;
+  padding: 8px 12px;
+  border-color: transparent;
+  background: transparent;
+}
+.switcher button:checked {
+  background: alpha(@seven_accent, 0.18);
+  border-color: alpha(@seven_accent, 0.28);
+}
+progressbar trough {
+  min-height: 8px;
+  border-radius: 999px;
+  background: alpha(@seven_text, 0.08);
+}
+progressbar progress {
+  min-height: 8px;
+  border-radius: 999px;
+  background: @seven_accent;
 }
 button {
   border: 1px solid @seven_border;
@@ -118,7 +328,7 @@ class DoctorWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="Seven Doctor")
         self.get_style_context().add_class("seven-window")
-        self.set_default_size(760, 620)
+        self.set_default_size(980, 680)
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_name("seven-doctor")
 
@@ -131,6 +341,10 @@ class DoctorWindow(Gtk.Window):
         )
 
         self.data = load_doctor()
+        self.task = task_snapshot(self.data)
+        self.filter_text = ""
+        self.sort_mode = "cpu"
+        self.auto_refresh_id = 0
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         outer.get_style_context().add_class("shell")
         self.add(outer)
@@ -149,26 +363,172 @@ class DoctorWindow(Gtk.Window):
         title_box.pack_start(subtitle, False, False, 0)
         header.pack_start(title_box, True, True, 0)
 
+        monitor = Gtk.Button(label=tr("Moniteur", "Monitor"))
+        monitor.connect("clicked", lambda *_: self.terminal("btop || htop || top"))
+        header.pack_end(monitor, False, False, 0)
         refresh = Gtk.Button(label=tr("Actualiser", "Refresh"))
         refresh.connect("clicked", lambda *_: self.reload())
         header.pack_end(refresh, False, False, 0)
         outer.pack_start(header, False, False, 0)
 
-        self.list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        scroller = Gtk.ScrolledWindow()
-        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroller.add(self.list_box)
-        outer.pack_start(scroller, True, True, 0)
+        tools = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        tools.get_style_context().add_class("toolbar")
+        self.stack = Gtk.Stack()
+        self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        self.stack.set_transition_duration(180)
+        self.switcher = Gtk.StackSwitcher()
+        self.switcher.set_stack(self.stack)
+        self.switcher.get_style_context().add_class("switcher")
+        tools.pack_start(self.switcher, False, False, 0)
+        self.search = Gtk.SearchEntry()
+        self.search.set_placeholder_text(tr("Filtrer apps, PID, services...", "Filter apps, PID, services..."))
+        self.search.get_style_context().add_class("search")
+        self.search.connect("search-changed", self.on_search_changed)
+        tools.pack_start(self.search, True, True, 0)
+        self.sort_combo = Gtk.ComboBoxText()
+        self.sort_combo.append("cpu", tr("CPU", "CPU"))
+        self.sort_combo.append("memory", tr("RAM", "RAM"))
+        self.sort_combo.append("name", tr("Nom", "Name"))
+        self.sort_combo.set_active_id(self.sort_mode)
+        self.sort_combo.connect("changed", self.on_sort_changed)
+        tools.pack_start(self.sort_combo, False, False, 0)
+        auto_label = Gtk.Label(label=tr("Auto-refresh", "Auto-refresh"))
+        auto_label.get_style_context().add_class("subtitle")
+        tools.pack_start(auto_label, False, False, 0)
+        self.auto_switch = Gtk.Switch()
+        self.auto_switch.connect("notify::active", self.on_auto_refresh)
+        tools.pack_start(self.auto_switch, False, False, 0)
+        outer.pack_start(tools, False, False, 0)
+
+        outer.pack_start(self.stack, True, True, 0)
         self.render()
 
     def reload(self):
         self.data = load_doctor()
-        for child in self.list_box.get_children():
-            self.list_box.remove(child)
+        self.task = task_snapshot(self.data)
+        self.rerender()
+
+    def rerender(self):
+        active = self.stack.get_visible_child_name() or "overview"
+        for child in list(self.stack.get_children()):
+            self.stack.remove(child)
         self.render()
+        if self.stack.get_child_by_name(active):
+            self.stack.set_visible_child_name(active)
         self.show_all()
 
+    def on_search_changed(self, entry):
+        self.filter_text = entry.get_text().strip().lower()
+        self.rerender()
+
+    def on_sort_changed(self, combo):
+        self.sort_mode = combo.get_active_id() or "cpu"
+        self.rerender()
+
+    def on_auto_refresh(self, switch, *_):
+        if switch.get_active():
+            if not self.auto_refresh_id:
+                self.auto_refresh_id = GLib.timeout_add_seconds(4, self.auto_refresh_tick)
+        elif self.auto_refresh_id:
+            GLib.source_remove(self.auto_refresh_id)
+            self.auto_refresh_id = 0
+
+    def auto_refresh_tick(self):
+        if not getattr(self, "auto_switch", None) or not self.auto_switch.get_active():
+            self.auto_refresh_id = 0
+            return False
+        self.reload()
+        return True
+
+    def on_destroy(self, *_):
+        if self.auto_refresh_id:
+            GLib.source_remove(self.auto_refresh_id)
+            self.auto_refresh_id = 0
+        Gtk.main_quit()
+
+    def match_filter(self, *values):
+        if not self.filter_text:
+            return True
+        haystack = " ".join(str(value) for value in values).lower()
+        return self.filter_text in haystack
+
     def render(self):
+        self.stack.add_titled(self.overview_page(), "overview", tr("Vue", "Overview"))
+        self.stack.add_titled(self.process_page(), "apps", tr("Apps", "Apps"))
+        self.stack.add_titled(self.services_page(), "services", tr("Services", "Services"))
+        self.stack.add_titled(self.checks_page(), "checks", tr("Checks", "Checks"))
+
+    def page_scroller(self, child):
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroller.add(child)
+        return scroller
+
+    def overview_page(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        resources = self.task.get("resources", {})
+        page.pack_start(self.hero_card(), False, False, 0)
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_column_homogeneous(True)
+        cards = [
+            ("CPU", resources.get("cpu", {}).get("percent", 0), resources.get("cpu", {}).get("detail", "")),
+            (tr("Mémoire", "Memory"), resources.get("memory", {}).get("percent", 0), resources.get("memory", {}).get("detail", "")),
+            (tr("Disque", "Disk"), resources.get("disk", {}).get("percent", 0), resources.get("disk", {}).get("detail", "")),
+            (tr("Processus", "Processes"), resources.get("processes", {}).get("count", 0), tr("en cours", "running")),
+        ]
+        for index, (title, value, detail) in enumerate(cards):
+            grid.attach(self.metric_card(title, value, detail, percent=isinstance(value, int) and title != tr("Processus", "Processes")), index % 2, index // 2, 1, 1)
+        page.pack_start(grid, False, False, 0)
+
+        alerts = self.task.get("alerts", {})
+        status = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        status.pack_start(self.status_card(
+            tr("Santé SevenOS", "SevenOS Health"),
+            f"{self.data.get('decision', 'unknown')} · {alerts.get('issues', 0)} issue(s)",
+            "seven doctor check --json",
+            "good" if not alerts.get("issues") else "warn",
+        ), True, True, 0)
+        status.pack_start(self.status_card(
+            tr("Services", "Services"),
+            f"{alerts.get('failed_services', 0)} " + tr("service(s) en erreur", "failed service(s)"),
+            "systemctl --failed",
+            "good" if not alerts.get("failed_services") else "danger",
+        ), True, True, 0)
+        page.pack_start(status, False, False, 0)
+        page.pack_start(self.quick_actions(), False, False, 0)
+        page.pack_start(self.section_label(tr("Processus les plus actifs", "Most active processes")), False, False, 0)
+        for item in self.task.get("top_processes", []):
+            page.pack_start(self.process_row(item, compact=True), False, False, 0)
+        return self.page_scroller(page)
+
+    def process_page(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        page.pack_start(self.section_label(tr("Applications et processus en cours", "Running applications and processes")), False, False, 0)
+        visible = []
+        for item in self.sorted_processes():
+            if not self.match_filter(item.get("name"), item.get("pid"), item.get("command")):
+                continue
+            visible.append(item)
+            page.pack_start(self.process_row(item), False, False, 0)
+        if not visible:
+            page.pack_start(self.empty_state(tr("Aucun processus ne correspond au filtre.", "No process matches the current filter.")), False, False, 0)
+        return self.page_scroller(page)
+
+    def services_page(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        page.pack_start(self.section_label(tr("Services système", "System services")), False, False, 0)
+        visible = []
+        for item in self.task.get("services", []):
+            if not self.match_filter(item.get("unit"), item.get("state"), item.get("detail"), item.get("scope")):
+                continue
+            visible.append(item)
+            page.pack_start(self.service_row(item), False, False, 0)
+        if not visible:
+            page.pack_start(self.empty_state(tr("Aucun service ne correspond au filtre.", "No service matches the current filter.")), False, False, 0)
+        return self.page_scroller(page)
+
+    def checks_page(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         issues = self.data.get("issues") or []
         items = issues if issues else [
             {
@@ -178,8 +538,156 @@ class DoctorWindow(Gtk.Window):
                 "severity": "low",
             }
         ]
+        visible = []
         for item in items:
-            self.list_box.pack_start(self.card(item), False, False, 0)
+            if not self.match_filter(item.get("title"), item.get("detail"), item.get("command"), item.get("severity")):
+                continue
+            visible.append(item)
+            page.pack_start(self.card(item), False, False, 0)
+        if not visible:
+            page.pack_start(self.empty_state(tr("Aucun check ne correspond au filtre.", "No check matches the current filter.")), False, False, 0)
+        return self.page_scroller(page)
+
+    def section_label(self, text):
+        label = Gtk.Label(label=text, xalign=0)
+        label.get_style_context().add_class("section-title")
+        return label
+
+    def sorted_processes(self):
+        rows = list(self.task.get("processes", []))
+        if self.sort_mode == "memory":
+            return sorted(rows, key=lambda item: float(item.get("memory") or 0), reverse=True)
+        if self.sort_mode == "name":
+            return sorted(rows, key=lambda item: str(item.get("name") or "").lower())
+        return sorted(rows, key=lambda item: float(item.get("cpu") or 0), reverse=True)
+
+    def hero_card(self):
+        alerts = self.task.get("alerts", {})
+        issues = int(alerts.get("issues") or 0)
+        failed = int(alerts.get("failed_services") or 0)
+        good = issues == 0 and failed == 0
+        title = tr("Système stable", "System stable") if good else tr("Attention requise", "Attention needed")
+        detail = (
+            tr("Seven Doctor surveille les ressources, les applications et les services sans action cachée.",
+               "Seven Doctor watches resources, applications and services without hidden actions.")
+            if good else
+            tr("Consulte les services et checks signalés avant d’appliquer une réparation.",
+               "Review flagged services and checks before applying a repair.")
+        )
+        item = {"title": title, "detail": detail, "command": "seven ai operate 'diagnose system' --json", "severity": "low" if good else "high"}
+        return self.card(item)
+
+    def quick_actions(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        box.get_style_context().add_class("card")
+        actions = [
+            (tr("Diagnostic IA", "AI Diagnose"), "seven ai operate 'diagnose system' --json"),
+            (tr("Rapport support", "Support report"), "seven support bundle"),
+            (tr("Réparation guidée", "Guided repair"), "seven repair doctor"),
+            (tr("Qualité publique", "Public quality"), "seven public-experience doctor --json"),
+        ]
+        for label, command in actions:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", lambda _, cmd=command: self.terminal(cmd))
+            box.pack_start(button, True, True, 0)
+        return box
+
+    def empty_state(self, text):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.get_style_context().add_class("card")
+        label = Gtk.Label(label=text, xalign=0.5)
+        label.get_style_context().add_class("subtitle")
+        box.pack_start(label, False, False, 0)
+        return box
+
+    def metric_card(self, title, value, detail, *, percent=True):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.get_style_context().add_class("card")
+        if percent:
+            numeric = int(value)
+            if numeric >= 90:
+                box.get_style_context().add_class("danger")
+            elif numeric >= 75:
+                box.get_style_context().add_class("warn")
+        label = Gtk.Label(label=str(title), xalign=0)
+        label.get_style_context().add_class("subtitle")
+        value_label = Gtk.Label(label=f"{value}%" if percent else str(value), xalign=0)
+        value_label.get_style_context().add_class("metric-value")
+        detail_label = Gtk.Label(label=str(detail), xalign=0)
+        detail_label.get_style_context().add_class("subtitle")
+        box.pack_start(label, False, False, 0)
+        box.pack_start(value_label, False, False, 0)
+        if percent:
+            progress = Gtk.ProgressBar()
+            progress.set_fraction(max(0, min(100, int(value))) / 100)
+            box.pack_start(progress, False, False, 0)
+        box.pack_start(detail_label, False, False, 0)
+        return box
+
+    def status_card(self, title, detail, command, level):
+        item = {"title": title, "detail": detail, "command": command, "severity": "low" if level == "good" else "high" if level == "danger" else "medium"}
+        return self.card(item)
+
+    def terminal(self, command):
+        subprocess.Popen([str(ROOT / "bin" / "seven-terminal"), "--", "sh", "-lc", command])
+
+    def process_row(self, item, compact=False):
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.get_style_context().add_class("row-card")
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        title = Gtk.Label(label=f"{item.get('name')}  ·  PID {item.get('pid')}", xalign=0)
+        title.get_style_context().add_class("label-title")
+        detail = Gtk.Label(label=str(item.get("command", ""))[:160], xalign=0)
+        detail.set_ellipsize(Pango.EllipsizeMode.END)
+        detail.get_style_context().add_class("subtitle")
+        labels.pack_start(title, False, False, 0)
+        labels.pack_start(detail, False, False, 0)
+        box.pack_start(labels, True, True, 0)
+        meter = Gtk.ProgressBar()
+        meter.get_style_context().add_class("mini-meter")
+        meter.set_fraction(max(0.0, min(100.0, float(item.get("cpu") or 0))) / 100.0)
+        box.pack_start(meter, False, False, 0)
+        metrics = Gtk.Label(label=f"CPU {item.get('cpu'):.1f}% · RAM {item.get('memory'):.1f}%", xalign=1)
+        metrics.get_style_context().add_class("pill")
+        if float(item.get("cpu") or 0) >= 50 or float(item.get("memory") or 0) >= 20:
+            metrics.get_style_context().add_class("danger-pill")
+        box.pack_start(metrics, False, False, 0)
+        if compact:
+            return box
+        details = Gtk.Button(label=tr("Détails", "Details"))
+        details.connect("clicked", lambda *_: self.terminal(f"ps -p {int(item.get('pid'))} -o pid,ppid,user,stat,pcpu,pmem,etime,args; printf '\\n'; read -r -p 'Entrée pour fermer...' _"))
+        box.pack_start(details, False, False, 0)
+        stop = Gtk.Button(label=tr("Arrêter", "Stop"))
+        stop.connect("clicked", lambda *_: self.terminal(f"printf 'Arrêter PID {int(item.get('pid'))} ? [y/N] '; read ans; [ \"$ans\" = y ] && kill {int(item.get('pid'))}; sleep 1"))
+        box.pack_start(stop, False, False, 0)
+        return box
+
+    def service_row(self, item):
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.get_style_context().add_class("row-card")
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        title = Gtk.Label(label=f"{item.get('unit')} · {item.get('state')} · {item.get('scope')}", xalign=0)
+        title.get_style_context().add_class("label-title")
+        detail = Gtk.Label(label=item.get("detail", ""), xalign=0)
+        detail.set_ellipsize(Pango.EllipsizeMode.END)
+        detail.get_style_context().add_class("subtitle")
+        labels.pack_start(title, False, False, 0)
+        labels.pack_start(detail, False, False, 0)
+        box.pack_start(labels, True, True, 0)
+        state = Gtk.Label(label=str(item.get("state", "")), xalign=1)
+        state.get_style_context().add_class("pill")
+        if item.get("state") == "failed":
+            state.get_style_context().add_class("danger-pill")
+        box.pack_start(state, False, False, 0)
+        unit = str(item.get("unit"))
+        scope = "--user " if item.get("scope") == "user" else ""
+        logs = Gtk.Button(label=tr("Logs", "Logs"))
+        logs.connect("clicked", lambda *_: self.terminal(f"journalctl {scope}-u {shlex_quote(unit)} -n 120 --no-pager; printf '\\n'; read -r -p 'Entrée pour fermer...' _"))
+        box.pack_start(logs, False, False, 0)
+        restart = Gtk.Button(label=tr("Relancer", "Restart"))
+        restart.connect("clicked", lambda *_: self.terminal(f"printf 'Relancer {unit} ? [y/N] '; read ans; [ \"$ans\" = y ] && systemctl {scope}restart {shlex_quote(unit)}; sleep 1"))
+        box.pack_start(restart, False, False, 0)
+        return box
 
     def card(self, item):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
@@ -214,7 +722,11 @@ if __name__ == "__main__":
     if "--probe" in sys.argv:
         print("OK")
         raise SystemExit(0)
+    if "--json" in sys.argv:
+        doctor = load_doctor()
+        print(json.dumps({"schema": "sevenos.doctor-native.v1", "doctor": doctor, "task_manager": task_snapshot(doctor)}, ensure_ascii=False, indent=2))
+        raise SystemExit(0)
     win = DoctorWindow()
-    win.connect("destroy", Gtk.main_quit)
+    win.connect("destroy", win.on_destroy)
     win.show_all()
     Gtk.main()

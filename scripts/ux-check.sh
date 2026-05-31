@@ -3,17 +3,37 @@ set -Eeuo pipefail
 
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 export SEVENOS_ROOT="$ROOT_DIR"
+JSON_MODE=0
+FAST_MODE="${SEVENOS_UX_FAST:-0}"
+for arg in "$@"; do
+  case "$arg" in
+    --json|json)
+      JSON_MODE=1
+      ;;
+    --fast|fast)
+      FAST_MODE=1
+      ;;
+  esac
+done
 source "$ROOT_DIR/scripts/lib.sh"
 
 failures=0
 export PYENV_DISABLE_REHASH="${PYENV_DISABLE_REHASH:-1}"
 
+emit_line() {
+  if [[ "$JSON_MODE" == "1" ]]; then
+    printf '%s\n' "$*" >&2
+  else
+    printf '%s\n' "$*"
+  fi
+}
+
 ok() {
-  printf '[OK] %s\n' "$*"
+  emit_line "[OK] $*"
 }
 
 warn() {
-  printf '[WARN] %s\n' "$*"
+  emit_line "[WARN] $*"
 }
 
 fail() {
@@ -42,7 +62,43 @@ package_manifest_contains() {
   fi
 }
 
-log_info "Running SevenOS UX coherence checks..."
+capture_with_timeout() {
+  local seconds="$1"
+  shift
+  timeout "${seconds}s" "$@" 2>/dev/null || true
+}
+
+finish_checks() {
+  local state="ready"
+  [[ "$failures" -gt 0 ]] && state="blocked"
+  if [[ "$JSON_MODE" == "1" ]]; then
+    python3 - "$state" "$failures" "$FAST_MODE" <<'PY'
+import json
+import sys
+
+state = sys.argv[1]
+failures = int(sys.argv[2])
+fast = sys.argv[3] == "1"
+print(json.dumps({
+    "schema": "sevenos.ux-check.v1",
+    "state": state,
+    "mode": "fast" if fast else "full",
+    "failures": failures,
+}, ensure_ascii=False, indent=2))
+PY
+  elif [[ "$failures" -gt 0 ]]; then
+    log_error "UX checks failed: $failures"
+  else
+    log_success "UX coherence checks passed."
+  fi
+  exit "$([[ "$failures" -gt 0 ]] && echo 1 || echo 0)"
+}
+
+if [[ "$JSON_MODE" == "1" ]]; then
+  printf '[SevenOS] Running SevenOS UX coherence checks...\n' >&2
+else
+  log_info "Running SevenOS UX coherence checks..."
+fi
 
 require_file "docs/VISION.md"
 require_file "docs/ARCHITECTURE.md"
@@ -215,6 +271,8 @@ require_file "hyprland/qt6ct/qt6ct.conf"
 require_file "hyprland/fontconfig/fonts.conf"
 require_file "seven-hub/seven-files.desktop"
 require_file "seven-hub/seven-reader.desktop"
+require_file "seven-hub/seven-notes.desktop"
+require_file "seven-hub/seven-tools.desktop"
 require_file "seven-hub/seven-store.desktop"
 require_file "seven-hub/seven-terminal.desktop"
 
@@ -235,6 +293,10 @@ require_executable "bin/seven-files"
 require_executable "bin/seven-files-native"
 require_executable "bin/seven-reader"
 require_executable "bin/seven-reader-native"
+require_executable "bin/seven-notes"
+require_executable "bin/seven-notes-native"
+require_executable "bin/seven-tools"
+require_executable "bin/seven-tools-native"
 require_executable "bin/seven-store"
 require_executable "bin/seven-store-native"
 require_executable "bin/seven-help"
@@ -287,6 +349,7 @@ require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
 require_executable "scripts/state.sh"
 require_executable "scripts/actions.sh"
+require_executable "scripts/tools.sh"
 require_executable "scripts/hub.sh"
 require_executable "scripts/about.sh"
 require_executable "scripts/lifecycle.sh"
@@ -439,6 +502,27 @@ package_manifest_contains "gjs" "scripts/packages-shell-ags.txt"
 package_manifest_contains "typescript" "scripts/packages-shell-ags.txt"
 package_manifest_contains "gtk4" "scripts/packages-shell-ags.txt"
 package_manifest_contains "libadwaita" "scripts/packages-shell-ags.txt"
+
+if [[ "$FAST_MODE" == "1" ]]; then
+  tools_json="$(capture_with_timeout 12 env SEVENOS_ROOT="$ROOT_DIR" "$ROOT_DIR/scripts/tools.sh" doctor --json)"
+  if python -m json.tool >/dev/null <<<"$tools_json" &&
+     grep -q '"schema": "sevenos.tools.v1"' <<<"$tools_json" &&
+     grep -q '"state": "ready"' <<<"$tools_json"; then
+    ok "SevenOS Tools quick contract is ready"
+  else
+    fail "SevenOS Tools quick contract should be ready"
+  fi
+
+  design_log="$(mktemp)"
+  if timeout 35s env SEVENOS_ROOT="$ROOT_DIR" "$ROOT_DIR/scripts/design-check.sh" >"$design_log" 2>&1; then
+    ok "Design coherence quick gate passed"
+  else
+    cat "$design_log" >&2
+    fail "Design coherence quick gate should pass"
+  fi
+  rm -f "$design_log"
+  finish_checks
+fi
 
 if jq -e '."custom/sevenos"."on-click" == "seven-waybar-action sevenos-menu"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar SevenOS click opens system menu"
@@ -864,7 +948,7 @@ if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/lua/rules/keybinds.
    grep -q 'active_profile()' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'scope=closing-on-profile-change' "$ROOT_DIR/bin/seven-dock" &&
    ! grep -q 'SEVENOS_DOCK_FORCE_WINDOW=1' "$ROOT_DIR/bin/seven-dock" &&
-   grep -q '"reserve_space": true' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q '"reserve_space": false' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'set_namespace(window, "sevenos-dock")' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'GtkLayerShell.Layer.OVERLAY' "$ROOT_DIR/bin/seven-dock-native" &&
@@ -920,6 +1004,11 @@ if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/lua/rules/keybinds.
    grep -q 'set_anchor(window, GtkLayerShell.Edge.LEFT, True)' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'pin)' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'unpin)' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'autohide)' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'effect <magnetic|gentle|none>' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'autohide_delay' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'settings-dock-controls' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'def dock_settings_group' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'show_context_menu' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'process_running' "$ROOT_DIR/bin/seven-dock-native" &&
    "$ROOT_DIR/bin/seven-dock" limits | python -m json.tool >/dev/null &&
@@ -962,7 +1051,7 @@ if [[ -x "$ROOT_DIR/bin/seven-bluetooth" ]] &&
    "$ROOT_DIR/bin/seven-bluetooth" status-json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-waybar-status" bluetooth | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-waybar-status" wifi | python -m json.tool >/dev/null &&
-   "$ROOT_DIR/bin/seven-waybar-status" ai | python -m json.tool >/dev/null &&
+   timeout 8s "$ROOT_DIR/bin/seven-waybar-status" ai | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-waybar-status" experience | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-waybar-status" recorder | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-waybar-status" vpn | python -m json.tool >/dev/null &&
@@ -1230,19 +1319,19 @@ else
   fail "SevenOS action registry should expose machine-readable UI actions"
 fi
 
-ai_intent_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "open settings")"
-ai_wifi_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mon wifi ne marche pas")"
-ai_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json apps)"
-ai_theme_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mets le thème light")"
-ai_workspace_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "workspace 2")"
-ai_stop_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "stop blender")"
-ai_stop_fr_text="$(SEVENOS_DRY_RUN=0 SEVENAI_LANG=fr "$ROOT_DIR/bin/seven" ai "stop blender")"
-ai_stop_en_text="$(SEVENOS_DRY_RUN=0 SEVENAI_LANG=en "$ROOT_DIR/bin/seven" ai "stop blender")"
-ai_llm_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json llm)"
-ai_provider_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json provider "mon wifi ne marche pas")"
-ai_diagnose_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json diagnose system)"
-ai_playbook_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json playbook wifi_repair)"
-ai_research_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json research "Hyprland")"
+ai_intent_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "open settings")"
+ai_wifi_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mon wifi ne marche pas")"
+ai_apps_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json apps)"
+ai_theme_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mets le thème light")"
+ai_workspace_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "workspace 2")"
+ai_stop_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "stop blender")"
+ai_stop_fr_text="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 SEVENAI_LANG=fr "$ROOT_DIR/bin/seven" ai "stop blender")"
+ai_stop_en_text="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 SEVENAI_LANG=en "$ROOT_DIR/bin/seven" ai "stop blender")"
+ai_llm_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json llm)"
+ai_provider_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json provider "mon wifi ne marche pas")"
+ai_diagnose_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json diagnose system)"
+ai_playbook_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json playbook wifi_repair)"
+ai_research_json="$(capture_with_timeout 8 env SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json research "Hyprland")"
 if python -m json.tool >/dev/null <<<"$ai_intent_json" &&
    python -m json.tool >/dev/null <<<"$ai_wifi_json" &&
    python -m json.tool >/dev/null <<<"$ai_apps_json" &&
@@ -1869,7 +1958,9 @@ if "$ROOT_DIR/bin/seven-language" status --json | python -m json.tool >/dev/null
    "$ROOT_DIR/bin/seven-language" list --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-language" doctor --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema")=="sevenos.language-doctor.v1" and data.get("ready") is True else 1)' &&
    "$ROOT_DIR/bin/seven-language" doctor --json | python -c 'import json,sys; data=json.load(sys.stdin); checks={item["id"]: item for item in data["checks"]}; ok=checks.get("native-surfaces.i18n", {}).get("state")=="ok" and checks.get("cli.language-env", {}).get("state")=="ok" and checks.get("services.language-env", {}).get("state")=="ok" and checks.get("mini-os.language-env", {}).get("state")=="ok" and checks.get("mini-os.language-projection", {}).get("state") in {"ok", "missing"} and checks.get("mini-os.public-surfaces.i18n", {}).get("state")=="ok" and checks.get("waybar.app-menu.i18n", {}).get("state")=="ok"; raise SystemExit(0 if ok else 1)' &&
+   "$ROOT_DIR/bin/seven-language" audit --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" apply --live --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if all(item.get("state") != "failed" for item in data.get("results", [])) else 1)' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" repair --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema")=="sevenos.language-repair.v1" and data.get("ready") is True else 1)' &&
    "$ROOT_DIR/bin/seven" language doctor --json | python -m json.tool >/dev/null &&
    [[ "$("$ROOT_DIR/install.sh" language --dry-run)" == *"SevenOS Language Doctor"* ]] &&
    grep -q 'sevenos/language.env' "$ROOT_DIR/scripts/install-cli.sh" &&
@@ -1880,19 +1971,28 @@ if "$ROOT_DIR/bin/seven-language" status --json | python -m json.tool >/dev/null
    [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" menu)" == *"DRY-RUN > Language > Open language chooser"* ]] &&
    [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8)" =~ (DRY-RUN\ \>\ Language\ \>\ Enable\ fr_FR\.UTF-8|OK:\ fr_FR\.UTF-8\ is\ already\ generated) ]] &&
    [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" ensure en_US.UTF-8)" =~ (DRY-RUN\ \>\ Language\ \>\ Enable\ en_US\.UTF-8|OK:\ en_US\.UTF-8\ is\ already\ generated) ]] &&
-   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" set fr_FR.UTF-8)" == *"DRY-RUN > Language > Set fr_FR.UTF-8"* ]] &&
-   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" set en_US.UTF-8)" == *"DRY-RUN > Language > Set en_US.UTF-8"* ]] &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" switch fr_FR.UTF-8 --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" switch en_US.UTF-8 --json | python -m json.tool >/dev/null &&
    grep -q 'fr_FR.UTF-8 UTF-8' "$ROOT_DIR/archiso/profile/airootfs/etc/locale.gen" &&
    grep -q 'en_US.UTF-8 UTF-8' "$ROOT_DIR/archiso/profile/airootfs/etc/locale.gen" &&
    grep -q 'language         Prepare and inspect French/English language packs' "$ROOT_DIR/install.sh" &&
+   grep -Fq 'seven-language" repair' "$ROOT_DIR/install.sh" &&
+   grep -Fq 'seven-language" audit' "$ROOT_DIR/install.sh" &&
    grep -q 'preparing French and English language packs' "$ROOT_DIR/scripts/new-device.sh" &&
+   grep -Fq 'seven-language" repair' "$ROOT_DIR/scripts/new-device.sh" &&
+   grep -Fq 'seven-language" audit' "$ROOT_DIR/scripts/new-device.sh" &&
    grep -q 'language_check' "$ROOT_DIR/scripts/post-install.sh" &&
+   grep -q 'generated language labels match active session' "$ROOT_DIR/scripts/post-install.sh" &&
    grep -q 'fr_FR.UTF-8' "$ROOT_DIR/installer/lib.sh" &&
    grep -q 'en_US.UTF-8' "$ROOT_DIR/installer/lib.sh" &&
    grep -q 'seven_i18n' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'language_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'seven language set' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven language switch' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven language doctor' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'SevenOS language contract' "$ROOT_DIR/bin/seven-public-studio" &&
+   grep -q 'Runtime labels synchronized' "$ROOT_DIR/bin/seven-public-studio" &&
+   grep -q 'key="language-contract"' "$ROOT_DIR/bin/seven-public-studio" &&
+   grep -q 'key="runtime-labels"' "$ROOT_DIR/bin/seven-public-studio" &&
    grep -q 'settings.system_updates.note' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'tr_text' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'tr_text' "$ROOT_DIR/bin/seven-waybar-center-native" &&
@@ -2678,7 +2778,7 @@ if python -m json.tool <<<"$state_fast_json" >/dev/null &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.app-catalog.v1"' <<<"$packages_catalog_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.sevenpkg-footprint.v1"' <<<"$packages_footprint_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.runtime-orchestrator.v1"' <<<"$runtime_json" &&
-   python -c 'import json,sys; data=json.load(sys.stdin); required={"welcome","session","identity","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","shield","cyberspace","server","installer","packages","packages_plan","packages_strategy","packages_catalog","packages_footprint","store","ecosystem","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","events","adaptive","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}; catalog=data.get("packages_catalog") or {}; ok=required.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" and catalog.get("schema")=="sevenos.app-catalog.v1" and int(catalog.get("count",0) or 0) >= 12; raise SystemExit(0 if ok else 1)' <<<"$state_fast_json"; then
+   python -c 'import json,sys; data=json.load(sys.stdin); required={"welcome","session","identity","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","shield","cyberspace","server","installer","packages","packages_plan","packages_strategy","packages_catalog","packages_footprint","store","ecosystem","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","events","adaptive","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution","language","language_audit","first_run"}; catalog=data.get("packages_catalog") or {}; first_keys={item.get("key") for item in data.get("first_run",{}).get("fresh_install",{}).get("checks",[]) if isinstance(item,dict)}; ok=required.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" and data.get("language",{}).get("schema")=="sevenos.language-doctor.v1" and data.get("language_audit",{}).get("schema")=="sevenos.language-runtime-audit.v1" and data.get("first_run",{}).get("schema")=="sevenos.public-studio.v1" and {"language-contract","runtime-labels"}.issubset(first_keys) and catalog.get("schema")=="sevenos.app-catalog.v1" and int(catalog.get("count",0) or 0) >= 12; raise SystemExit(0 if ok else 1)' <<<"$state_fast_json"; then
   core_json_contract_state="OK"
 fi
 if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -2862,7 +2962,7 @@ if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/b
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
    python -m json.tool <<<"$sevenpkg_status_json" >/dev/null &&
    python -m json.tool <<<"$manifest_summary_json" >/dev/null &&
-   python -c 'import json,sys; data=json.load(sys.stdin); catalog=data.get("packages_catalog") or {}; ok={"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","atlas_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","packages_strategy","packages_catalog","packages_footprint","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" and int(catalog.get("count",0) or 0) >= 12; raise SystemExit(0 if ok else 1)' <<<"$state_fast_json"; }; then
+   python -c 'import json,sys; data=json.load(sys.stdin); catalog=data.get("packages_catalog") or {}; first_keys={item.get("key") for item in data.get("first_run",{}).get("fresh_install",{}).get("checks",[]) if isinstance(item,dict)}; ok={"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","atlas_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","packages_strategy","packages_catalog","packages_footprint","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution","language","language_audit","first_run"}.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" and data.get("language",{}).get("schema")=="sevenos.language-doctor.v1" and data.get("language_audit",{}).get("schema")=="sevenos.language-runtime-audit.v1" and data.get("first_run",{}).get("schema")=="sevenos.public-studio.v1" and {"language-contract","runtime-labels"}.issubset(first_keys) and int(catalog.get("count",0) or 0) >= 12; raise SystemExit(0 if ok else 1)' <<<"$state_fast_json"; }; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -3280,6 +3380,8 @@ if SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | g
    SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" docs-index | grep -q 'seven-help doc architecture' &&
    SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" docs-index | grep -q 'seven-help doc architecture' &&
    SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" doc architecture | grep -q 'SevenOS Architecture' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" doc state | grep -q 'SevenOS State Contract' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" state | grep -q 'SevenOS State Contract' &&
    SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" doc installer | grep -q 'Source locale : `docs/INSTALLER.md`' &&
    grep -q 'SevenOS Future Features' "$ROOT_DIR/docs/FUTURE_FEATURES.md" &&
    grep -q '"id": "docs"' "$ROOT_DIR/bin/seven-help-native" &&
@@ -3297,9 +3399,4 @@ else
   fail "Shell help and files surfaces should be icon-first"
 fi
 
-if [[ "$failures" -gt 0 ]]; then
-  log_error "UX checks failed: $failures"
-  exit 1
-fi
-
-log_success "UX coherence checks passed."
+finish_checks

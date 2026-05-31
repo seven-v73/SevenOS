@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Seven Notes
+Comment=Write local notes, pin important information and use the home widget
+Exec=seven-notes
+Icon=accessories-text-editor
+Terminal=false
+Categories=Utility;TextEditor;
+MimeType=text/plain;text/markdown;
+StartupNotify=true
+StartupWMClass=SevenNotesNative
+Keywords=notes;memo;markdown;widget;SevenOS;

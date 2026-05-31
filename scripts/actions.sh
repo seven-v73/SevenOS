@@ -25,6 +25,17 @@ action_rows() {
 home.open	Desktop	Open SevenOS Home	seven home	safe	Open the public SevenOS Home surface for mini OS, settings, store, backup and recent actions.
 hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
 actions.open	Desktop	Open Action Center	seven actions open	safe	Open the graphical SevenOS action center for normal users.
+tools.open	Desktop	Open SevenOS Tools	seven tools open	safe	Open the native dashboard for Settings, Files, Store, Reader, Notes, Widgets, Doctor and Terminal.
+tools.open.files	Desktop	Open Files Tool	seven tools open files	safe	Open Seven Files through the unified SevenOS tools route.
+tools.open.notes	Desktop	Open Notes Tool	seven tools open notes	safe	Open Seven Notes through the unified SevenOS tools route.
+tools.open.doctor	System	Open Doctor Tool	seven tools open doctor	safe	Open Seven Doctor through the unified SevenOS tools route.
+tools.status	System	SevenOS Tools	seven tools	safe	Show readiness for Settings, Files, Store, Reader, Notes, Widgets, Doctor and Terminal.
+tools.doctor	System	Tools Doctor	seven tools doctor	safe	Validate native tool launchers, desktop entries, action routes and non-visual probes.
+tools.plan	System	Tools UX Plan	seven tools plan	safe	Show the SevenOS tool ergonomics plan without changing the system.
+tools.detail.files	System	Files Tool Detail	seven tools detail files	safe	Show Seven Files readiness, route, probe and blockers without opening the full dashboard.
+tools.detail.notes	System	Notes Tool Detail	seven tools detail notes	safe	Show Seven Notes readiness, route, probe and blockers without opening the full dashboard.
+tools.detail.doctor	System	Doctor Tool Detail	seven tools detail doctor	safe	Show Seven Doctor readiness, route, probe and blockers without opening the full dashboard.
+quality.ux.fast	System	Fast UX Gate	seven ux fast --json	safe	Run the bounded daily UX gate for native tools, manifests and design coherence.
 experience.center	Desktop	Open Experience Center	seven experience-center --gui	safe	Open Rescue Mode, Time Machine, Timeline, Permissions, Focus Journeys and Workspace Memory.
 experience.briefing	System	Daily Briefing	seven briefing	safe	Show the calm daily SevenOS readiness summary and next actions.
 experience.care	System	Care Plan	seven care	safe	Show the prioritized SevenOS care plan: now, next and healthy.
@@ -144,6 +155,17 @@ files.profile	Desktop	Profile Workspace	seven-files profile	safe	Open the active
 reader.open	Desktop	Open Reader	seven-reader	safe	Open the Seven Reader immersive library.
 reader.library	Desktop	Reader Library	seven-reader library	safe	Open the Seven Reader visual library.
 reader.status	System	Reader Status	seven-reader --json	safe	Show Seven Reader formats, modes and local state.
+notes.open	Desktop	Open Seven Notes	seven-notes	safe	Open the native SevenOS note surface.
+notes.quick	Desktop	Quick Note	seven-notes quick	safe	Open a compact note editor for fast capture.
+notes.widget	Desktop	Notes Widget	seven widgets add notes && seven widgets open	changes	Show recent notes and quick capture on the SevenOS home workspace.
+notes.status	System	Notes Status	seven-notes --json	safe	Show local note count, storage and recent notes.
+widgets.menu	Desktop	Desktop Widgets Menu	seven widgets menu	safe	Open the SevenOS desktop widget menu.
+widgets.open	Desktop	Show Desktop Widgets	seven widgets open	safe	Show the optional SevenOS widget layer on the home screen.
+widgets.hide	Desktop	Hide Desktop Widgets	seven widgets hide	safe	Hide the optional SevenOS widget layer.
+widgets.settings	Desktop	Widget Settings	seven widgets settings	safe	Choose which SevenOS widgets appear on the home screen.
+widgets.home	Desktop	Use Workspace 1 as Home	seven widgets home 1	changes	Set workspace 1 as the SevenOS home screen for widgets.
+widgets.rightclick.off	Desktop	Disable Widget Right Click	seven widgets right-click disable	changes	Keep desktop widget menus opt-in and preserve app context menus.
+widgets.doctor	System	Widget Doctor	seven widgets doctor --json	safe	Validate SevenOS widget configuration, catalog and commands.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
 notifications.open	Desktop	Open Notifications	seven-waybar-notifications menu	safe	Open the SevenOS notification center.
 terminal.open	Desktop	Open Terminal	seven-terminal	safe	Open the active mini OS terminal.

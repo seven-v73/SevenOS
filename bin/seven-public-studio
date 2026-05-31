@@ -266,8 +266,11 @@ def check(
     group: str = "system",
     severity: str = "medium",
     findings: list[str] | None = None,
+    key: str = "",
 ) -> dict:
     item = {"state": state, "title": title, "detail": detail, "command": command, "group": group, "severity": severity}
+    if key:
+        item["key"] = key
     if findings:
         item["findings"] = findings
     return item
@@ -277,7 +280,7 @@ def first_run_checks() -> list[dict]:
     checks: list[dict] = []
     required_commands = [
         "seven", "seven-settings-native", "seven-experience-center", "seven-help-native", "seven-hub-native",
-        "seven-files", "seven-store", "seven-wallpaper", "seven-waybar", "seven-profile-run",
+        "seven-files", "seven-store", "seven-wallpaper", "seven-widgets-native", "seven-waybar", "seven-profile-run",
         "seven-profile-rootfs", "seven-public-studio",
     ]
     for command in required_commands:
@@ -328,6 +331,46 @@ def first_run_checks() -> list[dict]:
     assets = run_json([str(ROOT / "scripts/system-assets.sh"), "json"], {}, timeout=12)
     if assets:
         checks.append(check("OK" if assets.get("state") == "OK" else "MISS", tr("Contrat assets système", "System assets contract"), tr(f"État: {assets.get('state')}", f"State: {assets.get('state')}"), "scripts/system-assets.sh doctor", "install", "high"))
+
+    language = run_json([str(ROOT / "bin/seven-language"), "doctor", "--json"], {}, timeout=12)
+    if language:
+        missing = [item.get("id", "") for item in language.get("checks", []) if item.get("state") == "missing"]
+        checks.append(
+            check(
+                "OK" if language.get("ready") else "MISS",
+                tr("Contrat langue SevenOS", "SevenOS language contract"),
+                tr(
+                    f"{language.get('current', 'unknown')} · {len(missing)} point(s) à corriger.",
+                    f"{language.get('current', 'unknown')} · {len(missing)} item(s) need attention.",
+                ),
+                "seven language doctor",
+                "install",
+                "high",
+                missing[:8],
+                key="language-contract",
+            )
+        )
+    else:
+        checks.append(check("MISS", tr("Contrat langue SevenOS", "SevenOS language contract"), tr("Le doctor langue ne répond pas.", "Language doctor did not respond."), "seven language doctor", "install", "high", key="language-contract"))
+
+    language_audit = run_json([str(ROOT / "bin/seven-language"), "audit", "--json"], {}, timeout=12)
+    if language_audit:
+        findings = [str(item.get("path", "")) for item in language_audit.get("findings", [])]
+        checks.append(
+            check(
+                "OK" if language_audit.get("state") == "ok" else "MISS",
+                tr("Libellés runtime synchronisés", "Runtime labels synchronized"),
+                tr(
+                    f"{len(findings)} surface(s) générée(s) à rafraîchir.",
+                    f"{len(findings)} generated surface(s) need refresh.",
+                ),
+                "seven language audit",
+                "install",
+                "medium",
+                findings[:8],
+                key="runtime-labels",
+            )
+        )
 
     return checks
 

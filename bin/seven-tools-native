@@ -1,0 +1,585 @@
+#!/usr/bin/env python3
+"""Seven Tools: native dashboard for daily SevenOS tools."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import warnings
+from pathlib import Path
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and Path(env_root, "bin").is_dir():
+        return Path(env_root).resolve()
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "bin").is_dir():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin").is_dir():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
+
+
+def lang_is_fr() -> bool:
+    raw = " ".join(
+        value
+        for value in (
+            os.environ.get("SEVENOS_LANGUAGE"),
+            os.environ.get("LANGUAGE"),
+            os.environ.get("LC_ALL"),
+            os.environ.get("LANG"),
+        )
+        if value
+    ).lower()
+    return raw.startswith("fr")
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if lang_is_fr() else en
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if system_python.exists() and Path(sys.executable).resolve() != system_python:
+            result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            if result.returncode == 0:
+                os.environ["SEVENOS_GI_PYTHON"] = "1"
+                os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def run_tools_json() -> dict:
+    try:
+        result = subprocess.run(
+            [str(ROOT / "scripts/tools.sh"), "json"],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=8,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            check=False,
+        )
+        if result.returncode == 0:
+            return json.loads(result.stdout)
+    except Exception:
+        pass
+    return {"schema": "sevenos.tools.v1", "state": "blocked", "score": 0, "summary": {}, "tools": []}
+
+
+def print_json() -> int:
+    print(json.dumps(run_tools_json(), ensure_ascii=False, indent=2))
+    return 0
+
+
+def launch(command: list[str]) -> None:
+    if command and command[0] == "seven":
+        command = [str(ROOT / "bin/seven"), *command[1:]]
+    elif command and command[0] == "seven-terminal":
+        command = [str(ROOT / "bin/seven-terminal"), *command[1:]]
+    try:
+        subprocess.Popen(command, cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, start_new_session=True)
+    except Exception:
+        pass
+
+
+def open_command(item: dict) -> list[str]:
+    command = item.get("open")
+    if isinstance(command, list) and command:
+        return [str(part) for part in command]
+    key = str(item.get("key") or "")
+    return ["seven", "tools", "open", key] if key else ["seven", "tools", "open"]
+
+
+class ToolsWindow:
+    def __init__(self):
+        ensure_gi_python()
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk, Gtk
+
+        self.Gdk = Gdk
+        self.Gtk = Gtk
+        self.payload = run_tools_json()
+        self.search_text = ""
+        self.filter_state = "all"
+        self.category_filter = "all"
+        self.grid = None
+        self.search_entry = None
+        self.window = Gtk.Window(title=tr("Outils SevenOS", "SevenOS Tools"))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.window.set_wmclass("SevenToolsNative", "SevenToolsNative")
+        self.window.set_default_size(920, 620)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+        self.window.connect("destroy", Gtk.main_quit)
+        self.window.connect("key-press-event", self.on_key_press)
+
+        css = (seven_theme.gtk_app_css("tools") if seven_theme else "") + """
+        .tools-root { padding: 22px; }
+        .tools-header { padding: 18px; }
+        .tools-grid { padding: 4px; }
+        .tool-card { padding: 15px; }
+        .tool-icon {
+          min-width: 44px;
+          min-height: 44px;
+          border-radius: 16px;
+          background: alpha(@seven_accent, 0.13);
+          color: @seven_accent;
+          border: 1px solid alpha(@seven_accent, 0.22);
+          font-size: 21px;
+        }
+        .tools-hero-icon {
+          min-width: 52px;
+          min-height: 52px;
+          border-radius: 18px;
+          background: alpha(@seven_accent, 0.16);
+          color: @seven_accent;
+          border: 1px solid alpha(@seven_accent, 0.26);
+          font-size: 25px;
+        }
+        .tools-shortcut {
+          padding: 8px 12px;
+          border-radius: 999px;
+          background: alpha(@seven_accent, 0.10);
+          border: 1px solid alpha(@seven_accent, 0.22);
+          color: @seven_text;
+          font-size: 12px;
+        }
+        .tools-meta-pill {
+          padding: 5px 10px;
+          border-radius: 999px;
+          background: alpha(@seven_surface, 0.78);
+          border: 1px solid alpha(@seven_border, 0.56);
+          color: @seven_muted;
+          font-size: 12px;
+        }
+        .tool-name { font-size: 15px; font-weight: 600; }
+        .tool-role { font-size: 12px; color: @seven_muted; }
+        .tool-intent { font-size: 12px; color: @seven_text; }
+        .tool-score { font-size: 34px; font-weight: 600; }
+        .tools-search { margin: 0 2px; }
+        .tool-detail-row { padding: 8px 0; border-bottom: 1px solid alpha(@seven_border, 0.45); }
+        .tools-category-title {
+          color: @seven_muted;
+          font-size: 11px;
+          margin: 10px 0 2px 0;
+        }
+        button.filter-active {
+          color: #ffffff;
+          background: linear-gradient(135deg, @seven_accent, @seven_secondary);
+          border-color: alpha(@seven_accent, 0.34);
+        }
+        .tool-blocker {
+          color: @seven_warning;
+          background: alpha(@seven_warning, 0.08);
+          border: 1px solid alpha(@seven_warning, 0.20);
+          border-radius: 999px;
+          padding: 2px 8px;
+        }
+        """
+        provider = Gtk.CssProvider()
+        provider.load_from_data(css.encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+        self.root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        self.root.get_style_context().add_class("seven-root")
+        self.root.get_style_context().add_class("tools-root")
+        self.window.add(self.root)
+        self.render()
+
+    def label(self, text: str, css: str = "", xalign: float = 0.0):
+        label = self.Gtk.Label(label=text)
+        label.set_xalign(xalign)
+        label.set_ellipsize(3)
+        if css:
+            label.get_style_context().add_class(css)
+        return label
+
+    def tool_icon(self, item: dict) -> str:
+        key = str(item.get("key") or "").lower()
+        category = str(item.get("category") or "").lower()
+        icons = {
+            "settings": "󰒓",
+            "files": "󰉋",
+            "store": "󰏗",
+            "reader": "󰈙",
+            "notes": "󰎞",
+            "widgets": "󰕮",
+            "doctor": "󰩂",
+            "terminal": "󰆍",
+        }
+        if key in icons:
+            return icons[key]
+        return {"system": "󰒓", "workspace": "󰉋", "knowledge": "󰙅", "support": "󰜉"}.get(category, "◆")
+
+    def clear(self):
+        for child in list(self.root.get_children()):
+            self.root.remove(child)
+
+    def refresh(self, *_args):
+        self.payload = run_tools_json()
+        self.render()
+
+    def on_key_press(self, _widget, event) -> bool:
+        ctrl = bool(event.state & self.Gdk.ModifierType.CONTROL_MASK)
+        keyval = event.keyval
+        if keyval == self.Gdk.KEY_Escape:
+            self.window.close()
+            return True
+        if ctrl and keyval in (self.Gdk.KEY_f, self.Gdk.KEY_F):
+            if self.search_entry is not None:
+                self.search_entry.grab_focus()
+                self.search_entry.select_region(0, -1)
+            return True
+        if ctrl and keyval in (self.Gdk.KEY_r, self.Gdk.KEY_R):
+            self.refresh()
+            return True
+        if ctrl and keyval in (self.Gdk.KEY_l, self.Gdk.KEY_L):
+            self.search_text = ""
+            self.filter_state = "all"
+            self.category_filter = "all"
+            self.render()
+            return True
+        return False
+
+    def filtered_tools(self) -> list[dict]:
+        query = self.search_text.strip().lower()
+        tools = self.payload.get("tools", [])
+        filtered = []
+        for item in tools:
+            if self.category_filter != "all" and item.get("category") != self.category_filter:
+                continue
+            if self.filter_state == "ready" and item.get("state") != "OK":
+                continue
+            if self.filter_state == "attention" and item.get("state") == "OK":
+                continue
+            haystack = " ".join(
+                str(item.get(key) or "")
+                for key in ("key", "name", "role", "state", "action", "native", "desktop")
+            ).lower()
+            if not query or query in haystack:
+                filtered.append(item)
+        return filtered
+
+    def on_search_changed(self, entry):
+        self.search_text = entry.get_text()
+        self.populate_grid()
+
+    def set_filter(self, value: str):
+        self.filter_state = value
+        self.render()
+
+    def set_category_filter(self, value: str):
+        self.category_filter = value
+        self.render()
+
+    def copy_report(self):
+        report = json.dumps(self.payload, ensure_ascii=False, indent=2)
+        clipboard = self.Gtk.Clipboard.get(self.Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(report, -1)
+        clipboard.store()
+
+    def populate_grid(self):
+        if self.grid is None:
+            return
+        for child in list(self.grid.get_children()):
+            self.grid.remove(child)
+        tools = self.filtered_tools()
+        if not tools:
+            empty = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+            empty.get_style_context().add_class("seven-empty-state")
+            empty.pack_start(self.label(tr("Aucun outil trouvé", "No tool found"), "seven-title"), False, False, 0)
+            empty.pack_start(
+                self.label(
+                    tr("Essaie Settings, Files, Store, Notes ou Doctor.", "Try Settings, Files, Store, Notes or Doctor."),
+                    "seven-muted",
+                ),
+                False,
+                False,
+                0,
+            )
+            self.grid.add(empty)
+        else:
+            last_category = None
+            for item in tools:
+                category = str(item.get("category") or "workspace")
+                if self.category_filter == "all" and category != last_category:
+                    last_category = category
+                    title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=0)
+                    title.pack_start(self.label(self.category_label(category).upper(), "tools-category-title"), False, False, 0)
+                    self.grid.add(title)
+                self.grid.add(self.tool_card(item))
+        self.grid.show_all()
+
+    def category_label(self, category: str) -> str:
+        labels = {
+            "system": tr("Système", "System"),
+            "workspace": tr("Espace de travail", "Workspace"),
+            "knowledge": tr("Lecture et notes", "Reading and notes"),
+            "support": tr("Support", "Support"),
+        }
+        return labels.get(category, category.title())
+
+    def render(self):
+        self.clear()
+        summary = self.payload.get("summary") if isinstance(self.payload.get("summary"), dict) else {}
+        score = int(self.payload.get("score") or 0)
+        state = str(self.payload.get("state") or "unknown")
+
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=16)
+        header.get_style_context().add_class("seven-status-banner")
+        hero_icon = self.label("󰛨", "tools-hero-icon", 0.5)
+        header.pack_start(hero_icon, False, False, 0)
+        left = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=5)
+        left.pack_start(self.label(tr("Outils SevenOS", "SevenOS Tools"), "seven-title"), False, False, 0)
+        left.pack_start(
+            self.label(
+                tr(
+                    "Toutes les surfaces quotidiennes sont vérifiées sans ouvrir de fenêtres.",
+                    "Daily surfaces are checked without opening windows.",
+                ),
+                "seven-muted",
+            ),
+            False,
+            False,
+            0,
+        )
+        header.pack_start(left, True, True, 0)
+        shortcut = self.label(tr("Super+T · Ctrl+F", "Super+T · Ctrl+F"), "tools-shortcut", 0.5)
+        header.pack_start(shortcut, False, False, 0)
+        score_box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=2)
+        score_box.pack_start(self.label(f"{score}%", "tool-score", 1.0), False, False, 0)
+        score_box.pack_start(self.label(f"{summary.get('ok', 0)}/{summary.get('tools', 0)} · {state}", "seven-muted", 1.0), False, False, 0)
+        header.pack_start(score_box, False, False, 0)
+        refresh = self.Gtk.Button(label=tr("Actualiser", "Refresh"))
+        refresh.get_style_context().add_class("seven-button")
+        refresh.connect("clicked", self.refresh)
+        header.pack_start(refresh, False, False, 0)
+        self.root.pack_start(header, False, False, 0)
+
+        search_row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        search_row.get_style_context().add_class("seven-action-strip")
+        search = self.Gtk.SearchEntry()
+        search.set_placeholder_text(tr("Rechercher un outil, un rôle ou un état", "Search a tool, role or state"))
+        search.set_text(self.search_text)
+        search.get_style_context().add_class("tools-search")
+        search.connect("search-changed", self.on_search_changed)
+        self.search_entry = search
+        search_row.pack_start(search, True, True, 0)
+        for value, label in (
+            ("all", tr("Tous", "All")),
+            ("attention", tr("À corriger", "Needs attention")),
+            ("ready", tr("Prêts", "Ready")),
+        ):
+            button = self.Gtk.Button(label=label)
+            button.get_style_context().add_class("seven-button")
+            if self.filter_state == value:
+                button.get_style_context().add_class("filter-active")
+            button.connect("clicked", lambda _button, selected=value: self.set_filter(selected))
+            search_row.pack_start(button, False, False, 0)
+        open_doctor = self.Gtk.Button(label=tr("Ouvrir Doctor", "Open Doctor"))
+        open_doctor.get_style_context().add_class("seven-button")
+        open_doctor.connect("clicked", lambda *_: launch(["seven", "doctor", "open"]))
+        search_row.pack_start(open_doctor, False, False, 0)
+        self.root.pack_start(search_row, False, False, 0)
+
+        category_row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+        category_row.get_style_context().add_class("seven-action-strip")
+        categories = [("all", tr("Tous les espaces", "All areas"))]
+        categories.extend((key, self.category_label(key)) for key in (self.payload.get("categories") or {}).keys())
+        for value, label in categories:
+            button = self.Gtk.Button(label=label)
+            button.get_style_context().add_class("seven-button")
+            if self.category_filter == value:
+                button.get_style_context().add_class("filter-active")
+            button.connect("clicked", lambda _button, selected=value: self.set_category_filter(selected))
+            category_row.pack_start(button, False, False, 0)
+        category_row.pack_end(
+            self.label(
+                tr("Entrée ouvre l’outil sélectionné via les boutons · Ctrl+L réinitialise", "Buttons open tools · Ctrl+L resets"),
+                "tools-meta-pill",
+                1.0,
+            ),
+            False,
+            False,
+            0,
+        )
+        self.root.pack_start(category_row, False, False, 0)
+
+        grid = self.Gtk.FlowBox()
+        grid.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        grid.set_max_children_per_line(2)
+        grid.set_min_children_per_line(1)
+        grid.set_column_spacing(12)
+        grid.set_row_spacing(12)
+        grid.get_style_context().add_class("tools-grid")
+        self.grid = grid
+        self.populate_grid()
+        scroll = self.Gtk.ScrolledWindow()
+        scroll.set_policy(self.Gtk.PolicyType.NEVER, self.Gtk.PolicyType.AUTOMATIC)
+        scroll.add(grid)
+        self.root.pack_start(scroll, True, True, 0)
+
+        footer = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        footer.get_style_context().add_class("seven-action-strip")
+        plan = self.Gtk.Button(label=tr("Plan ergonomique", "UX Plan"))
+        plan.get_style_context().add_class("seven-button")
+        plan.connect("clicked", lambda *_: launch(["seven", "tools", "plan"]))
+        copy = self.Gtk.Button(label=tr("Copier rapport", "Copy report"))
+        copy.get_style_context().add_class("seven-button")
+        copy.connect("clicked", lambda *_: self.copy_report())
+        doctor = self.Gtk.Button(label=tr("Diagnostic", "Doctor"))
+        doctor.get_style_context().add_class("seven-primary")
+        doctor.connect("clicked", lambda *_: self.refresh())
+        footer.pack_start(
+            self.label(
+                tr("Contrat outils natifs · Ctrl+F recherche · Ctrl+R actualise · Échap ferme", "Native tools contract · Ctrl+F search · Ctrl+R refresh · Esc closes"),
+                "seven-muted",
+            ),
+            True,
+            True,
+            0,
+        )
+        footer.pack_start(plan, False, False, 0)
+        footer.pack_start(copy, False, False, 0)
+        footer.pack_start(doctor, False, False, 0)
+        self.root.pack_start(footer, False, False, 0)
+        self.window.show_all()
+
+    def tool_card(self, item: dict):
+        card = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        card.get_style_context().add_class("seven-card")
+        card.get_style_context().add_class("tool-card")
+        top = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        icon = self.label(self.tool_icon(item), "tool-icon", 0.5)
+        top.pack_start(icon, False, False, 0)
+        meta = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+        meta.pack_start(self.label(str(item.get("name") or item.get("key") or ""), "tool-name"), False, False, 0)
+        meta.pack_start(self.label(str(item.get("role") or ""), "tool-role"), False, False, 0)
+        top.pack_start(meta, True, True, 0)
+        state = self.label(str(item.get("state") or "MISS"), "seven-state-pill", 1.0)
+        if item.get("state") == "OK":
+            state.get_style_context().add_class("seven-state-ok")
+        elif item.get("state") == "PART":
+            state.get_style_context().add_class("seven-state-warn")
+        else:
+            state.get_style_context().add_class("seven-state-danger")
+        top.pack_start(state, False, False, 0)
+        card.pack_start(top, False, False, 0)
+
+        probe = item.get("probe") if isinstance(item.get("probe"), dict) else {}
+        card.pack_start(self.label(str(probe.get("message") or "ready"), "seven-muted"), False, False, 0)
+        intent = str(item.get("intent") or item.get("recommendation") or "")
+        if intent:
+            card.pack_start(self.label(intent, "tool-intent"), False, False, 0)
+        blockers = item.get("blockers") if isinstance(item.get("blockers"), list) else []
+        if blockers:
+            blocker_row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=6)
+            for blocker in blockers[:2]:
+                blocker_row.pack_start(self.label(str(blocker), "tool-blocker"), False, False, 0)
+            if len(blockers) > 2:
+                blocker_row.pack_start(self.label(f"+{len(blockers) - 2}", "tool-blocker"), False, False, 0)
+            card.pack_start(blocker_row, False, False, 0)
+
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+        details_button = self.Gtk.Button(label=tr("Détails", "Details"))
+        details_button.get_style_context().add_class("seven-button")
+        details_button.connect("clicked", lambda *_args, payload=item: self.show_tool_details(payload))
+        actions.pack_start(details_button, False, False, 0)
+        open_button = self.Gtk.Button(label=tr("Ouvrir", "Open"))
+        if item.get("primary_label"):
+            open_button.set_tooltip_text(str(item.get("primary_label")))
+        open_button.get_style_context().add_class("seven-primary")
+        open_button.connect("clicked", lambda *_args, payload=item: launch(open_command(payload)))
+        actions.pack_end(open_button, False, False, 0)
+        card.pack_start(actions, False, False, 0)
+        return card
+
+    def show_tool_details(self, item: dict):
+        dialog = self.Gtk.Dialog(
+            title=str(item.get("name") or tr("Détails", "Details")),
+            transient_for=self.window,
+            flags=0,
+        )
+        dialog.set_default_size(520, 420)
+        dialog.add_button(tr("Fermer", "Close"), self.Gtk.ResponseType.CLOSE)
+        box = dialog.get_content_area()
+        box.set_spacing(12)
+        box.set_border_width(18)
+
+        title = self.label(str(item.get("name") or item.get("key") or ""), "seven-title")
+        box.pack_start(title, False, False, 0)
+        box.pack_start(self.label(str(item.get("role") or ""), "seven-muted"), False, False, 0)
+
+        probe = item.get("probe") if isinstance(item.get("probe"), dict) else {}
+        blockers = item.get("blockers") if isinstance(item.get("blockers"), list) else []
+        rows = [
+            (tr("État", "State"), str(item.get("state") or "MISS")),
+            (tr("Application native", "Native app"), f"{item.get('native')} · {tr('prêt', 'ready') if item.get('native_ready') else tr('manquant', 'missing')}"),
+            (tr("Entrée bureau", "Desktop entry"), f"{item.get('desktop') or tr('non requis', 'not required')} · {tr('prêt', 'ready') if item.get('desktop_ready') else tr('manquant', 'missing')}"),
+            (tr("Action SevenOS", "SevenOS action"), f"{item.get('action')} · {tr('prête', 'ready') if item.get('action_ready') else tr('manquante', 'missing')}"),
+            (tr("Catégorie", "Category"), self.category_label(str(item.get("category") or ""))),
+            (tr("Intention", "Intent"), str(item.get("intent") or "")),
+            (tr("Recommandation", "Recommendation"), str(item.get("recommendation") or "")),
+            (tr("Probe", "Probe"), f"{probe.get('code', '?')} · {probe.get('message', '')}"),
+            (tr("À corriger", "Needs attention"), ", ".join(blockers) if blockers else tr("Rien à corriger", "Nothing to fix")),
+        ]
+        for key, value in rows:
+            row = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+            row.get_style_context().add_class("tool-detail-row")
+            row.pack_start(self.label(key, "seven-muted"), False, False, 0)
+            row.pack_start(self.label(value, "seven-note"), False, False, 0)
+            box.pack_start(row, False, False, 0)
+
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+        copy_button = self.Gtk.Button(label=tr("Copier diagnostic", "Copy diagnostic"))
+        copy_button.get_style_context().add_class("seven-button")
+        copy_button.connect("clicked", lambda *_: self.copy_report())
+        actions.pack_start(copy_button, False, False, 0)
+        open_button = self.Gtk.Button(label=tr("Ouvrir l’outil", "Open tool"))
+        open_button.get_style_context().add_class("seven-primary")
+        open_button.connect("clicked", lambda *_: launch(open_command(item)))
+        actions.pack_end(open_button, False, False, 0)
+        box.pack_start(actions, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+
+    def run(self):
+        self.window.show_all()
+        self.Gtk.main()
+
+
+def main(argv: list[str]) -> int:
+    if "--probe" in argv:
+        print("OK")
+        return 0
+    if "--json" in argv or "json" in argv or "status" in argv:
+        return print_json()
+    ToolsWindow().run()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

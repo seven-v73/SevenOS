@@ -217,6 +217,7 @@ SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS aut
 | Mini OS SevenOS | isolation, rootfs, profils, collaboration |
 | Applications SevenOS | Files, Reader, Store, Terminal, SevenAI |
 | Manuel système | réseau, polices, paramètres, mises à jour, sauvegarde, ISO |
+| Snapshot machine SevenOS | état global pour Hub, Settings, Doctor et SevenAI |
 | Paquets et installation | Equinox global, mini OS isolés, pacman/yay/paru |
 | Sécurité et Atlas | Shield, sandbox, Atlas Explorer |
 | FAQ locale | réponses aux questions fréquentes sans internet |
@@ -1080,25 +1081,23 @@ seven language status
 seven language status --json
 seven language doctor
 seven language doctor --json
+seven language audit
 seven language list
-seven language set fr_FR.UTF-8
-seven language set en_US.UTF-8
-seven language apply --live
+seven language switch fr_FR.UTF-8
+seven language switch en_US.UTF-8
+seven language repair
 ```
 
 À retenir :
 
 1. `seven language doctor` vérifie les catalogues FR/EN, l'ISO, l'installateur,
-   les locales générées et l'indicateur Waybar.
-2. `seven language set ...` change la langue pour les nouvelles fenêtres et
-   terminaux.
-3. `seven language apply --live` relance les surfaces visibles de SevenOS.
-4. Le clavier reste géré par `seven keyboard apply`, pas par la langue.
-5. Waybar affiche `FR` ou `EN` dynamiquement via `seven-waybar-language`.
+   les locales générées, les libellés runtime et l'indicateur Waybar.
+2. `seven language switch ...` change la langue, projette les Mini OS et relance les surfaces visibles de SevenOS.
+3. Le clavier reste géré par `seven keyboard apply`, pas par la langue.
+4. Waybar affiche `FR` ou `EN` dynamiquement via `seven-waybar-language`.
 
 Si une app reste dans l'ancienne langue, ferme puis rouvre cette app. Si tout
-reste incohérent, lance `seven language doctor`, puis `seven language apply
---live`.
+reste incohérent, lance `seven language repair`, puis `seven language doctor`.
 
 ### Thème, wallpaper et boot
 
@@ -1206,12 +1205,17 @@ seven health
 seven recovery
 seven support
 seven state --json
+seven-help doc state
 seven events --limit 30
 ```
 
 SevenOS préfère les routes `seven update`, `seven recovery` et `seven health`
 aux commandes backend directes pour les utilisateurs. Les commandes Arch restent
 disponibles dans Equinox pour l'admin système.
+`seven state --json` est le snapshot machine unifié pour Hub, Settings,
+Doctor, SevenAI et les futures surfaces natives. Il expose aussi les contrats
+`language`, `language_audit` et `first_run` afin d'éviter de relancer plusieurs
+checks lourds dans l'interface.
 Sur une machine publique, SevenOS vit dans `/opt/SevenOS`; `seven update install`
 crée un snapshot de rollback, met à jour ce dépôt, sauvegarde l'état protégé,
 rafraîchit les commandes et applique ensuite les mises à jour système/apps.
@@ -1723,6 +1727,7 @@ SevenOS is a personal OS built around native surfaces, autonomous mini OS profil
 | SevenOS Mini OS | isolation, rootfs, profiles, collaboration |
 | SevenOS Applications | Files, Reader, Store, Terminal, SevenAI |
 | System Manual | network, fonts, settings, updates, backup, ISO |
+| SevenOS Machine Snapshot | global state for Hub, Settings, Doctor and SevenAI |
 | Packages And Install | global Equinox, isolated mini OS, pacman/yay/paru |
 | Security And Atlas | Shield, sandbox, Atlas Explorer |
 | Local FAQ | frequent answers without internet |
@@ -2573,24 +2578,23 @@ seven language status
 seven language status --json
 seven language doctor
 seven language doctor --json
+seven language audit
 seven language list
-seven language set fr_FR.UTF-8
-seven language set en_US.UTF-8
-seven language apply --live
+seven language switch fr_FR.UTF-8
+seven language switch en_US.UTF-8
+seven language repair
 ```
 
 Remember:
 
 1. `seven language doctor` checks FR/EN catalogs, the ISO, installer, generated
-   locales and the Waybar indicator.
-2. `seven language set ...` changes the language for new windows and terminals.
-3. `seven language apply --live` restarts visible SevenOS surfaces.
-4. Keyboard layouts stay managed by `seven keyboard apply`, not by the language.
-5. Waybar displays `FR` or `EN` dynamically through `seven-waybar-language`.
+   locales, runtime labels and the Waybar indicator.
+2. `seven language switch ...` changes the language, projects Mini OS profiles and restarts visible SevenOS surfaces.
+3. Keyboard layouts stay managed by `seven keyboard apply`, not by the language.
+4. Waybar displays `FR` or `EN` dynamically through `seven-waybar-language`.
 
 If one app stays in the old language, close and reopen that app. If the whole
-session still feels inconsistent, run `seven language doctor`, then `seven
-language apply --live`.
+session still feels inconsistent, run `seven language repair`, then `seven language doctor`.
 
 ### Theme, Wallpaper And Boot
 
@@ -2682,12 +2686,17 @@ seven health
 seven recovery
 seven support
 seven state --json
+seven-help doc state
 seven events --limit 30
 ```
 
 SevenOS prefers `seven update`, `seven recovery` and `seven health` over direct
 backend commands for users. Arch commands remain available in Equinox for
 system administration.
+`seven state --json` is the unified machine snapshot for Hub, Settings, Doctor,
+SevenAI and future native surfaces. It also exposes the `language`,
+`language_audit` and `first_run` contracts so UI surfaces do not need to run
+multiple heavy checks.
 On public machines, SevenOS lives in `/opt/SevenOS`; `seven update install`
 creates a rollback snapshot, updates that tree, backs up protected state,
 refreshes commands and then applies system/app updates.
@@ -3578,8 +3587,10 @@ Installation et machine neuve :
   ./install.sh network --yes    préparer ou réparer Wi-Fi/NetworkManager
   seven fonts apply-default     réappliquer les polices SevenOS
   seven language doctor         vérifier les packs français/anglais
-  seven language set fr_FR.UTF-8 passer SevenOS en français
-  seven language set en_US.UTF-8 passer SevenOS en anglais
+  seven language audit          repérer les libellés runtime obsolètes
+  seven language switch fr_FR.UTF-8 passer SevenOS en français
+  seven language switch en_US.UTF-8 passer SevenOS en anglais
+  seven language repair         resynchroniser la session et les Mini OS
   seven repair ux --apply       réparer l'expérience visuelle
 
 Surfaces utilisateur :
@@ -3655,8 +3666,10 @@ Install and fresh machine:
   ./install.sh network --yes    prepare or repair Wi-Fi/NetworkManager
   seven fonts apply-default     reapply SevenOS fonts
   seven language doctor         check French/English packs
-  seven language set fr_FR.UTF-8 switch SevenOS to French
-  seven language set en_US.UTF-8 switch SevenOS to English
+  seven language audit          find stale generated runtime labels
+  seven language switch fr_FR.UTF-8 switch SevenOS to French
+  seven language switch en_US.UTF-8 switch SevenOS to English
+  seven language repair         resync session and Mini OS language
   seven repair ux --apply       repair visual experience
 
 User surfaces:
@@ -3779,6 +3792,12 @@ if [[ "${1:-}" == "doc" || "${1:-}" == "docs-file" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "state" || "${1:-}" == "snapshot" || "${1:-}" == "state-contract" ]]; then
+  write_single_project_doc state
+  show_generated_doc
+  exit 0
+fi
+
 if [[ "${1:-}" == "topics" || "${1:-}" == "--topics" ]]; then
   if [[ "$LANG_CODE" == "fr" ]]; then
     cat <<'EOF'
@@ -3799,6 +3818,7 @@ Chapitres SevenOS disponibles :
   mini-os        profils SevenOS
   apps           applications SevenOS
   system         réseau, polices, thème, mises à jour
+  state          snapshot machine SevenOS
   docs           documentation complète du dossier docs/
   docs-index     index rapide de la documentation projet
   doc <nom>      ouvrir un document, ex: doc architecture
@@ -3845,6 +3865,7 @@ Available SevenOS chapters:
   mini-os        SevenOS profiles
   apps           SevenOS applications
   system         network, fonts, theme, updates
+  state          SevenOS machine snapshot
   docs           complete documentation from docs/
   docs-index     quick project documentation index
   doc <name>     open one document, ex: doc architecture
@@ -3881,7 +3902,7 @@ case "${1:-}" in
     show_doc "$1"
     exit 0
     ;;
-  install|quick|commands|architecture|shortcuts|waybar|actions|server|deploy|hosting|domain|dns|core|seven-core|sevenbus|shell|ags|seven-shell|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|manual|network|fonts|language|langue|backup|iso|installer|packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services|security|shield|atlas|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
+  install|quick|commands|architecture|shortcuts|waybar|actions|server|deploy|hosting|domain|dns|core|seven-core|sevenbus|shell|ags|seven-shell|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|state|manual|network|fonts|language|langue|backup|iso|installer|packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services|security|shield|atlas|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
     if open_native_help "$1"; then
       exit 0
     fi

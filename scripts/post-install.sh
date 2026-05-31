@@ -122,7 +122,7 @@ command_check() {
     control_command="$ROOT_DIR/seven-hub/bin/seven-control-center"
   fi
 
-  for command_name in seven sevenpkg seven-country seven-files seven-hub seven-control-center seven-session seven-power seven-mini-boundaries seven-mini-boundaries-native; do
+  for command_name in seven sevenpkg seven-country seven-files seven-widgets-native seven-hub seven-control-center seven-session seven-power seven-mini-boundaries seven-mini-boundaries-native; do
     if command -v "$command_name" >/dev/null 2>&1; then
       ok_item "$command_name available"
     elif [[ -x "$HOME/.local/bin/$command_name" ]]; then
@@ -263,6 +263,14 @@ language_check() {
     warn_item "French/English language packs are incomplete"
     printf '  run: ./install.sh language\n'
     printf '  run: seven language doctor\n'
+  fi
+
+  if "$ROOT_DIR/bin/seven-language" audit --json >/dev/null 2>&1; then
+    ok_item "generated language labels match active session"
+  else
+    warn_item "some generated labels may still use the previous language"
+    printf '  run: seven language repair\n'
+    printf '  run: seven language audit\n'
   fi
 
   if command -v seven-waybar-language >/dev/null 2>&1 || [[ -x "$ROOT_DIR/bin/seven-waybar-language" ]]; then

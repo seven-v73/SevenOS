@@ -34,7 +34,8 @@ If `seven` is not installed yet, use the repository entrypoint:
 
 This applies the ergonomic baseline automatically: desktop packages, CLI, Hub,
 fonts, theme, visual layer, mini OS requirements, workspaces, profile isolation,
-rootfs metadata, Windows Bridge preparation and post-install checks.
+rootfs metadata, language projection, Windows Bridge preparation and
+post-install checks.
 
 Optional full setup:
 
@@ -54,9 +55,16 @@ After installation, check the machine:
 
 ```bash
 seven post-install
+seven language doctor
+seven language audit
+seven first-run verify
 seven doctor
 seven profile-rootfs verify all
 ```
+
+`seven language audit` is required because SevenOS generates parts of the
+interface at runtime. It catches stale Waybar, Prism, widget and Mini OS labels
+after a language switch, profile activation, theme repair or fresh install.
 
 Before pushing the repository:
 

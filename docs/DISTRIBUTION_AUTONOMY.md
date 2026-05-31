@@ -139,6 +139,11 @@ surfaces can run without making the system feel blocked or backend-first.
 that snapshot for dashboards and only execute `seven smoke doctor` when the user
 requests an explicit validation.
 
+The same snapshot also embeds `language`, `language_audit` and `first_run`.
+Public surfaces should read those blocks before launching separate language or
+first-run commands. This keeps language/theme/profile dashboards responsive
+while still exposing the strict contracts used by release gates.
+
 `seven doctor release` uses this smoke gate by default. The full UX audit is
 reserved for explicit release work:
 

@@ -291,6 +291,77 @@ def gtk_app_css(
       color: @seven_muted;
     }}
 
+    .seven-toolbar,
+    .seven-action-strip {{
+      color: @seven_text;
+      background: alpha(@seven_panel_2, 0.72);
+      border: 1px solid @seven_border;
+      border-radius: 18px;
+      padding: 8px;
+    }}
+
+    .seven-action-row {{
+      color: @seven_text;
+      background: alpha(@seven_panel_2, 0.54);
+      border: 1px solid alpha(@seven_border, 0.82);
+      border-radius: 16px;
+      padding: 10px 12px;
+    }}
+
+    .seven-action-row:hover {{
+      background: @seven_hover;
+      border-color: alpha(@seven_accent, 0.24);
+    }}
+
+    .seven-status-banner,
+    .seven-feedback {{
+      color: @seven_text;
+      background:
+        linear-gradient(135deg, alpha(@seven_accent, 0.13), alpha(@seven_secondary, 0.08)),
+        alpha(@seven_panel_2, 0.66);
+      border: 1px solid alpha(@seven_accent, 0.22);
+      border-radius: 18px;
+      padding: 12px 14px;
+    }}
+
+    .seven-empty-state {{
+      color: @seven_muted;
+      background:
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_wallpaper_accent, 0.10), transparent 42%),
+        alpha(@seven_panel_2, 0.46);
+      border: 1px dashed alpha(@seven_border, 0.92);
+      border-radius: 20px;
+      padding: 18px;
+    }}
+
+    .seven-state-pill,
+    .seven-badge {{
+      min-height: 24px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.12);
+      border: 1px solid alpha(@seven_accent, 0.22);
+      border-radius: 999px;
+      padding: 2px 10px;
+    }}
+
+    .seven-state-ok {{
+      color: @seven_success;
+      background: alpha(@seven_success, 0.10);
+      border-color: alpha(@seven_success, 0.24);
+    }}
+
+    .seven-state-warn {{
+      color: @seven_warning;
+      background: alpha(@seven_warning, 0.10);
+      border-color: alpha(@seven_warning, 0.24);
+    }}
+
+    .seven-state-danger {{
+      color: @seven_danger;
+      background: alpha(@seven_danger, 0.10);
+      border-color: alpha(@seven_danger, 0.24);
+    }}
+
     button.seven-button,
     .seven-button,
     button.seven-pill,
@@ -323,6 +394,30 @@ def gtk_app_css(
       color: @seven_danger;
       background: alpha(@seven_danger, 0.10);
       border-color: alpha(@seven_danger, 0.20);
+    }}
+
+    button.seven-icon-button,
+    .seven-icon-button {{
+      min-width: 36px;
+      min-height: 36px;
+      border-radius: 999px;
+      padding: 0;
+    }}
+
+    progressbar.seven-progress trough,
+    .seven-progress trough {{
+      min-height: 6px;
+      border-radius: 999px;
+      background: alpha(@seven_text, 0.08);
+      border: 0;
+    }}
+
+    progressbar.seven-progress progress,
+    .seven-progress progress {{
+      min-height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, @seven_accent, @seven_secondary);
+      border: 0;
     }}
 
     button:focus,

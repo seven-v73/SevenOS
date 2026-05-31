@@ -52,6 +52,13 @@ from pathlib import Path
 
 root = Path(os.environ["SEVENOS_ROOT"]).resolve()
 
+def run_json(command):
+    try:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True, timeout=10, check=False)
+        return json.loads(result.stdout) if result.stdout.strip() else {}
+    except Exception:
+        return {}
+
 def git_dirty():
     if str(root) == "/opt/SevenOS":
         return 0
@@ -61,7 +68,16 @@ def git_dirty():
     except Exception:
         return 0 if not (root / ".git").exists() else 1
 
+def file_has(path, needle):
+    try:
+        return needle in (root / path).read_text(errors="ignore")
+    except Exception:
+        return False
+
 dirty = git_dirty()
+language = run_json([str(root / "bin/seven-language"), "doctor", "--json"])
+language_audit = run_json([str(root / "bin/seven-language"), "audit", "--json"])
+first_run_language_keys = file_has("bin/seven-public-studio", 'key="language-contract"') and file_has("bin/seven-public-studio", 'key="runtime-labels"')
 iso_ready = (
     (root / "archiso/profile/profiledef.sh").is_file()
     and (root / "archiso/localrepo/x86_64/sevenos-local.db.tar.gz").is_file()
@@ -72,9 +88,10 @@ checks = [
     {"key": "graphical-installer", "state": "OK" if iso_ready else "PART", "title": "Graphical installer and live ISO route", "detail": "Local Calamares repository and archiso profile are present." if iso_ready else "ISO runtime files need review.", "command": "seven installer release"},
     {"key": "update-rollback", "state": "OK", "title": "Update and rollback route", "detail": "SevenOS update exposes snapshot, report and rollback contracts.", "command": "seven update doctor"},
     {"key": "support-route", "state": "OK", "title": "Support and diagnostics route", "detail": "SevenOS support bundle route is present.", "command": "seven support doctor"},
+    {"key": "language-contract", "state": "OK" if language.get("ready") and language_audit.get("state") == "ok" and first_run_language_keys else "PART", "title": "Language and runtime labels", "detail": f"{language.get('current', 'unknown')} · audit={language_audit.get('state', 'unknown')} · first-run keys={'yes' if first_run_language_keys else 'no'}.", "command": "seven language doctor && seven language audit && seven first-run verify"},
     {"key": "hardware-matrix", "state": "PART", "title": "Hardware validation matrix", "detail": "Manual Intel/AMD/NVIDIA, Wi-Fi, Bluetooth, suspend and USB tests are still required.", "command": "seven production plan"},
 ]
-score = 92 if dirty == 0 and iso_ready else 86 if iso_ready else 78
+score = 92 if dirty == 0 and iso_ready and language.get("ready") and language_audit.get("state") == "ok" and first_run_language_keys else 86 if iso_ready else 78
 state = "public-beta-ready" if score >= 92 else "beta-candidate" if score >= 82 else "needs-hardening"
 print(json.dumps({
     "schema": "sevenos.production-readiness.v1",
@@ -110,6 +127,10 @@ PY
   local pid_update=$!
   json_to_file "$tmp/support.json" env SEVENOS_SUPPORT_FAST=1 "$ROOT_DIR/scripts/support.sh" json &
   local pid_support=$!
+  json_to_file "$tmp/language.json" "$ROOT_DIR/bin/seven-language" doctor --json &
+  local pid_language=$!
+  json_to_file "$tmp/language-audit.json" "$ROOT_DIR/bin/seven-language" audit --json &
+  local pid_language_audit=$!
   if [[ "$fast_mode" == "1" ]]; then
     printf '{"schema":"sevenos.public-studio.v1","state":"public-ready","score":100}\n' >"$tmp/first-run.json" &
     local pid_first_run=$!
@@ -126,7 +147,7 @@ PY
     local pid_profile=$!
   fi
 
-  wait "$pid_release" "$pid_distribution" "$pid_installer" "$pid_update" "$pid_support" "$pid_first_run" "$pid_theme" "$pid_profile" || true
+  wait "$pid_release" "$pid_distribution" "$pid_installer" "$pid_update" "$pid_support" "$pid_language" "$pid_language_audit" "$pid_first_run" "$pid_theme" "$pid_profile" || true
 
   SEVENOS_ROOT="$ROOT_DIR" \
   RELEASE_JSON="$tmp/release.json" \
@@ -134,6 +155,8 @@ PY
   INSTALLER_JSON="$tmp/installer.json" \
   UPDATE_JSON="$tmp/update.json" \
   SUPPORT_JSON="$tmp/support.json" \
+  LANGUAGE_JSON="$tmp/language.json" \
+  LANGUAGE_AUDIT_JSON="$tmp/language-audit.json" \
   FIRST_RUN_JSON="$tmp/first-run.json" \
   THEME_JSON="$tmp/theme.json" \
   PROFILE_JSON="$tmp/profile.json" \
@@ -180,6 +203,8 @@ distribution = load("DISTRIBUTION_JSON")
 installer = load("INSTALLER_JSON")
 update = load("UPDATE_JSON")
 support = load("SUPPORT_JSON")
+language = load("LANGUAGE_JSON")
+language_audit = load("LANGUAGE_AUDIT_JSON")
 first_run = load("FIRST_RUN_JSON")
 theme = load("THEME_JSON")
 profile = load("PROFILE_JSON")
@@ -217,6 +242,11 @@ trust_contract = {
 }
 trust_score = round(sum(1 for value in trust_contract.values() if value) / len(trust_contract) * 100)
 
+first_run_checks = (first_run.get("fresh_install") or {}).get("checks", [])
+first_run_keys = {item.get("key") for item in first_run_checks if isinstance(item, dict)}
+first_run_language_ready = {"language-contract", "runtime-labels"}.issubset(first_run_keys)
+first_run_ready = first_run.get("score", 0) >= 90 or first_run.get("state") in {"public-ready", "ready"}
+
 checks = [
     {
         "key": "release-gates",
@@ -244,9 +274,9 @@ checks = [
     },
     {
         "key": "new-machine",
-        "state": "OK" if first_run.get("score", 0) >= 90 or first_run.get("state") in {"public-ready", "ready"} else "PART",
+        "state": "OK" if first_run_ready and first_run_language_ready else "PART",
         "title": "Fresh install verifier",
-        "detail": f"{first_run.get('state', 'unknown')} at {first_run.get('score', 0)}%.",
+        "detail": f"{first_run.get('state', 'unknown')} at {first_run.get('score', 0)}%; language keys={'yes' if first_run_language_ready else 'no'}.",
         "command": "seven first-run verify --json",
         "weight": 1.1,
     },
@@ -265,6 +295,14 @@ checks = [
         "detail": f"{support.get('state', 'unknown')} at {support.get('score', 0)}%.",
         "command": "seven support doctor --json",
         "weight": 0.9,
+    },
+    {
+        "key": "language-contract",
+        "state": "OK" if language.get("ready") and language_audit.get("state") == "ok" and first_run_language_ready else "PART",
+        "title": "Language and runtime labels",
+        "detail": f"{language.get('current', 'unknown')} · doctor={language.get('state', 'unknown')} · audit={language_audit.get('state', 'unknown')} · first-run keys={'yes' if first_run_language_ready else 'no'}.",
+        "command": "seven language doctor && seven language audit && seven first-run verify",
+        "weight": 1.0,
     },
     {
         "key": "hardware-readiness",

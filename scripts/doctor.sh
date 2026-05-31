@@ -306,7 +306,7 @@ PY
 }
 
 release_payload() {
-  local doctor_json git_dirty design_state identity_state smoke_state surfaces_state quality_state ux_state installer_json atlas_json profile_json profile_health_json profile_migration_json bridge_json status_json git_root git_scope
+  local doctor_json git_dirty design_state identity_state smoke_state surfaces_state quality_state ux_state installer_json atlas_json profile_json profile_health_json profile_migration_json bridge_json status_json language_json language_audit_json first_run_json git_root git_scope
   doctor_json="$(SEVENOS_DOCTOR_AREA=all json_payload)"
   git_root="$(release_git_root)"
   git_scope="$(release_git_scope)"
@@ -332,8 +332,11 @@ release_payload() {
   profile_migration_json="$("$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --json 2>/dev/null || printf '{}')"
   bridge_json="$("$ROOT_DIR/scripts/mini-os-relay.sh" doctor --json 2>/dev/null || printf '{}')"
   status_json="$("$ROOT_DIR/scripts/status.sh" --json 2>/dev/null || printf '{}')"
+  language_json="$("$ROOT_DIR/bin/seven-language" doctor --json 2>/dev/null || printf '{}')"
+  language_audit_json="$("$ROOT_DIR/bin/seven-language" audit --json 2>/dev/null || printf '{}')"
+  first_run_json="$("$ROOT_DIR/bin/seven-public-studio" fresh-install --json 2>/dev/null || printf '{}')"
   DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" GIT_ROOT="$git_root" GIT_SCOPE="$git_scope" DESIGN_STATE="$design_state" IDENTITY_STATE="$identity_state" SMOKE_STATE="$smoke_state" SURFACES_STATE="$surfaces_state" QUALITY_STATE="$quality_state" UX_STATE="$ux_state" \
-  INSTALLER_JSON="$installer_json" ATLAS_JSON="$atlas_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" STATUS_JSON="$status_json" \
+  INSTALLER_JSON="$installer_json" ATLAS_JSON="$atlas_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" STATUS_JSON="$status_json" LANGUAGE_JSON="$language_json" LANGUAGE_AUDIT_JSON="$language_audit_json" FIRST_RUN_JSON="$first_run_json" \
   python - <<'PY'
 import json
 import os
@@ -353,9 +356,15 @@ profile_health = load("PROFILE_HEALTH_JSON", {})
 profile_migration = load("PROFILE_MIGRATION_JSON", {})
 bridge = load("BRIDGE_JSON", {})
 status = load("STATUS_JSON", {})
+language = load("LANGUAGE_JSON", {})
+language_audit = load("LANGUAGE_AUDIT_JSON", {})
+first_run = load("FIRST_RUN_JSON", {})
 git_dirty = int(os.environ.get("GIT_DIRTY", "0") or 0)
 git_root = os.environ.get("GIT_ROOT", "")
 git_scope = os.environ.get("GIT_SCOPE", "repository")
+first_run_checks = (first_run.get("fresh_install") or {}).get("checks", [])
+first_run_keys = {item.get("key") for item in first_run_checks if isinstance(item, dict)}
+first_run_language_ready = {"language-contract", "runtime-labels"}.issubset(first_run_keys)
 
 checks = []
 def add(key, state, title, detail, command, severity="medium"):
@@ -375,6 +384,7 @@ add("identity-experience", os.environ.get("IDENTITY_STATE", "PART"), "SevenOS id
 add("smoke-check", os.environ.get("SMOKE_STATE", "PART"), "Fast product smoke gate", "SevenOS public contracts respond quickly.", "seven smoke doctor", "high")
 add("surfaces-check", os.environ.get("SURFACES_STATE", "PART"), "Native surfaces and old-screen guard", "SevenOS visible surfaces are native and legacy screens stay blocked.", "seven surfaces doctor", "high")
 add("public-quality", os.environ.get("QUALITY_STATE", "PART"), "Public experience aggregate", "Health, update, Shell, mini OS and Server/Deploy gates are coherent for users.", "seven quality doctor", "high")
+add("language-contract", "OK" if language.get("ready") and language_audit.get("state") == "ok" and first_run_language_ready else "PART", "Language and runtime labels", f"{language.get('current', 'unknown')} · doctor={language.get('state', 'unknown')} · audit={language_audit.get('state', 'unknown')} · first-run keys={'yes' if first_run_language_ready else 'no'}", "seven language doctor && seven language audit && seven first-run verify", "high")
 ux_state = os.environ.get("UX_STATE", "PART")
 ux_detail = "Full developer UX audit passed." if ux_state == "OK" else ("Set SEVENOS_RELEASE_DEEP=1 to run the full developer UX audit." if ux_state == "SKIP" else "Full developer UX audit failed or timed out.")
 add("ux-check", ux_state, "Deep UX coherence", ux_detail, "SEVENOS_RELEASE_DEEP=1 scripts/ux-check.sh", "medium")

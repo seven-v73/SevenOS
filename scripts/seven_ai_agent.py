@@ -24,7 +24,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from seven_ai_provider import local_answer
+from seven_ai_provider import answer as provider_answer
+from seven_ai_provider import local_answer, model_runtime_status
 from seven_i18n import language_code as sevenos_language_code
 
 
@@ -32,6 +33,26 @@ ROOT_DIR = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parents[
 DRY_RUN = os.environ.get("SEVENOS_DRY_RUN") == "1"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
 WAYBAR_CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
+AI_CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos"
+AI_MANAGER_CACHE = AI_CACHE_DIR / "ai-manager.json"
+
+
+def run_json(command: list[str], fallback: Any, timeout: float = 8.0) -> Any:
+    try:
+        result = subprocess.run(
+            command,
+            cwd=str(ROOT_DIR),
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT_DIR)},
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return fallback
+        return json.loads(result.stdout)
+    except Exception:
+        return fallback
 
 
 @dataclass
@@ -395,7 +416,7 @@ def parse_intent(text: str) -> Intent:
     if kill_match:
         return Intent("KILL_PROCESS", kill_match.group(2).strip(), 0.86, "SYSTEM", True, "Stopping processes can lose work.")
 
-    if any(token in raw for token in ("mon wifi ne marche pas", "wifi ne marche pas", "repare wifi", "répare wifi", "fix wifi", "repair wifi")):
+    if any(token in raw for token in ("mon wifi ne marche pas", "wifi ne marche pas", "repare wifi", "répare wifi", "repare le wifi", "répare le wifi", "fix wifi", "repair wifi")):
         return Intent("REPAIR_NETWORK", "wifi", 0.9, "SYSTEM", True, "Network repair may restart NetworkManager.")
 
     diagnose_match = re.match(r"^(diagnose|diagnostic|check|analyse)\s*(system|système|systeme|network|wifi|disk|disque|services)?", raw)
@@ -670,6 +691,23 @@ def workflow_plan(language: str | None = None) -> dict[str, Any]:
 
 
 def llm_contract() -> dict[str, Any]:
+    runtime = model_runtime_status()
+    if runtime["ollama"]["active"] and runtime["ollama"]["available"]:
+        ollama_state = "active"
+    elif runtime["ollama"]["available"]:
+        ollama_state = "available"
+    elif runtime["ollama"]["installed"]:
+        ollama_state = "installed-stopped"
+    else:
+        ollama_state = "optional-missing"
+    if runtime["llama_cpp"]["active"] and runtime["llama_cpp"]["available"]:
+        llama_state = "active"
+    elif runtime["llama_cpp"]["available"]:
+        llama_state = "available"
+    elif runtime["llama_cpp"]["installed"]:
+        llama_state = "installed-needs-model"
+    else:
+        llama_state = "planned"
     return {
         "schema": "sevenos.ai.llm-contract.v1",
         "default_mode": "local-first",
@@ -685,7 +723,26 @@ def llm_contract() -> dict[str, Any]:
         "providers": [
             {"key": "seven-local", "status": "active", "privacy": "local", "cost": "none", "network": "none"},
             {"key": "rules", "status": "active", "privacy": "local", "cost": "none", "network": "none"},
+            {
+                "key": "ollama",
+                "status": ollama_state,
+                "privacy": "local",
+                "cost": "none",
+                "network": "none",
+                "model": runtime["ollama"]["model"],
+                "enable": "SEVENAI_PROVIDER=ollama seven ai provider \"question\" --json",
+            },
+            {
+                "key": "llama.cpp",
+                "status": llama_state,
+                "privacy": "local",
+                "cost": "none",
+                "network": "none",
+                "model": runtime["llama_cpp"]["model"],
+                "enable": "SEVENAI_PROVIDER=llama.cpp seven ai provider \"question\" --json",
+            },
         ],
+        "runtime": runtime,
         "web_policy": {
             "default": "disabled",
             "enable": "SEVENAI_WEB=1 seven ai web \"query\" --json",
@@ -693,6 +750,259 @@ def llm_contract() -> dict[str, Any]:
             "safety": "Do not send system context to the web unless the user explicitly asks.",
         },
     }
+
+
+def model_manager() -> dict[str, Any]:
+    runtime = model_runtime_status()
+    actions = []
+    ollama = runtime["ollama"]
+    if ollama["installed"] and not ollama["running"]:
+        actions.append({
+            "key": "ollama.start",
+            "title": "Start Ollama local model service",
+            "command": "ollama serve",
+            "safety": "USER_SERVICE",
+            "apply": False,
+            "reason": "Ollama is installed but not currently running.",
+        })
+    if ollama["running"] and not ollama["models"]:
+        actions.append({
+            "key": "ollama.pull.default",
+            "title": "Download the default local model",
+            "command": f"ollama pull {ollama['model']}",
+            "safety": "NETWORK_DOWNLOAD",
+            "apply": False,
+            "reason": "Ollama is running but the default SevenAI model is not listed locally.",
+        })
+    llama_cpp = runtime["llama_cpp"]
+    if llama_cpp["installed"] and not llama_cpp["model"]:
+        actions.append({
+            "key": "llama_cpp.model",
+            "title": "Select a llama.cpp model file",
+            "command": "export SEVENAI_LLAMA_MODEL=/path/to/model.gguf",
+            "safety": "CONFIG",
+            "apply": False,
+            "reason": "llama.cpp is installed but SevenAI has no GGUF model path configured.",
+        })
+    return {
+        "schema": "sevenos.ai.model-manager.v1",
+        "runtime": runtime,
+        "recommended_provider": "seven-local" if not ollama["available"] else "ollama",
+        "actions": actions,
+        "guardrail": "Model providers explain and summarize. SevenAI intents, confirmations and SevenPkg still execute actions.",
+    }
+
+
+def intent_domain(intent: Intent) -> str:
+    return {
+        "OPEN_APP": "apps",
+        "INSTALL_PACKAGE": "install",
+        "SET_THEME": "theme",
+        "SWITCH_WORKSPACE": "session",
+        "KILL_PROCESS": "session",
+        "CHECK_NETWORK": "network",
+        "REPAIR_NETWORK": "network",
+        "DIAGNOSE_SYSTEM": "health",
+        "OPTIMIZE_SYSTEM": "repair",
+        "OPTIMIZE_WORKFLOW": "workflow",
+        "PLAN_MISSION": "missions",
+        "SHOW_SHORTCUTS": "help",
+        "EXPLAIN_SEVENOS": "help",
+        "WEB_QUERY": "research",
+        "RESEARCH_QUERY": "research",
+        "SYSTEM_STATUS": "health",
+    }.get(intent.intent, "guidance")
+
+
+def intent_command(intent: Intent) -> str:
+    if intent.intent == "OPEN_APP":
+        app = match_app(intent.target, app_registry())
+        return app.command if app else f"seven ai open {shlex.quote(intent.target)}"
+    if intent.intent == "INSTALL_PACKAGE":
+        return f"sevenpkg install {shlex.quote(intent.target)}"
+    if intent.intent == "SET_THEME":
+        return f"./install.sh theme {shlex.quote(intent.target)}"
+    if intent.intent == "SWITCH_WORKSPACE":
+        dispatch_target = {"next": "r+1", "previous": "r-1"}.get(intent.target, intent.target)
+        return f"hyprctl dispatch workspace {shlex.quote(dispatch_target)}"
+    if intent.intent == "KILL_PROCESS":
+        candidates = process_names_for_target(intent.target, app_registry())
+        return " || ".join(f"pkill -x -- {shlex.quote(name)}" for name in candidates) if candidates else f"pkill -x -- {shlex.quote(intent.target)}"
+    if intent.intent == "CHECK_NETWORK":
+        return "seven ai diagnose network --json"
+    if intent.intent == "REPAIR_NETWORK":
+        return "systemctl restart NetworkManager.service"
+    if intent.intent == "DIAGNOSE_SYSTEM":
+        return f"seven ai diagnose {shlex.quote(intent.target or 'system')} --json"
+    if intent.intent == "OPTIMIZE_SYSTEM":
+        return "seven ai playbook slow_system --json"
+    if intent.intent == "OPTIMIZE_WORKFLOW":
+        return "seven ai workflow --json"
+    if intent.intent == "PLAN_MISSION":
+        return f"seven experience-center intent {shlex.quote(intent.target)} --gui"
+    if intent.intent == "SHOW_SHORTCUTS":
+        return "seven ai shortcuts --json"
+    if intent.intent == "EXPLAIN_SEVENOS":
+        return "seven ai knowledge --json"
+    if intent.intent == "WEB_QUERY":
+        return f"SEVENAI_WEB=1 seven ai web {shlex.quote(intent.target)} --json"
+    if intent.intent == "RESEARCH_QUERY":
+        return f"SEVENAI_WEB=1 seven ai research {shlex.quote(intent.target)} --json"
+    if intent.intent == "SYSTEM_STATUS":
+        return "seven state --json"
+    return "seven ai manager --json"
+
+
+def intent_prechecks(intent: Intent) -> list[str]:
+    checks = {
+        "INSTALL_PACKAGE": [f"sevenpkg resolve {shlex.quote(intent.target)} --json", "sevenpkg doctor --json"],
+        "SET_THEME": ["seven theme doctor --json", "test -x ./install.sh"],
+        "REPAIR_NETWORK": ["seven ai diagnose network --json", "systemctl is-active NetworkManager.service"],
+        "KILL_PROCESS": [f"pgrep -a {shlex.quote(intent.target)} || true"],
+        "OPTIMIZE_SYSTEM": ["seven ai diagnose system --json", "seven performance-gate --json"],
+        "PLAN_MISSION": ["seven missions --json", "seven profile health --json"],
+        "WEB_QUERY": ["test \"$SEVENAI_WEB\" = \"1\""],
+        "RESEARCH_QUERY": ["test \"$SEVENAI_WEB\" = \"1\""],
+    }
+    return checks.get(intent.intent, ["seven ai manager --json"])
+
+
+def intent_rollback(intent: Intent) -> list[str]:
+    rollback = {
+        "INSTALL_PACKAGE": [f"sevenpkg remove {shlex.quote(intent.target)}"],
+        "SET_THEME": ["seven theme restore --last || seven theme doctor --repair"],
+        "REPAIR_NETWORK": ["systemctl restart NetworkManager.service"],
+        "KILL_PROCESS": ["Rouvrir l’application depuis Seven Files/Spotlight si nécessaire."],
+        "OPTIMIZE_SYSTEM": ["seven restore latest --gui", "seven repair undo --last"],
+    }
+    return rollback.get(intent.intent, [])
+
+
+def operation_plan(text: str) -> dict[str, Any]:
+    intent = parse_intent(text)
+    confirmation = confirmation_contract(intent)
+    domain = intent_domain(intent)
+    command = intent_command(intent)
+    changing = intent.safety.upper() in {"ROOT", "SYSTEM"}
+    return {
+        "schema": "sevenos.ai.operation-plan.v1",
+        "input": text,
+        "language": active_language(),
+        "domain": domain,
+        "intent": asdict(intent),
+        "summary": {
+            "title": f"{domain}:{intent.intent.lower()}",
+            "command": command,
+            "safe_preview": True,
+            "requires_apply": bool(intent.needs_apply),
+            "requires_confirmation": changing,
+        },
+        "contract": {
+            "observe": intent_prechecks(intent),
+            "explain": intent.reason,
+            "preview": command,
+            "confirm": confirmation,
+            "execute": f"seven ai {shlex.quote(text)} --apply",
+            "rollback": intent_rollback(intent),
+        },
+        "guardrails": [
+            "SevenAI ne lance pas d’action root ou système sans --apply.",
+            "Les installations passent par SevenPkg et son catalogue de domaines.",
+            "Les providers LLM expliquent et résument; l’exécution reste routée par les commandes SevenOS.",
+        ],
+    }
+
+
+def manager_domains() -> list[dict[str, Any]]:
+    return [
+        {"key": "health", "title": "Santé système", "command": "seven health --json", "safety": "SAFE", "scope": "system"},
+        {"key": "updates", "title": "Mises à jour", "command": "seven update check", "safety": "SAFE", "scope": "system"},
+        {"key": "repair", "title": "Réparation guidée", "command": "seven doctor open", "safety": "SAFE", "scope": "system"},
+        {"key": "apps", "title": "Applications", "command": "seven store", "safety": "SAFE", "scope": "apps"},
+        {"key": "install", "title": "Installation logicielle", "command": "sevenpkg install <app>", "safety": "ROOT_CONFIRM", "scope": "apps"},
+        {"key": "files", "title": "Fichiers", "command": "seven files", "safety": "SAFE", "scope": "files"},
+        {"key": "network", "title": "Réseau", "command": "seven ai diagnose network --json", "safety": "SAFE", "scope": "devices"},
+        {"key": "theme", "title": "Thème et rendu", "command": "seven theme doctor --json", "safety": "SAFE", "scope": "appearance"},
+        {"key": "profiles", "title": "Mini OS", "command": "seven profile health --json", "safety": "SAFE", "scope": "mini-os"},
+        {"key": "security", "title": "Sécurité", "command": "seven shield audit", "safety": "SAFE", "scope": "security"},
+        {"key": "privacy", "title": "Confidentialité", "command": "seven privacy-report --json", "safety": "SAFE", "scope": "privacy"},
+        {"key": "installer", "title": "Installation SevenOS", "command": "seven installer release --json", "safety": "SAFE", "scope": "installer"},
+        {"key": "reader", "title": "Lecture et documents", "command": "seven reader --json", "safety": "SAFE", "scope": "documents"},
+        {"key": "windows", "title": "Apps Windows", "command": "seven-wincompat doctor --json", "safety": "SAFE", "scope": "compatibility"},
+        {"key": "usb", "title": "USB Writer", "command": "seven usb status --json", "safety": "SAFE", "scope": "devices"},
+    ]
+
+
+def os_manager() -> dict[str, Any]:
+    if os.environ.get("SEVENAI_MANAGER_REFRESH") != "1":
+        try:
+            if AI_MANAGER_CACHE.exists() and time.time() - AI_MANAGER_CACHE.stat().st_mtime < int(os.environ.get("SEVENAI_MANAGER_CACHE_TTL", "240")):
+                cached = json.loads(AI_MANAGER_CACHE.read_text(encoding="utf-8"))
+                cached["cached"] = True
+                return cached
+        except Exception:
+            pass
+    actions = run_json([str(ROOT_DIR / "scripts/actions.sh"), "--json"], {"actions": []}, timeout=12)
+    control = run_json([str(ROOT_DIR / "scripts/control-plane.sh"), "plan", "--json"], {"actions": [], "items": [], "overall": 0}, timeout=32)
+    quality = run_json([str(ROOT_DIR / "scripts/public-experience.sh"), "doctor", "--json"], {"score": 0, "state": "unknown", "issues": []}, timeout=32)
+    health = run_json([str(ROOT_DIR / "bin/seven"), "health", "--json"], {"score": 0, "state": "unknown"}, timeout=24)
+    profiles = run_json([str(ROOT_DIR / "bin/seven"), "profile", "health", "--json"], {"summary": {}}, timeout=24)
+    model = model_manager()
+    registry = actions.get("actions") if isinstance(actions.get("actions"), list) else []
+    safe_actions = [item for item in registry if item.get("impact") == "safe"]
+    changing_actions = [item for item in registry if item.get("impact") != "safe"]
+    domains = manager_domains()
+    ready_domains = len(domains)
+    score_parts = [
+        int(quality.get("score", 0) or 0),
+        int(health.get("score", health.get("summary", {}).get("score", 0)) or 0),
+        100 if model["runtime"]["default"] == "seven-local" else 80,
+        100 if len(registry) >= 50 else 70,
+    ]
+    score = round(sum(score_parts) / len(score_parts))
+    payload = {
+        "schema": "sevenos.ai.manager.v1",
+        "cached": False,
+        "state": "manager-ready" if score >= 90 else "manager-needs-attention",
+        "score": score,
+        "principle": "SevenAI manages SevenOS through contracts: observe, explain, preview, confirm, execute through SevenOS commands.",
+        "operator": {
+            "command": "seven ai operate \"<demande>\" --json",
+            "contract": ["observe", "explain", "preview", "confirm", "execute", "rollback"],
+            "default_mode": "preview",
+        },
+        "domains": domains,
+        "coverage": {
+            "domains": len(domains),
+            "ready_domains": ready_domains,
+            "action_registry": len(registry),
+            "safe_actions": len(safe_actions),
+            "confirmation_actions": len(changing_actions),
+            "playbooks": len(PLAYBOOKS),
+        },
+        "status": {
+            "health": health,
+            "public_quality": {"state": quality.get("state"), "score": quality.get("score"), "issues": len(quality.get("issues", [])) if isinstance(quality.get("issues"), list) else 0},
+            "profiles": profiles.get("summary", profiles),
+            "control": {
+                "overall": control.get("overall", control.get("score", 0)),
+                "items": len(control.get("items", control.get("actions", []))) if isinstance(control, dict) else 0,
+            },
+            "models": model,
+        },
+        "next": [
+            "Use `seven ai doctor --json` for assistant readiness.",
+            "Use `seven ai manager --json` for the OS management map.",
+            "Use `seven ai playbook <name> --json` before system-changing repairs.",
+            "Use `SEVENAI_PROVIDER=ollama` only when the local model runtime is running and desired.",
+        ],
+    }
+    try:
+        AI_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        AI_MANAGER_CACHE.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+    return payload
 
 
 def web_query(query: str, *, enabled: bool) -> dict[str, Any]:
@@ -966,6 +1276,61 @@ def remember(event: dict[str, Any]) -> None:
         pass
 
 
+def memory_health(conn: sqlite3.Connection) -> dict[str, Any]:
+    total = int(conn.execute("select count(*) from events").fetchone()[0] or 0)
+    top_intents = [
+        dict(row)
+        for row in conn.execute(
+            "select intent, count(*) as count from events group by intent order by count desc limit 8"
+        ).fetchall()
+    ]
+    noisy = [item for item in top_intents if int(item.get("count", 0) or 0) >= 500]
+    return {
+        "total_events": total,
+        "retention": "compact-recommended" if total > 5000 or noisy else "ok",
+        "noisy_intents": noisy[:4],
+        "compact_command": "seven ai memory --compact --json",
+    }
+
+
+def compact_memory(max_events: int = 1500) -> dict[str, Any]:
+    try:
+        with db() as conn:
+            before = int(conn.execute("select count(*) from events").fetchone()[0] or 0)
+            conn.execute(
+                "delete from events where id in ("
+                "select id from ("
+                "select id, row_number() over ("
+                "partition by input, intent, target, safety, applied, source order by id desc"
+                ") as rn from events"
+                ") where rn > 20)"
+            )
+            if before > max_events:
+                conn.execute(
+                    "delete from events where id not in (select id from events order by id desc limit ?)",
+                    (max_events,),
+                )
+            conn.execute("delete from research_cache where ts < ?", (int(time.time()) - 60 * 60 * 24 * 45,))
+            conn.commit()
+            conn.execute("vacuum")
+            after = int(conn.execute("select count(*) from events").fetchone()[0] or 0)
+            health = memory_health(conn)
+    except sqlite3.Error as exc:
+        return {
+            "schema": "sevenos.ai.memory-compact.v1",
+            "ok": False,
+            "error": str(exc),
+        }
+    return {
+        "schema": "sevenos.ai.memory-compact.v1",
+        "ok": True,
+        "before_events": before,
+        "after_events": after,
+        "removed_events": max(before - after, 0),
+        "health": health,
+    }
+
+
 def read_memory(limit: int = 12) -> dict[str, Any]:
     try:
         with db() as conn:
@@ -982,9 +1347,16 @@ def read_memory(limit: int = 12) -> dict[str, Any]:
                     "select intent, count(*) as count from events group by intent order by count desc limit 8"
                 ).fetchall()
             ]
+            health = memory_health(conn)
     except sqlite3.Error:
-        events, top_intents = [], []
-    return {"schema": "sevenos.ai.memory.v2", "store": str(db_path()), "events": list(reversed(events)), "summary": {"top_intents": top_intents}}
+        events, top_intents, health = [], [], {"total_events": 0, "retention": "unknown", "noisy_intents": []}
+    return {
+        "schema": "sevenos.ai.memory.v2",
+        "store": str(db_path()),
+        "events": list(reversed(events)),
+        "summary": {"top_intents": top_intents},
+        "health": health,
+    }
 
 
 def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
@@ -1034,7 +1406,7 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
         diag = diagnostics(intent.target)
         result["result"] = {"applied": False, "diagnostics": diag, "provider": local_answer(text, {"diagnostics": diag, "system_context": system_context(), "language": active_language()})}
     elif intent.intent == "INSTALL_PACKAGE":
-        command = ["sevenpkg", "install", intent.target] if intent.target == "forge" else ["sudo", "pacman", "-S", "--needed", intent.target]
+        command = [str(ROOT_DIR / "bin/sevenpkg"), "install", intent.target]
         result["action"] = {"type": "install_package", "target": intent.target, "command": " ".join(command)}
         result["result"] = run(command, apply=effective_apply, cwd=ROOT_DIR)
     elif intent.intent == "OPTIMIZE_SYSTEM":
@@ -1194,20 +1566,23 @@ def main() -> int:
     apply_flag = "--apply" in raw_args
     yes_flag = "--yes" in raw_args
     web_flag = "--web" in raw_args
-    raw_args = [arg for arg in raw_args if arg not in ("--json", "--apply", "--yes", "--web")]
+    compact_flag = "--compact" in raw_args
+    raw_args = [arg for arg in raw_args if arg not in ("--json", "--apply", "--yes", "--web", "--compact")]
     parser = argparse.ArgumentParser(prog="seven-ai-agent")
-    parser.add_argument("action", nargs="?", default="ask", choices=("ask", "run", "intent", "apps", "context", "memory", "knowledge", "shortcuts", "workflow", "llm", "web", "research", "diagnose", "playbook", "provider"))
+    parser.add_argument("action", nargs="?", default="ask", choices=("ask", "run", "intent", "operate", "apps", "context", "memory", "knowledge", "shortcuts", "workflow", "llm", "models", "manager", "web", "research", "diagnose", "playbook", "provider"))
     parser.add_argument("text", nargs=argparse.REMAINDER)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--yes", action="store_true")
     parser.add_argument("--web", action="store_true")
+    parser.add_argument("--compact", action="store_true")
     parser.add_argument("--limit", type=int, default=12)
     args = parser.parse_args(raw_args)
     args.json = args.json or json_flag
     args.apply = args.apply or apply_flag
     args.yes = args.yes or yes_flag
     args.web = args.web or web_flag
+    args.compact = args.compact or compact_flag
 
     if args.action == "apps":
         data = {"schema": "sevenos.ai.apps.v1", "apps": [asdict(app) for app in app_registry()]}
@@ -1218,8 +1593,13 @@ def main() -> int:
         print(json.dumps(data, indent=2) if args.json else f"Load: {data['load']['1m']:.2f} · processes: {len(data['process_sample'])}")
         return 0
     if args.action == "memory":
-        data = read_memory(args.limit)
-        print(json.dumps(data, indent=2) if args.json else "\n".join(f"{item.get('intent')} {item.get('target')}" for item in data["events"]))
+        data = compact_memory() if args.compact else read_memory(args.limit)
+        if args.json:
+            print(json.dumps(data, indent=2))
+        elif args.compact:
+            print(f"Memory compacted: {data.get('before_events', 0)} -> {data.get('after_events', 0)} events")
+        else:
+            print("\n".join(f"{item.get('intent')} {item.get('target')}" for item in data["events"]))
         return 0
     if args.action == "knowledge":
         data = sevenos_knowledge()
@@ -1237,9 +1617,17 @@ def main() -> int:
         data = llm_contract()
         print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["goal"])
         return 0
+    if args.action == "models":
+        data = model_manager()
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["guardrail"])
+        return 0
+    if args.action == "manager":
+        data = os_manager()
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else f"{data['state']} · {data['score']}% · {data['coverage']['domains']} domains")
+        return 0
     if args.action == "provider":
         prompt = " ".join(args.text).strip()
-        data = local_answer(prompt, {"diagnostics": diagnostics("system"), "memory": read_memory(8), "system_context": system_context(), "language": active_language()})
+        data = provider_answer(prompt, {"diagnostics": diagnostics("system"), "memory": read_memory(8), "system_context": system_context(), "language": active_language()})
         print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["answer"])
         return 0
     if args.action == "diagnose":
@@ -1268,6 +1656,16 @@ def main() -> int:
     if args.action == "intent":
         data = {"schema": "sevenos.ai.intent.v1", "input": text, "intent": asdict(intent)}
         print(json.dumps(data, indent=2) if args.json else f"{intent.intent}\t{intent.target}\t{intent.safety}")
+        return 0
+    if args.action == "operate":
+        data = operation_plan(text)
+        if args.json:
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+        else:
+            summary = data["summary"]
+            print(f"{summary['title']} · {summary['command']}")
+            if summary["requires_apply"]:
+                print("Preview only. Use --apply on the natural request after review.")
         return 0
 
     data = execute_intent(intent, text, apply=args.apply)

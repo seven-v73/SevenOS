@@ -147,7 +147,7 @@ if command -v dbus-update-activation-environment >/dev/null 2>&1; then
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     log "DRY-RUN update dbus activation environment"
   else
-    dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE SEVENOS_THEME_MODE GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE >/dev/null 2>&1 || true
+    dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE SEVENOS_THEME_MODE SEVENOS_COLOR_SCHEME GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE >/dev/null 2>&1 || true
   fi
 fi
 

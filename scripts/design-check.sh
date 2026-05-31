@@ -432,9 +432,15 @@ if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    grep -q 'sidebar_width' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'mark_action_running' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'def prism_settings_group' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'def dock_settings_group' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.dock.autohide' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.dock.always_visible' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven-window controls-effect off' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'nav("prism"' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'nav("dock"' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'pages\["prism"\]' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'pages\["dock"\]' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'dock_settings_group(dock_page)' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'settings.jump.prism' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'search_key' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'page_button' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -468,6 +474,9 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    grep -q 'seven-root' "$ROOT_DIR/scripts/seven_theme.py" &&
    grep -q 'seven-button' "$ROOT_DIR/scripts/seven_theme.py" &&
    grep -q 'seven-primary' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'seven-action-row' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'seven-empty-state' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'seven-status-banner' "$ROOT_DIR/scripts/seven_theme.py" &&
    [[ -s "$ROOT_DIR/identity/native/store.css" ]] &&
    [[ -s "$ROOT_DIR/identity/native/reader.css" ]] &&
    [[ -s "$ROOT_DIR/identity/native/settings.css" ]] &&
@@ -581,6 +590,32 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    grep -q 'seven_theme.surface_css("store"' "$ROOT_DIR/bin/seven-store-native" &&
    grep -q 'seven_theme.gtk_app_css("reader"' "$ROOT_DIR/bin/seven-reader-native" &&
    grep -q 'seven_theme.surface_css("reader"' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'seven_theme.gtk_app_css("notes"' "$ROOT_DIR/bin/seven-notes-native" &&
+   grep -q 'SevenNotesNative' "$ROOT_DIR/bin/seven-notes-native" &&
+   grep -q 'seven_theme.gtk_app_css("tools"' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'SevenToolsNative' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'Gtk.SearchEntry' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'show_tool_details' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'filter_state' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'copy_report' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'tool-blocker' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'on_key_press' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'Gdk.KEY_Escape' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'Ctrl+F' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'category_filter' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q 'category_label' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q '"categories": categories' "$ROOT_DIR/scripts/tools.sh" &&
+   grep -q 'sevenos.tools.detail.v1' "$ROOT_DIR/scripts/tools.sh" &&
+   grep -q 'tools.detail.files' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'quality.ux.fast' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'def handle_ux' "$ROOT_DIR/bin/seven" &&
+   grep -q 'seven ux fast --json' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'sevenos.ux-check.v1' "$ROOT_DIR/scripts/ux-check.sh" &&
+   grep -q -- '--fast|fast' "$ROOT_DIR/scripts/ux-check.sh" &&
+   grep -q 'choices=("open", "gui", "status", "doctor", "plan", "detail", "json")' "$ROOT_DIR/bin/seven" &&
+   grep -q '"intent"' "$ROOT_DIR/scripts/tools.sh" &&
+   grep -q '"recommendation": recommendation' "$ROOT_DIR/scripts/tools.sh" &&
+   grep -q 'tool-intent' "$ROOT_DIR/bin/seven-tools-native" &&
    grep -q 'seven_theme.gtk_app_css("files"' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'seven_theme.surface_css("files"' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'seven_theme.gtk_app_css("control-center"' "$ROOT_DIR/bin/seven-quick-settings-native" &&
