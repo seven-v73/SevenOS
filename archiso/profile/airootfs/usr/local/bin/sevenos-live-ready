@@ -272,26 +272,26 @@ confirm_installer_window() {
   write_state "opening" "installer" "Opening graphical installer portal." "" 94
   live_notify \
     "$(live_text "Installation SevenOS" "SevenOS Installation")" \
-    "$(live_text "Ouverture du portail d’installation graphique." "Opening the graphical installation portal.")"
+    "$(live_text "Ouverture de l’installateur graphique SevenOS." "Opening the SevenOS graphical installer.")"
   installer_pid=""
-  if installer_pid="$(open_sevenos_portal)"; then
-    if confirm_installer_window "$installer_pid" "SevenOS installer portal"; then
-      exit 0
-    fi
-    printf '[sevenos-live-ready] SevenOS portal closed; falling back to Calamares\n'
-    write_state "fallback" "installer" "SevenOS portal closed; opening Calamares directly." "$installer_pid" 96
-    live_notify \
-      "$(live_text "Ouverture de Calamares" "Opening Calamares")" \
-      "$(live_text "Le portail SevenOS s’est fermé. SevenOS lance l’installateur disque directement." "The SevenOS portal closed. SevenOS is opening the disk installer directly.")"
-  fi
-
   if installer_pid="$(open_calamares_direct)"; then
     if confirm_installer_window "$installer_pid" "Calamares installer"; then
       exit 0
     fi
+    printf '[sevenos-live-ready] Calamares closed or did not expose a window; falling back to SevenOS portal\n'
+    write_state "fallback" "installer" "Calamares did not expose a window; opening SevenOS portal." "$installer_pid" 96
+    live_notify \
+      "$(live_text "Portail SevenOS" "SevenOS Portal")" \
+      "$(live_text "Calamares ne s’est pas stabilisé. SevenOS ouvre le portail de diagnostic." "Calamares did not stabilize. SevenOS is opening the diagnostic portal.")"
+  fi
+
+  if installer_pid="$(open_sevenos_portal)"; then
+    if confirm_installer_window "$installer_pid" "SevenOS installer portal"; then
+      exit 0
+    fi
     live_notify \
       "$(live_text "Installateur fermé" "Installer closed")" \
-      "$(live_text "Calamares s’est fermé trop vite. Ouvre le terminal secours avec Super+Shift+Entrée et lance seven-installer live-status." "Calamares closed too quickly. Open rescue terminal with Super+Shift+Return and run seven-installer live-status.")"
+      "$(live_text "L’installateur s’est fermé trop vite. Ouvre le terminal secours avec Super+Shift+Entrée et lance seven-installer live-status." "The installer closed too quickly. Open rescue terminal with Super+Shift+Return and run seven-installer live-status.")"
     exit 1
   else
     printf '[sevenos-live-ready] no graphical installer command found\n'

@@ -15,29 +15,57 @@ client_count() {
     printf '0'
     return 0
   fi
-  hyprctl clients -j 2>/dev/null | python - <<'PY' 2>/dev/null || printf '0'
+  hyprctl clients -j 2>/dev/null | python -c '
 import json
 import sys
 try:
     print(len(json.load(sys.stdin)))
 except Exception:
     print(0)
-PY
+' 2>/dev/null || printf '0'
+}
+
+installer_window_count() {
+  if ! command -v hyprctl >/dev/null 2>&1; then
+    printf '0'
+    return 0
+  fi
+  hyprctl clients -j 2>/dev/null | python -c '
+import json
+import re
+import sys
+
+try:
+    clients = json.load(sys.stdin)
+except Exception:
+    print(0)
+    raise SystemExit(0)
+
+class_re = re.compile(r"^(SevenOSInstallerNative|Calamares|calamares)$")
+title_re = re.compile(r"^(SevenOS Installer|Install SevenOS|Installer SevenOS).*$")
+count = 0
+for client in clients:
+    klass = str(client.get("class") or "")
+    title = str(client.get("title") or "")
+    if class_re.search(klass) or title_re.search(title):
+        count += 1
+print(count)
+' 2>/dev/null || printf '0'
 }
 
 open_installer() {
-  log "opening installer portal"
-  if command -v seven-installer >/dev/null 2>&1; then
-    seven-installer gui >/dev/null 2>&1 &
-    arrange_installer_window &
-    return 0
-  fi
+  log "opening installer"
   if command -v calamares >/dev/null 2>&1; then
     if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
       sudo -E calamares -d >/dev/null 2>&1 &
     else
       calamares -d >/dev/null 2>&1 &
     fi
+    arrange_installer_window &
+    return 0
+  fi
+  if command -v seven-installer >/dev/null 2>&1; then
+    SEVENOS_LIVE_FORCE_PORTAL=1 seven-installer gui >/dev/null 2>&1 &
     arrange_installer_window &
     return 0
   fi
@@ -81,11 +109,11 @@ open_rescue_terminal() {
 main() {
   log "guard started"
   sleep 3
-  if [[ "$(client_count)" -eq 0 ]]; then
+  if [[ "$(installer_window_count)" -eq 0 ]]; then
     open_installer || true
   fi
   sleep 7
-  if [[ "$(client_count)" -eq 0 ]]; then
+  if [[ "$(installer_window_count)" -eq 0 ]]; then
     open_installer || true
   fi
   sleep 8

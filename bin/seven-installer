@@ -853,6 +853,11 @@ open_installer() {
     return 0
   fi
 
+  if [[ -n "${SEVENOS_LIVE_SESSION:-}" && -z "${SEVENOS_LIVE_FORCE_PORTAL:-}" ]] && command -v calamares >/dev/null 2>&1; then
+    run_calamares
+    return 0
+  fi
+
   if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" && -x "$ROOT_DIR/bin/seven-installer-native" ]]; then
     run_or_print "$ROOT_DIR/bin/seven-installer-native"
     return 0
@@ -876,7 +881,7 @@ open_installer() {
 
 case "${1:-open}" in
   open) open_installer ;;
-  gui) "$ROOT_DIR/bin/seven-installer-native" ;;
+  gui) open_installer ;;
   status) status ;;
   portal) portal ;;
   guide) "$ROOT_DIR/bin/seven" installer guide ;;

@@ -93,12 +93,18 @@ preflight_graphical_profile() {
     "airootfs/usr/share/wayland-sessions/sevenos-live.desktop" "sevenos-live-session"
   check_profile "Live session must open the graphical installer portal" \
     "airootfs/usr/local/bin/sevenos-live-ready" "seven-installer gui"
-  check_profile "Live session must fall back to Calamares when the portal closes" \
-    "airootfs/usr/local/bin/sevenos-live-ready" "SevenOS portal closed; falling back to Calamares"
-  check_profile "Live session must launch Calamares directly as a second route" \
+  check_profile "Live session must launch Calamares directly as the stable first route" \
     "airootfs/usr/local/bin/sevenos-live-ready" "open_calamares_direct"
+  check_profile "Live session must only use the SevenOS portal as a fallback diagnostic route" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "Calamares did not expose a window; opening SevenOS portal"
   check_profile "Live readiness must confirm real installer windows, not only process ids" \
     "airootfs/usr/local/bin/sevenos-live-ready" "installer_window_visible"
+  check_repo "Live installer launcher must prefer Calamares during the ISO session" \
+    "bin/seven-installer" "SEVENOS_LIVE_SESSION"
+  check_repo "Live installer smoke test must verify the Calamares-first route" \
+    "scripts/live-installer-smoke.sh" "Calamares installer is interactive"
+  check_profile "Live guard must count installer windows explicitly" \
+    "airootfs/usr/local/bin/sevenos-live-guard" "installer_window_count"
   check_profile "Live session must show a SevenOS background before installer windows appear" \
     "airootfs/etc/sevenos/live-hyprland.conf" "live-hyprpaper.conf"
   check_profile "Live wallpaper config must point to the branded live background" \
