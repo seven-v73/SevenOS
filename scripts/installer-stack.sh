@@ -232,7 +232,7 @@ release_json() {
   live_cli_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/opt/SevenOS/bin/seven")"
   live_native_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "seven-installer-native")"
   live_session_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-session" && -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-guard" && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "ExecStart=/usr/local/bin/sevenos-live-session") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-session.service") == OK && $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprland.conf "sevenos-live-guard") == OK ]] && printf OK || printf MISS)"
-  live_hypr_syntax_state="$([[ $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprland.conf "windowrule = float, class:") == OK && $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprland.conf "windowrule = float, title:") == OK ]] && ! grep -Eq '(^|[[:space:]])windowrulev2[[:space:]]*=|windowrule[[:space:]]*=[[:space:]]*match:|^[[:space:]]*style[[:space:]]*=' "$ROOT_DIR/archiso/profile/airootfs/etc/sevenos/live-hyprland.conf" && printf OK || printf MISS)"
+  live_hypr_syntax_state="$([[ $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprland.conf "Window placement is handled after launch by") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-guard "arrange_installer_window") == OK ]] && ! grep -Eq '(^|[[:space:]])windowrulev2[[:space:]]*=|^[[:space:]]*windowrule|^[[:space:]]*style[[:space:]]*=' "$ROOT_DIR/archiso/profile/airootfs/etc/sevenos/live-hyprland.conf" && printf OK || printf MISS)"
   live_autologin_state="$([[ $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "User=seven") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "PAMName=login") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "TTYPath=/dev/tty1") == OK ]] && printf OK || printf MISS)"
   live_ready_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-ready" ]] && contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-ready")"
   live_tty_fallback_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "agetty --autologin seven")"
@@ -508,9 +508,9 @@ checks = [
         "key": "live-hyprland-syntax",
         "state": os.environ["LIVE_HYPR_SYNTAX_STATE"],
         "required": True,
-        "title": "Live Hyprland config avoids deprecated rules",
+        "title": "Live Hyprland config avoids fragile window rules",
         "command": "./install.sh iso --dry-run",
-        "reason": "The ISO must not boot to a black desktop because of deprecated windowrulev2, legacy match rules, or invalid style keys.",
+        "reason": "The ISO must not boot to a black desktop because of deprecated windowrulev2, changing windowrule syntax, or invalid style keys.",
     },
     {
         "key": "live-autologin",

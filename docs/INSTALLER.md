@@ -42,11 +42,13 @@ The live initramfs must also use `mkinitcpio-archiso` hooks. Without those
 hooks, the kernel behaves like a normal installed system and waits for
 `/dev/gpt-auto-root`; that is a broken ISO boot path, not an installer step.
 
-The live Hyprland profile is intentionally minimal and guarded. The ISO build
-preflight rejects deprecated `windowrulev2`, legacy live `match:` rules and
-invalid `style =` keys in `/etc/sevenos/live-hyprland.conf`. This prevents a
-bad window-rule syntax from producing the worst public failure mode: a black
-desktop with only the pointer visible.
+The live Hyprland profile is intentionally minimal and guarded. It contains no
+`windowrule` or `windowrulev2` entries. Hyprland's rule syntax changes between
+releases, so the ISO build preflight rejects live window rules and invalid
+`style =` keys in `/etc/sevenos/live-hyprland.conf`. The installer window is
+positioned after launch by `sevenos-live-guard` with tolerant `hyprctl` calls.
+This prevents a bad window-rule syntax from producing the worst public failure
+mode: a black desktop with only the pointer visible.
 
 If SDDM fails, TTY1 autologins to `seven` and starts the same SevenOS live
 session as a recovery fallback. This keeps the ISO usable without asking a

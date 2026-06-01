@@ -97,15 +97,15 @@ preflight_graphical_profile() {
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/settings.conf"
   check_profile "Live build must install Calamares SevenOS branding" \
     "airootfs/root/customize_airootfs.sh" "/usr/share/calamares/branding/sevenos"
-  check_profile "Live Hyprland class rules must use current matcher syntax" \
-    "airootfs/etc/sevenos/live-hyprland.conf" "windowrule = float, class:"
-  check_profile "Live Hyprland title rules must use current matcher syntax" \
-    "airootfs/etc/sevenos/live-hyprland.conf" "windowrule = float, title:"
+  check_profile "Live Hyprland config must delegate window placement to the guard" \
+    "airootfs/etc/sevenos/live-hyprland.conf" "Window placement is handled after launch by"
+  check_profile "Live guard must arrange the installer window after launch" \
+    "airootfs/usr/local/bin/sevenos-live-guard" "arrange_installer_window"
   reject_profile "Live Hyprland config must not use deprecated windowrulev2" \
     "airootfs/etc/sevenos/live-hyprland.conf" '(^|[[:space:]])windowrulev2[[:space:]]*='
-  reject_profile "Live Hyprland config must not use legacy match: window rules" \
-    "airootfs/etc/sevenos/live-hyprland.conf" 'windowrule[[:space:]]*=[[:space:]]*match:'
-  reject_profile "Live Hyprland config must not use custom style keys" \
+  reject_profile "Live Hyprland config must not include window rules" \
+    "airootfs/etc/sevenos/live-hyprland.conf" '^[[:space:]]*windowrule'
+  reject_profile "Live Hyprland config must not include custom style keys" \
     "airootfs/etc/sevenos/live-hyprland.conf" '^[[:space:]]*style[[:space:]]*='
 
   check_repo "Calamares must use the standard shellprocess module" \
