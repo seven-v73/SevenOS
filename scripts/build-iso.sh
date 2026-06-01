@@ -117,6 +117,8 @@ preflight_graphical_profile() {
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/unpackfs.conf"
   check_profile "Live build must install Calamares live cleanup configuration" \
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/shellprocess-livecleanup.conf"
+  check_profile "Live build must install Calamares user password policy" \
+    "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/users.conf"
   check_profile "Live build must install Calamares SevenOS branding" \
     "airootfs/root/customize_airootfs.sh" "/usr/share/calamares/branding/sevenos"
   check_profile "Live Hyprland config must delegate window placement to the guard" \
@@ -148,6 +150,10 @@ preflight_graphical_profile() {
     "installer/calamares/modules/shellprocess.conf" "/opt/SevenOS/bin/seven-calamares-finalize"
   check_repo "Calamares live cleanup must remove the live user before users module" \
     "installer/calamares/modules/shellprocess-livecleanup.conf" "userdel -r seven"
+  check_repo "Calamares users must accept any non-empty password" \
+    "installer/calamares/modules/users.conf" "minLength: 1"
+  check_repo "Calamares users must allow weak passwords by default" \
+    "installer/calamares/modules/users.conf" "allowWeakPasswordsDefault: true"
   check_repo "Calamares finalizer must write an install log" \
     "bin/seven-calamares-finalize" "/var/log/sevenos-install.log"
   check_repo "Calamares finalizer must remove live ISO services from installed systems" \

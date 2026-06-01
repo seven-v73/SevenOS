@@ -205,7 +205,7 @@ json_string() {
 }
 
 release_json() {
-  local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_shellprocess_state calamares_postinstall_state calamares_iso_config_state
+  local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_shellprocess_state calamares_postinstall_state calamares_iso_config_state calamares_users_policy_state
   local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state native_launcher_state native_live_ui_state live_desktop_state live_native_state calamares_branding_state installer_portal_state calamares_source_state local_repo_db_state local_repo_pkg_state live_qt_runtime_state
   local live_session_state live_autologin_state live_ready_state live_tty_fallback_state live_user_config_state live_network_state live_graphical_target_state
   local live_feedback_state live_services_state live_user_dirs_state live_status_state live_quiet_boot_state live_initramfs_state live_hypr_syntax_state live_wallpaper_state live_rescue_state
@@ -220,7 +220,8 @@ release_json() {
   calamares_shellprocess_state="$([[ $(contains_state installer/calamares/settings.conf "- shellprocess") == OK && $(file_state installer/calamares/modules/shellprocess.conf) == OK ]] && printf OK || printf MISS)"
   calamares_livecleanup_state="$([[ $(contains_state installer/calamares/settings.conf "shellprocess@livecleanup") == OK && $(contains_state installer/calamares/settings.conf "shellprocess-livecleanup.conf") == OK && $(contains_state installer/calamares/modules/shellprocess-livecleanup.conf "userdel -r seven") == OK ]] && printf OK || printf MISS)"
   calamares_postinstall_state="$([[ $(contains_state installer/calamares/modules/shellprocess.conf "/opt/SevenOS/bin/seven-calamares-finalize") == OK && $(contains_state bin/seven-calamares-finalize "Clean live ISO residue") == OK && -x "$ROOT_DIR/bin/seven-calamares-finalize" ]] && printf OK || printf MISS)"
-  calamares_iso_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/etc/calamares/settings.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/usr/share/calamares/branding/sevenos") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "unpackfs.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess-livecleanup.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess.conf") == OK ]] && printf OK || printf MISS)"
+  calamares_users_policy_state="$([[ $(contains_state installer/calamares/modules/users.conf "minLength: 1") == OK && $(contains_state installer/calamares/modules/users.conf "allowWeakPasswords: true") == OK && $(contains_state installer/calamares/modules/users.conf "allowWeakPasswordsDefault: true") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/etc/calamares/modules/users.conf") == OK ]] && printf OK || printf MISS)"
+  calamares_iso_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/etc/calamares/settings.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/usr/share/calamares/branding/sevenos") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "unpackfs.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess-livecleanup.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "users.conf") == OK ]] && printf OK || printf MISS)"
   graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
   native_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer-native" ]] && printf OK || printf MISS)"
   native_live_ui_state="$([[ $(contains_state bin/seven-installer-native "live-status") == OK && $(contains_state bin/seven-installer-native "status_cards") == OK && $(contains_state bin/seven-installer-native "installer-progress") == OK && $(contains_state bin/seven-installer-native "timeline_card") == OK && $(contains_state bin/seven-installer-native "GLib.timeout_add_seconds") == OK && $(contains_state bin/seven-installer-native "active_step_label") == OK && $(contains_state bin/seven-installer-native "decision_label") == OK && $(contains_state bin/seven-installer-native "attention_label") == OK && $(contains_state bin/seven-installer-native "primary_live_action") == OK && $(contains_state bin/seven-installer-native "secondary_action_buttons") == OK && $(contains_state bin/seven-installer "user_message") == OK && $(contains_state bin/seven-installer "primary_command") == OK && $(contains_state bin/seven-installer "secondary_actions") == OK && $(contains_state bin/seven-installer "attention_items") == OK ]] && printf OK || printf MISS)"
@@ -295,6 +296,7 @@ release_json() {
   CALAMARES_LIVECLEANUP_STATE="$calamares_livecleanup_state" \
   CALAMARES_POSTINSTALL_STATE="$calamares_postinstall_state" \
   CALAMARES_ISO_CONFIG_STATE="$calamares_iso_config_state" \
+  CALAMARES_USERS_POLICY_STATE="$calamares_users_policy_state" \
   GRAPHICAL_LAUNCHER_STATE="$graphical_launcher_state" \
   NATIVE_LAUNCHER_STATE="$native_launcher_state" \
   NATIVE_LIVE_UI_STATE="$native_live_ui_state" \
@@ -427,6 +429,14 @@ checks = [
         "title": "Calamares removes live-session residue before creating the installed user",
         "command": "cat installer/calamares/modules/shellprocess-livecleanup.conf",
         "reason": "The live ISO has a temporary seven user; it must be removed before the users module creates the real account.",
+    },
+    {
+        "key": "calamares-users-password-policy",
+        "state": os.environ["CALAMARES_USERS_POLICY_STATE"],
+        "required": True,
+        "title": "Calamares accepts any non-empty SevenOS account password",
+        "command": "cat installer/calamares/modules/users.conf",
+        "reason": "The public installer must accept a password from one character upward and must not block simple passwords.",
     },
     {
         "key": "calamares-postinstall",

@@ -66,6 +66,7 @@ install -m0644 /opt/SevenOS/installer/calamares/settings.conf /etc/calamares/set
 install -m0644 /opt/SevenOS/installer/calamares/modules/unpackfs.conf /etc/calamares/modules/unpackfs.conf
 install -m0644 /opt/SevenOS/installer/calamares/modules/shellprocess-livecleanup.conf /etc/calamares/modules/shellprocess-livecleanup.conf
 install -m0644 /opt/SevenOS/installer/calamares/modules/shellprocess.conf /etc/calamares/modules/shellprocess.conf
+install -m0644 /opt/SevenOS/installer/calamares/modules/users.conf /etc/calamares/modules/users.conf
 install -m0644 /opt/SevenOS/installer/calamares/modules/sevenos.conf /etc/calamares/modules/sevenos.conf
 cp -a /opt/SevenOS/installer/calamares/branding/sevenos/. /usr/share/calamares/branding/sevenos/
 
