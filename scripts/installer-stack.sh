@@ -217,7 +217,7 @@ release_json() {
   calamares_settings_state="$(file_state installer/calamares/settings.conf)"
   calamares_module_state="$(file_state installer/calamares/modules/sevenos.conf)"
   calamares_shellprocess_state="$([[ $(contains_state installer/calamares/settings.conf "- shellprocess") == OK && $(file_state installer/calamares/modules/shellprocess.conf) == OK ]] && printf OK || printf MISS)"
-  calamares_postinstall_state="$(contains_state installer/calamares/modules/shellprocess.conf "/opt/SevenOS/install.sh base --yes")"
+  calamares_postinstall_state="$([[ $(contains_state installer/calamares/modules/shellprocess.conf "/opt/SevenOS/bin/seven-calamares-finalize") == OK && -x "$ROOT_DIR/bin/seven-calamares-finalize" ]] && printf OK || printf MISS)"
   calamares_iso_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/etc/calamares/settings.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/usr/share/calamares/branding/sevenos") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess.conf") == OK ]] && printf OK || printf MISS)"
   graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
   native_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer-native" ]] && printf OK || printf MISS)"

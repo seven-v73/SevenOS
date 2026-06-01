@@ -64,9 +64,17 @@ preflight_graphical_profile() {
     "efiboot/loader/entries/01-sevenos-live.conf" "systemd.show_status=false"
   check_profile "BIOS boot must be quiet and branded" \
     "syslinux/archiso_sys-linux.cfg" "quiet splash"
-  check_profile "SDDM must autologin to SevenOS Live" \
-    "airootfs/etc/sddm.conf.d/20-sevenos-live.conf" "Session=sevenos-live.desktop"
-  check_profile "Wayland session must start SevenOS Live" \
+  check_profile "SevenOS live service must start the graphical session directly" \
+    "airootfs/etc/systemd/system/sevenos-live-session.service" "ExecStart=/usr/local/bin/sevenos-live-session"
+  check_profile "SevenOS live service must run as the live user" \
+    "airootfs/etc/systemd/system/sevenos-live-session.service" "User=seven"
+  check_profile "Live build must enable the SevenOS live service" \
+    "airootfs/root/customize_airootfs.sh" "sevenos-live-session.service"
+  check_profile "UEFI boot must expose Safe Graphics" \
+    "efiboot/loader/entries/03-sevenos-live-safe.conf" "Safe Graphics"
+  check_profile "BIOS boot must expose Safe Graphics" \
+    "syslinux/archiso_sys-linux.cfg" "Safe ^Graphics"
+  check_profile "Wayland session file must stay available for installed display managers" \
     "airootfs/usr/share/wayland-sessions/sevenos-live.desktop" "sevenos-live-session"
   check_profile "Live session must open the graphical installer portal" \
     "airootfs/usr/local/bin/sevenos-live-ready" "seven-installer gui"
@@ -77,8 +85,10 @@ preflight_graphical_profile() {
 
   check_repo "Calamares must use the standard shellprocess module" \
     "installer/calamares/settings.conf" "- shellprocess"
-  check_repo "Calamares shellprocess must finalize SevenOS" \
-    "installer/calamares/modules/shellprocess.conf" "/opt/SevenOS/install.sh base --yes"
+  check_repo "Calamares shellprocess must finalize SevenOS through the guarded wrapper" \
+    "installer/calamares/modules/shellprocess.conf" "/opt/SevenOS/bin/seven-calamares-finalize"
+  check_repo "Calamares finalizer must write an install log" \
+    "bin/seven-calamares-finalize" "/var/log/sevenos-install.log"
   check_repo "The ISO package list must include the graphical installer" \
     "archiso/profile/packages.x86_64" "calamares"
   check_repo "The ISO package list must include live ISO initramfs hooks" \
@@ -89,6 +99,10 @@ preflight_graphical_profile() {
     "archiso/profile/packages.x86_64" "sddm"
   check_repo "The ISO package list must include Hyprland" \
     "archiso/profile/packages.x86_64" "hyprland"
+  check_repo "The ISO package list must include a safe graphics fallback compositor" \
+    "archiso/profile/packages.x86_64" "cage"
+  check_repo "The ISO package list must include Mesa for live graphics" \
+    "archiso/profile/packages.x86_64" "mesa"
 
   if [[ "$failures" -gt 0 ]]; then
     log_error "SevenOS ISO graphical preflight found $failures issue(s)."

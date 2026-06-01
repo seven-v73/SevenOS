@@ -131,7 +131,11 @@ open_installer() {
   fi
   if command -v calamares >/dev/null 2>&1; then
     printf '[sevenos-live-ready] opening Calamares\n' >&2
-    calamares -d >/dev/null 2>&1 &
+    if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+      sudo -E calamares -d >/dev/null 2>&1 &
+    else
+      calamares -d >/dev/null 2>&1 &
+    fi
     printf '%s' "$!"
     return 0
   fi

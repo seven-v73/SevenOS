@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="${SEVENOS_ROOT:-/opt/SevenOS}"
+LOG_FILE="${SEVENOS_INSTALL_LOG:-/var/log/sevenos-install.log}"
+
+log() {
+  printf '[SevenOS install] %s\n' "$*" | tee -a "$LOG_FILE"
+}
+
+run_step() {
+  local label="$1"
+  shift
+  log "START: $label"
+  "$@" 2>&1 | tee -a "$LOG_FILE"
+  local status=${PIPESTATUS[0]}
+  if [[ "$status" -ne 0 ]]; then
+    log "FAIL: $label (exit=$status)"
+    return "$status"
+  fi
+  log "OK: $label"
+}
+
+main() {
+  install -d "$(dirname "$LOG_FILE")"
+  : >"$LOG_FILE"
+  log "SevenOS graphical installer finalization"
+  log "Root: $ROOT_DIR"
+
+  if [[ ! -x "$ROOT_DIR/install.sh" ]]; then
+    log "FAIL: missing $ROOT_DIR/install.sh"
+    return 127
+  fi
+
+  export SEVENOS_ROOT="$ROOT_DIR"
+  export SEVENOS_YES=1
+  export SEVENOS_ALLOW_ROOT=1
+
+  run_step "Base SevenOS layer" "$ROOT_DIR/install.sh" base --yes
+  run_step "Post-install SevenOS checks" "$ROOT_DIR/install.sh" post-install
+
+  if [[ -x "$ROOT_DIR/bin/seven" ]]; then
+    run_step "Fresh install verifier" "$ROOT_DIR/bin/seven" first-run verify --json
+  fi
+
+  log "SevenOS installation finalization completed"
+}
+
+main "$@"

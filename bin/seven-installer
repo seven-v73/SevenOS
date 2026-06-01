@@ -35,6 +35,28 @@ run_or_print() {
   exec "$@"
 }
 
+calamares_command() {
+  if [[ -n "${SEVENOS_LIVE_SESSION:-}" ]] && command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+    printf 'sudo -E calamares -d\n'
+    return 0
+  fi
+  if command -v pkexec >/dev/null 2>&1; then
+    printf 'pkexec calamares -d\n'
+    return 0
+  fi
+  printf 'calamares -d\n'
+}
+
+run_calamares() {
+  local command_line
+  command_line="$(calamares_command)"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%s\n' "$command_line"
+    return 0
+  fi
+  exec bash -lc "$command_line"
+}
+
 status_json() {
   local calamares_state archinstall_state release_state runtime_payload runtime_state runtime_route runtime_readiness runtime_next
   command -v calamares >/dev/null 2>&1 && calamares_state="OK" || calamares_state="MISS"
@@ -57,6 +79,7 @@ status_json() {
   RUNTIME_STATE="$runtime_state" \
   RUNTIME_ROUTE="$runtime_route" \
   RUNTIME_READINESS="$runtime_readiness" \
+  CALAMARES_COMMAND="$(calamares_command)" \
   RUNTIME_NEXT="$runtime_next" \
   python - <<'PY'
 import json
@@ -100,7 +123,7 @@ print(json.dumps({
     "commands": {
         "open": "seven-installer open",
         "status": "seven-installer status",
-        "graphical": "seven installer graphical",
+        "graphical": os.environ.get("CALAMARES_COMMAND", "seven installer graphical"),
         "release": "seven installer release",
         "guide": "seven-installer guide",
     },
@@ -836,11 +859,7 @@ open_installer() {
   fi
 
   if command -v calamares >/dev/null 2>&1; then
-    if command -v pkexec >/dev/null 2>&1; then
-      run_or_print pkexec calamares -d
-    else
-      run_or_print calamares -d
-    fi
+    run_calamares
     return 0
   fi
 

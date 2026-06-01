@@ -457,7 +457,8 @@ def main() -> int:
                 timeline_card(item)
 
     section(tr("Étapes essentielles", "Essential steps"))
-    calamares_command = "pkexec calamares -d" if portal.get("route") == "calamares" else "seven installer release"
+    portal_commands = portal.get("commands", {}) if isinstance(portal.get("commands"), dict) else {}
+    calamares_command = str(portal_commands.get("graphical") or "seven-installer open") if portal.get("route") == "calamares" else "seven installer release"
     row(
         tr("Démarrer l’installation graphique", "Start graphical installation"),
         tr("Ouvre Calamares si le runtime est présent. Sinon affiche la route sûre restante.", "Opens Calamares when the runtime is present. Otherwise shows the remaining safe route."),
