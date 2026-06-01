@@ -95,12 +95,16 @@ preflight_graphical_profile() {
     "airootfs/usr/local/bin/sevenos-live-ready" "seven-installer gui"
   check_profile "Live session must launch Calamares directly as the stable first route" \
     "airootfs/usr/local/bin/sevenos-live-ready" "open_calamares_direct"
+  check_profile "Live session must offer a network choice before Calamares when offline" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "Network is not connected; opening SevenOS network choice before installation."
   check_profile "Live session must only use the SevenOS portal as a fallback diagnostic route" \
     "airootfs/usr/local/bin/sevenos-live-ready" "Calamares did not expose a window; opening SevenOS portal"
   check_profile "Live readiness must confirm real installer windows, not only process ids" \
     "airootfs/usr/local/bin/sevenos-live-ready" "installer_window_visible"
   check_repo "Live installer launcher must prefer Calamares during the ISO session" \
     "bin/seven-installer" "SEVENOS_LIVE_SESSION"
+  check_repo "Live installer portal must allow an explicit offline install choice" \
+    "bin/seven-installer" "Installer hors ligne"
   check_repo "Live installer smoke test must verify the Calamares-first route" \
     "scripts/live-installer-smoke.sh" "Calamares installer is interactive"
   check_profile "Live guard must count installer windows explicitly" \

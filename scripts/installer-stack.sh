@@ -272,7 +272,7 @@ release_json() {
   live_progress_state="$([[ $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "progress") == OK && $(contains_state bin/seven-installer "progress") == OK ]] && printf OK || printf MISS)"
   live_recommended_state="$(contains_state bin/seven-installer "recommended_action")"
   live_desktop_i18n_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Name[fr]")"
-  live_network_status_state="$([[ $(contains_state bin/seven-installer "NM_STATE") == OK && $(contains_state bin/seven-installer "connect-network") == OK ]] && printf OK || printf MISS)"
+  live_network_status_state="$([[ $(contains_state bin/seven-installer "NM_STATE") == OK && $(contains_state bin/seven-installer "connect-network") == OK && $(contains_state bin/seven-installer "Installer hors ligne") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "Network is not connected; opening SevenOS network choice before installation.") == OK ]] && printf OK || printf MISS)"
   live_storage_status_state="$([[ $(contains_state bin/seven-installer "install_targets") == OK && $(contains_state archiso/profile/packages.x86_64 "gnome-disk-utility") == OK ]] && printf OK || printf MISS)"
   live_system_status_state="$([[ $(contains_state bin/seven-installer "memory_ready") == OK && $(contains_state bin/seven-installer "power_safe") == OK ]] && printf OK || printf MISS)"
   live_readiness_summary_state="$([[ $(contains_state bin/seven-installer "readiness_state") == OK && $(contains_state bin/seven-installer "issues") == OK ]] && printf OK || printf MISS)"
@@ -753,7 +753,7 @@ checks = [
         "key": "live-network-status",
         "state": os.environ["LIVE_NETWORK_STATUS_STATE"],
         "required": True,
-        "title": "Live first-screen exposes network readiness",
+        "title": "Live first-screen exposes network choice before installation",
         "command": "seven-installer live-status --json",
     },
     {

@@ -359,7 +359,7 @@ if os.environ.get("LIVE_SESSION") == "true" and not network_connected:
     issues.append({
         "key": "network",
         "severity": "warning",
-        "title": tr("Le réseau n’est pas connecté", "Network is not connected"),
+        "title": tr("Connexion Internet recommandée avant l’installation", "Internet connection recommended before installation"),
         "action": "seven-wifi",
     })
 if os.environ.get("LIVE_SESSION") == "true" and not install_targets:
@@ -521,8 +521,11 @@ if safety_level == "safe":
 elif safety_level == "review":
     user_message = {
         "tone": "review",
-        "headline": tr("SevenOS recommande une vérification", "SevenOS recommends a quick review"),
+        "headline": tr("SevenOS recommande une connexion", "SevenOS recommends a connection") if not network_connected and os.environ.get("LIVE_SESSION") == "true" else tr("SevenOS recommande une vérification", "SevenOS recommends a quick review"),
         "body": tr(
+            "Connecte le Wi‑Fi pour optimiser les dépendances et les mises à jour, ou continue hors ligne si tu préfères.",
+            "Connect Wi-Fi to optimize dependencies and updates, or continue offline if you prefer.",
+        ) if not network_connected and os.environ.get("LIVE_SESSION") == "true" else tr(
             "L’installation peut avancer, mais un point mérite ton attention avant de modifier le disque.",
             "Installation can continue, but one point deserves attention before changing the disk.",
         ),
@@ -576,6 +579,24 @@ secondary_actions = [
         "command": "gnome-disks",
     },
 ]
+if os.environ.get("LIVE_SESSION") == "true" and not network_connected:
+    secondary_actions = [
+        {
+            "key": "wifi",
+            "label": tr("Choisir le Wi‑Fi", "Choose Wi-Fi"),
+            "command": "seven-wifi",
+        },
+        {
+            "key": "offline",
+            "label": tr("Installer hors ligne", "Install offline"),
+            "command": "seven-installer open",
+        },
+        {
+            "key": "status",
+            "label": tr("État détaillé", "Detailed status"),
+            "command": "seven-installer live-status",
+        },
+    ]
 attention_items = [
     {
         "key": item.get("key", "issue"),
