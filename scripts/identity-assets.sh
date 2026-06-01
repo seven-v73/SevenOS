@@ -73,9 +73,9 @@ for path, needle, label in [
 ]:
     text_check(path, needle, label)
 
-for package in ["plymouth", "sddm", "xorg-server", "xorg-xauth", "polkit-kde-agent", "qt5-declarative", "qt6-declarative"]:
+for package in ["plymouth", "sddm", "xorg-server", "xorg-xauth", "polkit-gnome", "polkit-kde-agent", "qt5-declarative", "qt6-declarative"]:
     package_check("scripts/packages-identity.txt", package)
-for package in ["plymouth", "sddm", "xorg-server", "xorg-xauth", "polkit-kde-agent", "qt6-declarative"]:
+for package in ["plymouth", "sddm", "xorg-server", "xorg-xauth", "polkit-gnome", "polkit-kde-agent", "qt6-declarative"]:
     package_check("archiso/profile/packages.x86_64", package)
 
 state = "OK" if all(check["state"] == "OK" for check in checks) else "MISS"

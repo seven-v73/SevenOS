@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+usage() {
+  cat <<'EOF'
+SevenOS privileged update helper
+
+Usage:
+  seven-update-admin apply
+
+This helper is executed through pkexec by SevenOS Settings. It keeps the
+privileged update path small and predictable instead of asking Polkit to run a
+large inline shell command.
+EOF
+}
+
+action="${1:-}"
+case "$action" in
+  apply|install) ;;
+  -h|--help|help) usage; exit 0 ;;
+  *) usage >&2; exit 2 ;;
+esac
+
+ROOT_DIR="${SEVENOS_ROOT:-/opt/SevenOS}"
+if [[ ! -x "$ROOT_DIR/scripts/update.sh" ]]; then
+  if [[ -x /home/seven/Code/OS/SevenOS/scripts/update.sh ]]; then
+    ROOT_DIR="/home/seven/Code/OS/SevenOS"
+  else
+    echo "SevenOS update route is not available." >&2
+    exit 1
+  fi
+fi
+
+export SEVENOS_ROOT="$ROOT_DIR"
+export SEVENOS_YES=1
+exec "$ROOT_DIR/scripts/update.sh" apply --yes

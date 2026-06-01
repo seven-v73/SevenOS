@@ -46,6 +46,8 @@ vte3
 mako
 swaync
 libnotify
+zenity
+polkit-gnome
 polkit-kde-agent
 plymouth
 grim

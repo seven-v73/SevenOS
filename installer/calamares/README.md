@@ -8,13 +8,15 @@ post-install modules are already part of its model.
 
 ## Current Scope
 
-This directory is a profile scaffold, not a final destructive installer.
+This directory is a SevenOS graphical install profile foundation. It is still
+validated through disposable ISO tests before public release, but it now avoids
+custom Calamares plugin names in the critical path.
 
 It defines:
 
 - SevenOS branding and product intent
 - the intended module order
-- a SevenOS post-install hook placeholder
+- a SevenOS post-install hook through Calamares' standard `shellprocess` module
 - the boundary between Calamares and the existing SevenOS installer planner
 
 SevenOS tracks this boundary with:
@@ -24,9 +26,9 @@ seven installer release
 seven installer plan --json
 ```
 
-The release contract should remain green for the TUI/Archinstall path while
-showing `calamares-runtime` as the explicit remaining graphical installer gap
-until Calamares is packaged into the ISO.
+The release contract should remain green only when the live ISO can boot into
+the SevenOS graphical session, install the SevenOS Calamares config into
+`/etc/calamares`, and provide the Calamares runtime package.
 
 ## Strategy
 
@@ -35,8 +37,8 @@ SevenOS should keep two installer paths:
 - Calamares for the graphical user journey
 - Archinstall/planner scripts for automation and development safety
 
-Calamares should eventually call SevenOS post-install actions inside the target
-system:
+Calamares calls SevenOS post-install actions inside the target system through
+`modules/shellprocess.conf`:
 
 ```bash
 /opt/SevenOS/install.sh base --yes

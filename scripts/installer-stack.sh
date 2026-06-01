@@ -52,7 +52,7 @@ dir_state() {
 contains_state() {
   local path="$1"
   local pattern="$2"
-  [[ -s "$ROOT_DIR/$path" ]] && grep -Fq "$pattern" "$ROOT_DIR/$path" && printf OK || printf MISS
+  [[ -s "$ROOT_DIR/$path" ]] && grep -Fq -- "$pattern" "$ROOT_DIR/$path" && printf OK || printf MISS
 }
 
 calamares_runtime_json() {
@@ -205,10 +205,10 @@ json_string() {
 }
 
 release_json() {
-  local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_postinstall_state
+  local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_shellprocess_state calamares_postinstall_state calamares_iso_config_state
   local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state native_launcher_state native_live_ui_state live_desktop_state live_native_state calamares_branding_state installer_portal_state calamares_source_state local_repo_db_state local_repo_pkg_state
   local live_session_state live_autologin_state live_ready_state live_tty_fallback_state live_user_config_state live_network_state live_graphical_target_state
-  local live_feedback_state live_services_state live_user_dirs_state live_status_state
+  local live_feedback_state live_services_state live_user_dirs_state live_status_state live_quiet_boot_state live_initramfs_state
 
   archinstall_state="$(state archinstall)"
   calamares_state="$(state calamares)"
@@ -216,7 +216,9 @@ release_json() {
   planner_state="$([[ -x "$ROOT_DIR/installer/plan.sh" ]] && printf OK || printf MISS)"
   calamares_settings_state="$(file_state installer/calamares/settings.conf)"
   calamares_module_state="$(file_state installer/calamares/modules/sevenos.conf)"
-  calamares_postinstall_state="$(contains_state installer/calamares/modules/sevenos.conf "/opt/SevenOS/install.sh base")"
+  calamares_shellprocess_state="$([[ $(contains_state installer/calamares/settings.conf "- shellprocess") == OK && $(file_state installer/calamares/modules/shellprocess.conf) == OK ]] && printf OK || printf MISS)"
+  calamares_postinstall_state="$(contains_state installer/calamares/modules/shellprocess.conf "/opt/SevenOS/install.sh base --yes")"
+  calamares_iso_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/etc/calamares/settings.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/usr/share/calamares/branding/sevenos") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess.conf") == OK ]] && printf OK || printf MISS)"
   graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
   native_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer-native" ]] && printf OK || printf MISS)"
   native_live_ui_state="$([[ $(contains_state bin/seven-installer-native "live-status") == OK && $(contains_state bin/seven-installer-native "status_cards") == OK && $(contains_state bin/seven-installer-native "installer-progress") == OK && $(contains_state bin/seven-installer-native "timeline_card") == OK && $(contains_state bin/seven-installer-native "GLib.timeout_add_seconds") == OK && $(contains_state bin/seven-installer-native "active_step_label") == OK && $(contains_state bin/seven-installer-native "decision_label") == OK && $(contains_state bin/seven-installer-native "attention_label") == OK && $(contains_state bin/seven-installer-native "primary_live_action") == OK && $(contains_state bin/seven-installer-native "secondary_action_buttons") == OK && $(contains_state bin/seven-installer "user_message") == OK && $(contains_state bin/seven-installer "primary_command") == OK && $(contains_state bin/seven-installer "secondary_actions") == OK && $(contains_state bin/seven-installer "attention_items") == OK ]] && printf OK || printf MISS)"
@@ -233,6 +235,8 @@ release_json() {
   live_autologin_state="$(contains_state archiso/profile/airootfs/etc/sddm.conf.d/20-sevenos-live.conf "Session=sevenos-live.desktop")"
   live_ready_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-ready" ]] && contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-ready")"
   live_tty_fallback_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "agetty --autologin seven")"
+  live_quiet_boot_state="$([[ $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "quiet splash") == OK && $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "systemd.show_status=false") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "quiet splash") == OK ]] && printf OK || printf MISS)"
+  live_initramfs_state="$([[ $(contains_state archiso/profile/packages.x86_64 "mkinitcpio-archiso") == OK && $(contains_state archiso/profile/airootfs/etc/mkinitcpio.conf.d/archiso.conf "archiso_loop_mnt") == OK ]] && printf OK || printf MISS)"
   live_user_config_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/home/seven/.config/hypr/hyprland.conf")"
   live_network_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl enable NetworkManager.service")"
   live_graphical_target_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl set-default graphical.target")"
@@ -267,7 +271,9 @@ release_json() {
   PLANNER_STATE="$planner_state" \
   CALAMARES_SETTINGS_STATE="$calamares_settings_state" \
   CALAMARES_MODULE_STATE="$calamares_module_state" \
+  CALAMARES_SHELLPROCESS_STATE="$calamares_shellprocess_state" \
   CALAMARES_POSTINSTALL_STATE="$calamares_postinstall_state" \
+  CALAMARES_ISO_CONFIG_STATE="$calamares_iso_config_state" \
   GRAPHICAL_LAUNCHER_STATE="$graphical_launcher_state" \
   NATIVE_LAUNCHER_STATE="$native_launcher_state" \
   NATIVE_LIVE_UI_STATE="$native_live_ui_state" \
@@ -284,6 +290,8 @@ release_json() {
   LIVE_AUTOLOGIN_STATE="$live_autologin_state" \
   LIVE_READY_STATE="$live_ready_state" \
   LIVE_TTY_FALLBACK_STATE="$live_tty_fallback_state" \
+  LIVE_QUIET_BOOT_STATE="$live_quiet_boot_state" \
+  LIVE_INITRAMFS_STATE="$live_initramfs_state" \
   LIVE_USER_CONFIG_STATE="$live_user_config_state" \
   LIVE_NETWORK_STATE="$live_network_state" \
   LIVE_GRAPHICAL_TARGET_STATE="$live_graphical_target_state" \
@@ -364,8 +372,16 @@ checks = [
         "key": "calamares-sevenos-module",
         "state": os.environ["CALAMARES_MODULE_STATE"],
         "required": True,
-        "title": "SevenOS Calamares post-install module",
+        "title": "SevenOS Calamares legacy module marker",
         "command": "seven installer doctor",
+    },
+    {
+        "key": "calamares-shellprocess-module",
+        "state": os.environ["CALAMARES_SHELLPROCESS_STATE"],
+        "required": True,
+        "title": "Calamares standard shellprocess hook",
+        "command": "seven installer doctor",
+        "reason": "SevenOS uses Calamares' built-in shellprocess module so the ISO does not depend on an unpackaged custom plugin.",
     },
     {
         "key": "calamares-postinstall",
@@ -373,6 +389,13 @@ checks = [
         "required": True,
         "title": "SevenOS base install hook",
         "command": "seven installer doctor",
+    },
+    {
+        "key": "calamares-iso-config",
+        "state": os.environ["CALAMARES_ISO_CONFIG_STATE"],
+        "required": True,
+        "title": "Calamares SevenOS config is installed in live ISO",
+        "command": "./install.sh iso --dry-run",
     },
     {
         "key": "graphical-launcher",
@@ -498,6 +521,20 @@ checks = [
         "state": os.environ["LIVE_TTY_FALLBACK_STATE"],
         "required": True,
         "title": "TTY fallback starts SevenOS session",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-quiet-boot",
+        "state": os.environ["LIVE_QUIET_BOOT_STATE"],
+        "required": True,
+        "title": "Live ISO boot hides Arch/systemd text behind SevenOS splash",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-archiso-initramfs",
+        "state": os.environ["LIVE_INITRAMFS_STATE"],
+        "required": True,
+        "title": "Live ISO initramfs uses archiso hooks instead of GPT auto-root",
         "command": "./install.sh iso --dry-run",
     },
     {
@@ -796,7 +833,9 @@ keys = {
     "calamares-runtime",
     "calamares-settings",
     "calamares-sevenos-module",
+    "calamares-shellprocess-module",
     "calamares-postinstall",
+    "calamares-iso-config",
     "graphical-launcher",
     "live-desktop-entry",
     "calamares-branding",
@@ -822,7 +861,9 @@ keys = (
     "calamares-runtime",
     "calamares-settings",
     "calamares-sevenos-module",
+    "calamares-shellprocess-module",
     "calamares-postinstall",
+    "calamares-iso-config",
     "graphical-launcher",
     "live-desktop-entry",
     "calamares-branding",
@@ -925,6 +966,7 @@ doctor() {
     "installer/validate-plan.sh" \
     "installer/generate-script.sh" \
     "installer/calamares/settings.conf" \
+    "installer/calamares/modules/shellprocess.conf" \
     "installer/calamares/modules/sevenos.conf" \
     "scripts/packages-installer.txt" \
     "scripts/packages-installer-aur.txt"; do

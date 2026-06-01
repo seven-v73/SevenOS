@@ -6,7 +6,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/env sh -lc 'if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"; fi; if pgrep -u "$USER" -f "^/usr/lib/polkit-kde-authentication-agent-1($| )" >/dev/null 2>&1 || pgrep -u "$USER" -f "^/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1($| )" >/dev/null 2>&1 || pgrep -u "$USER" -x lxqt-policykit-agent >/dev/null 2>&1 || pgrep -u "$USER" -x mate-polkit >/dev/null 2>&1; then echo "SevenOS authentication agent already running"; exec sleep infinity; elif [ -x /usr/lib/polkit-kde-authentication-agent-1 ]; then exec /usr/lib/polkit-kde-authentication-agent-1; elif [ -x /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 ]; then exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1; elif command -v lxqt-policykit-agent >/dev/null 2>&1; then exec lxqt-policykit-agent; elif command -v mate-polkit >/dev/null 2>&1; then exec mate-polkit; else echo "No Polkit authentication agent found"; exit 1; fi'
+ExecStart=/usr/bin/env sh -lc 'if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"; fi; if [ -x /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 ]; then exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1; elif command -v lxqt-policykit-agent >/dev/null 2>&1; then exec lxqt-policykit-agent; elif command -v mate-polkit >/dev/null 2>&1; then exec mate-polkit; elif [ -x /usr/lib/polkit-kde-authentication-agent-1 ]; then exec /usr/lib/polkit-kde-authentication-agent-1; else echo "No Polkit authentication agent found"; exit 1; fi'
 Restart=on-failure
 RestartSec=2
 

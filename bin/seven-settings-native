@@ -6714,6 +6714,14 @@ def run(initial_page: str = "overview") -> int:
             if community_items and not aur_helper:
                 set_update_state("error", tr("settings.update.no_aur_helper", "Aucun assistant communautaire disponible pour installer ces apps."))
                 return
+            askpass_path = ROOT / "bin" / "seven-askpass"
+            if community_items and not askpass_path.exists():
+                set_update_state("error", tr("settings.update.no_askpass", "La demande de mot de passe SevenOS est indisponible. Lance seven update depuis le terminal ou répare SevenOS."))
+                return
+            update_admin = ROOT / "bin" / "seven-update-admin"
+            if privileged_items and not update_admin.exists():
+                set_update_state("error", tr("settings.update.no_admin_helper", "Le helper de mise à jour protégé est indisponible. Répare SevenOS puis réessaie."))
+                return
             install_button.set_sensitive(False)
             refresh_button.set_sensitive(False)
             install_button.get_style_context().add_class("busy")
@@ -6722,25 +6730,16 @@ def run(initial_page: str = "overview") -> int:
             install_output.clear()
             start_pulse()
             quoted_root = shlex.quote(str(ROOT))
-            privileged_command = f"cd {quoted_root} && stdbuf -oL -eL ./scripts/update.sh apply --yes"
-
-            def askpass_script() -> Path:
-                CACHE_DIR.mkdir(parents=True, exist_ok=True)
-                script = CACHE_DIR / "settings-sudo-askpass.sh"
-                script.write_text(
-                    "#!/usr/bin/env bash\n"
-                    "zenity --password --title='SevenOS' --text='Mot de passe administrateur requis'\n",
-                    encoding="utf-8",
-                )
-                script.chmod(0o700)
-                return script
 
             def community_command() -> str:
                 helper = shlex.quote(aur_helper)
-                askpass = shlex.quote(str(askpass_script()))
+                askpass = shlex.quote(str(askpass_path))
+                title = shlex.quote("SevenOS")
+                message = shlex.quote(tr("settings.update.askpass", "Mot de passe administrateur requis pour terminer les mises à jour."))
                 return (
                     f"cd {quoted_root} && "
-                    f"env SUDO_ASKPASS={askpass} stdbuf -oL -eL {helper} -Sua --noconfirm "
+                    f"env SUDO_ASKPASS={askpass} SEVENOS_ASKPASS_TITLE={title} SEVENOS_ASKPASS_MESSAGE={message} "
+                    f"stdbuf -oL -eL {helper} -Sua --noconfirm "
                     "--sudoflags -A --sudoloop --answerclean None --answerdiff None --answeredit None --answerupgrade None"
                 )
 
@@ -6780,7 +6779,7 @@ def run(initial_page: str = "overview") -> int:
                     if privileged_items:
                         commands.append((
                             "privileged",
-                            ["pkexec", "env", f"SEVENOS_ROOT={ROOT}", "SEVENOS_YES=1", "bash", "-lc", privileged_command],
+                            ["pkexec", str(update_admin), "apply"],
                         ))
                     if community_items:
                         commands.append(("community", ["bash", "-lc", community_command()]))

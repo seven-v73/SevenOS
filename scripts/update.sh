@@ -25,6 +25,7 @@ REFRESH_CACHE="${SEVENOS_UPDATE_REFRESH:-0}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
 UPDATE_CACHE="$CACHE_DIR/update.json"
 UPDATE_CACHE_TTL="${SEVENOS_UPDATE_CACHE_TTL:-300}"
+UPDATE_CACHE_VERSION="2"
 for arg in "$@"; do
   case "$arg" in
     status|check|plan|doctor|apply|install|rollback|json) ACTION="$arg" ;;
@@ -64,6 +65,8 @@ try:
 except Exception:
     raise SystemExit(1)
 if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+if str(data.get("cache_version", "")) != "2":
     raise SystemExit(1)
 raise SystemExit(0)
 PY
@@ -224,6 +227,13 @@ restore_update_snapshot() {
 }
 
 repo_update_preview() {
+  if [[ -d "$ROOT_DIR/.git" && "$(repo_dirty_count)" -gt 0 ]]; then
+    printf '# SevenOS tree has local changes; repository pull will be skipped to protect /opt/SevenOS.\n'
+    printf 'git -C %q status --short\n' "$ROOT_DIR"
+    printf 'env SEVENOS_ROOT=%q %q cli\n' "$ROOT_DIR" "$ROOT_DIR/install.sh"
+    printf 'env SEVENOS_ROOT=%q %q post-install\n' "$ROOT_DIR" "$ROOT_DIR/install.sh"
+    return 0
+  fi
   printf 'seven migrate backup\n'
   printf 'git -C %q fetch --prune\n' "$ROOT_DIR"
   printf 'git -C %q pull --ff-only\n' "$ROOT_DIR"
@@ -231,10 +241,26 @@ repo_update_preview() {
   printf 'env SEVENOS_ROOT=%q %q post-install\n' "$ROOT_DIR" "$ROOT_DIR/install.sh"
 }
 
+repo_dirty_count() {
+  if [[ ! -d "$ROOT_DIR/.git" ]]; then
+    printf '0'
+    return 0
+  fi
+  git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' '
+}
+
 apply_repo_update() {
   if [[ ! -d "$ROOT_DIR/.git" ]]; then
     log_warn "SevenOS root is not a Git checkout: $ROOT_DIR"
     log_warn "Repository updates skipped; package updates will continue."
+    return 0
+  fi
+
+  local dirty_count
+  dirty_count="$(repo_dirty_count)"
+  if [[ "$dirty_count" -gt 0 ]]; then
+    log_warn "SevenOS system tree has $dirty_count local change(s); repository pull is skipped to avoid overwriting local state."
+    log_warn "Package and surface refresh steps will continue. Commit or clean /opt/SevenOS before repository updates."
     return 0
   fi
 
@@ -349,6 +375,18 @@ sources = [
 
 missing = [item for item in sources if item["state"] == "MISS"]
 partial = [item for item in sources if item["state"] == "PART"]
+repo_issues = []
+if is_git and dirty:
+    repo_issues.append({
+        "key": "repository-dirty",
+        "public_name": "SevenOS system tree",
+        "backend": "git",
+        "available": True,
+        "pending": dirty,
+        "state": "PART",
+        "command": "git -C /opt/SevenOS status --short",
+        "detail": "Repository pull is skipped while local changes exist; package updates remain available.",
+    })
 known_pending = [
     item["pending"]
     for item in sources
@@ -356,13 +394,14 @@ known_pending = [
 ]
 pending_total = sum(known_pending)
 repo_pending = isinstance(behind, int) and behind > 0
-state = "updates-available" if pending_total > 0 or repo_pending else "ready" if not missing else "partial"
+state = "updates-available" if pending_total > 0 or repo_pending else "attention" if repo_issues else "ready" if not missing else "partial"
 if fast_mode and not missing:
     state = "ready"
 score = round((sum(1 for item in sources if item["state"] == "OK") + len(partial) * 0.5) / len(sources) * 100)
 
 print(json.dumps({
     "schema": "sevenos.update.v1",
+    "cache_version": "2",
     "state": state,
     "score": score,
     "pending_total": pending_total,
@@ -424,7 +463,7 @@ print(json.dumps({
             "impact": "safe",
         },
     ],
-    "issues": missing + partial,
+    "issues": missing + partial + repo_issues,
     "commands": {
         "status": "seven update",
         "check": "seven update check",

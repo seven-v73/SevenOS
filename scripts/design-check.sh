@@ -125,7 +125,9 @@ if [[ -s "$ROOT_DIR/branding/sddm/sevenos/Main.qml" ]] &&
    grep -q 'Current=sevenos' "$ROOT_DIR/scripts/login-theme.sh" &&
    grep -q '^sddm$' "$ROOT_DIR/scripts/packages-identity.txt" &&
    grep -q '^plymouth$' "$ROOT_DIR/scripts/packages-identity.txt" &&
+   grep -q '^polkit-gnome$' "$ROOT_DIR/scripts/packages-identity.txt" &&
    grep -q '^polkit-kde-agent$' "$ROOT_DIR/scripts/packages-identity.txt" &&
+   grep -q '^zenity$' "$ROOT_DIR/scripts/packages-base.txt" &&
    grep -q '^sddm$' "$ROOT_DIR/archiso/profile/packages.x86_64" &&
    grep -q 'systemctl enable sddm.service' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
    grep -q 'identity-assets.sh' "$ROOT_DIR/scripts/build-iso.sh" &&
@@ -513,7 +515,7 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
 	   grep -q 'show_update_manager' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'collect_update_items' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'community_command' "$ROOT_DIR/bin/seven-settings-native" &&
-	   grep -q 'settings-sudo-askpass.sh' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'askpass_path' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'SUDO_ASKPASS' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'settings.update.install_community' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'update-summary-panel' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -525,7 +527,8 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
 	   grep -q 'pkexec' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'append_install_line' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'start_pulse' "$ROOT_DIR/bin/seven-settings-native" &&
-	   grep -q './scripts/update.sh apply --yes' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven-update-admin' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven-askpass' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'settings.update.activity.download' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'settings.update.activity.pacman_failed' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'SevenOS Settings update install' "$ROOT_DIR/bin/seven-settings-native" &&

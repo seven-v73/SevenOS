@@ -191,12 +191,15 @@ if ! start_systemd_session; then
   fi
 fi
 
-if command -v /usr/lib/polkit-kde-authentication-agent-1 >/dev/null 2>&1 &&
-   ! pgrep -f polkit-kde-authentication-agent-1 >/dev/null 2>&1; then
+if ! pgrep -f 'polkit-gnome-authentication-agent|polkit-kde-authentication-agent|lxqt-policykit-agent|mate-polkit' >/dev/null 2>&1; then
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     log "DRY-RUN start polkit authentication agent"
-  else
+  elif command -v /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 >/dev/null 2>&1; then
+    /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 >/tmp/sevenos-polkit.log 2>&1 &
+  elif command -v /usr/lib/polkit-kde-authentication-agent-1 >/dev/null 2>&1; then
     /usr/lib/polkit-kde-authentication-agent-1 >/tmp/sevenos-polkit.log 2>&1 &
+  else
+    log "No graphical polkit authentication agent found"
   fi
 fi
 

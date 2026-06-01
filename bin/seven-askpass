@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+title="${SEVENOS_ASKPASS_TITLE:-SevenOS}"
+message="${SEVENOS_ASKPASS_MESSAGE:-Administrator password required}"
+
+case "${1:-}" in
+  -h|--help|help)
+    printf 'SevenOS graphical askpass helper\n'
+    printf 'Usage: seven-askpass\n'
+    exit 0
+    ;;
+esac
+
+if command -v zenity >/dev/null 2>&1; then
+  exec zenity --password --title="$title" --text="$message"
+fi
+if command -v kdialog >/dev/null 2>&1; then
+  exec kdialog --title "$title" --password "$message"
+fi
+if command -v yad >/dev/null 2>&1; then
+  exec yad --entry --hide-text --title="$title" --text="$message" --button=OK:0 --button=Cancel:1
+fi
+
+printf 'No graphical password prompt is available.\n' >&2
+exit 1

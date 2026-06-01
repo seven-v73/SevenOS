@@ -3,6 +3,7 @@ plymouth
 sddm
 xorg-server
 xorg-xauth
+polkit-gnome
 polkit-kde-agent
 qt5-declarative
 qt6-declarative

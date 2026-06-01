@@ -29,9 +29,26 @@ public path is:
    folders, starts SevenOS user services, shows progress feedback and opens the
    graphical installer portal.
 
+The boot entries are intentionally quiet and splash-first:
+
+```text
+quiet splash loglevel=3 rd.udev.log_level=3 systemd.show_status=false
+```
+
+This does not remove the Arch-compatible foundation. It masks low-level boot
+noise from the normal public path so the first visible experience is SevenOS.
+
+The live initramfs must also use `mkinitcpio-archiso` hooks. Without those
+hooks, the kernel behaves like a normal installed system and waits for
+`/dev/gpt-auto-root`; that is a broken ISO boot path, not an installer step.
+
 If SDDM fails, TTY1 autologins to `seven` and starts the same SevenOS live
 session as a recovery fallback. This keeps the ISO usable without asking a
 normal user to understand the Arch live command shell.
+
+Calamares uses the standard `shellprocess` module for SevenOS finalization.
+That matters because the ISO can rely on a module shipped by Calamares instead
+of requiring a custom plugin package before the graphical installer can run.
 
 The first screen should feel alive but calm: network preparation, installer
 opening and recovery hints are reported through native notifications and the

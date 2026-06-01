@@ -500,6 +500,22 @@ checks.append({
     "detail": "wrapper does not move window after launch",
 })
 checks.append({"key": "udisks", "ok": cmd_ok(["sh", "-lc", "command -v udisksctl >/dev/null 2>&1"]), "detail": "external disk mount helper"})
+helper_path = Path(root) / "bin" / "seven-disk-mount" if root else Path("/missing/seven-disk-mount")
+checks.append({
+    "key": "admin-disk-mount",
+    "ok": helper_path.exists() and os.access(helper_path, os.X_OK) and cmd_ok(["sh", "-lc", "command -v pkexec >/dev/null 2>&1"]),
+    "detail": "administrator mount helper for internal Windows/data disks",
+})
+checks.append({
+    "key": "polkit-agent",
+    "ok": cmd_ok(["sh", "-lc", "pgrep -u \"$USER\" -f '^/usr/lib/polkit-kde-authentication-agent-1($| )|^/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1($| )|lxqt-policykit-agent|mate-polkit' >/dev/null 2>&1"]),
+    "detail": "graphical administrator prompts are available",
+})
+checks.append({
+    "key": "settings-update-auth",
+    "ok": (Path(root) / "bin" / "seven-update-admin").exists() and (Path(root) / "bin" / "seven-askpass").exists() and cmd_ok(["sh", "-lc", "command -v zenity >/dev/null 2>&1 || command -v kdialog >/dev/null 2>&1 || command -v yad >/dev/null 2>&1"]),
+    "detail": "Settings can request update authorization graphically",
+})
 checks.append({"key": "gvfs", "ok": cmd_ok(["sh", "-lc", "command -v gio >/dev/null 2>&1"]), "detail": "GIO/GVFS file operations"})
 native_text = native_path.read_text(encoding="utf-8", errors="ignore") if native_path.exists() else ""
 checks.append({

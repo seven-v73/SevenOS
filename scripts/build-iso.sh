@@ -25,6 +25,98 @@ Options:
 EOF
 }
 
+profile_has() {
+  local path="$1"
+  local pattern="$2"
+  [[ -s "$PROFILE_SOURCE/$path" ]] && grep -Fq -- "$pattern" "$PROFILE_SOURCE/$path"
+}
+
+preflight_graphical_profile() {
+  local failures=0
+
+  check_profile() {
+    local label="$1"
+    local path="$2"
+    local pattern="$3"
+    if profile_has "$path" "$pattern"; then
+      return 0
+    fi
+    log_error "SevenOS ISO graphical preflight failed: $label"
+    log_info "Missing pattern in $path: $pattern"
+    failures=$((failures + 1))
+  }
+
+  check_repo() {
+    local label="$1"
+    local path="$2"
+    local pattern="$3"
+    if [[ -s "$ROOT_DIR/$path" ]] && grep -Fq -- "$pattern" "$ROOT_DIR/$path"; then
+      return 0
+    fi
+    log_error "SevenOS ISO graphical preflight failed: $label"
+    log_info "Missing pattern in $path: $pattern"
+    failures=$((failures + 1))
+  }
+
+  check_profile "UEFI boot must be quiet and branded" \
+    "efiboot/loader/entries/01-sevenos-live.conf" "quiet splash"
+  check_profile "UEFI boot must hide systemd status text" \
+    "efiboot/loader/entries/01-sevenos-live.conf" "systemd.show_status=false"
+  check_profile "BIOS boot must be quiet and branded" \
+    "syslinux/archiso_sys-linux.cfg" "quiet splash"
+  check_profile "SDDM must autologin to SevenOS Live" \
+    "airootfs/etc/sddm.conf.d/20-sevenos-live.conf" "Session=sevenos-live.desktop"
+  check_profile "Wayland session must start SevenOS Live" \
+    "airootfs/usr/share/wayland-sessions/sevenos-live.desktop" "sevenos-live-session"
+  check_profile "Live session must open the graphical installer portal" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "seven-installer gui"
+  check_profile "Live build must install Calamares SevenOS settings" \
+    "airootfs/root/customize_airootfs.sh" "/etc/calamares/settings.conf"
+  check_profile "Live build must install Calamares SevenOS branding" \
+    "airootfs/root/customize_airootfs.sh" "/usr/share/calamares/branding/sevenos"
+
+  check_repo "Calamares must use the standard shellprocess module" \
+    "installer/calamares/settings.conf" "- shellprocess"
+  check_repo "Calamares shellprocess must finalize SevenOS" \
+    "installer/calamares/modules/shellprocess.conf" "/opt/SevenOS/install.sh base --yes"
+  check_repo "The ISO package list must include the graphical installer" \
+    "archiso/profile/packages.x86_64" "calamares"
+  check_repo "The ISO package list must include live ISO initramfs hooks" \
+    "archiso/profile/packages.x86_64" "mkinitcpio-archiso"
+  check_repo "The live initramfs must use archiso hooks" \
+    "archiso/profile/airootfs/etc/mkinitcpio.conf.d/archiso.conf" "archiso_loop_mnt"
+  check_repo "The ISO package list must include the display manager" \
+    "archiso/profile/packages.x86_64" "sddm"
+  check_repo "The ISO package list must include Hyprland" \
+    "archiso/profile/packages.x86_64" "hyprland"
+
+  if [[ "$failures" -gt 0 ]]; then
+    log_error "SevenOS ISO graphical preflight found $failures issue(s)."
+    exit 1
+  fi
+}
+
+clean_path() {
+  local path="$1"
+  if is_dry_run; then
+    run_cmd rm -rf "$path"
+    return 0
+  fi
+  if [[ -e "$path" ]]; then
+    run_cmd sudo rm -rf "$path"
+  else
+    run_cmd rm -rf "$path"
+  fi
+}
+
+delete_old_isos() {
+  if is_dry_run; then
+    run_cmd find "$OUT_DIR" -maxdepth 1 -type f -name '*.iso' -delete
+    return 0
+  fi
+  run_cmd sudo find "$OUT_DIR" -maxdepth 1 -type f -name '*.iso' -delete
+}
+
 for arg in "$@"; do
   case "$arg" in
     --dry-run) export SEVENOS_DRY_RUN=1 ;;
@@ -44,6 +136,16 @@ if ! is_dry_run; then
     exit 1
   fi
   require_command sudo
+  if ! sudo -n true >/dev/null 2>&1; then
+    if [[ -t 0 ]]; then
+      log_info "SevenOS needs administrator rights to run mkarchiso."
+      sudo -v
+    else
+      log_error "mkarchiso needs sudo, but this session has no interactive password prompt."
+      log_info "Run the same command from a terminal, or refresh sudo first with: sudo -v"
+      exit 1
+    fi
+  fi
 fi
 
 if [[ ! -d "$PROFILE_SOURCE" ]]; then
@@ -63,9 +165,13 @@ if [[ ! -d "$PROFILE_SOURCE/efiboot/loader/entries" ]]; then
   exit 1
 fi
 
+preflight_graphical_profile
+
 log_info "Preparing SevenOS archiso profile..."
-run_cmd rm -rf "$PROFILE_BUILD"
+clean_path "$PROFILE_BUILD"
+clean_path "$WORK_DIR"
 run_cmd mkdir -p "$PROFILE_BUILD" "$WORK_DIR" "$OUT_DIR"
+delete_old_isos
 run_cmd rsync -a --delete "$PROFILE_SOURCE"/ "$PROFILE_BUILD"/
 
 if [[ -s "$LOCAL_REPO_SOURCE/sevenos-local.db.tar.gz" ]]; then
@@ -102,5 +208,11 @@ run_cmd rsync -a \
 
 log_info "Building ISO with mkarchiso..."
 run_cmd sudo mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" "$PROFILE_BUILD"
+
+if ! is_dry_run && ! find "$OUT_DIR" -maxdepth 1 -type f -name '*.iso' -print -quit | grep -q .; then
+  log_error "mkarchiso completed, but no ISO file was produced in: $OUT_DIR"
+  log_info "The work directory was cleaned before the build; check mkarchiso output above for the failed stage."
+  exit 1
+fi
 
 log_success "ISO build complete. Output directory: $OUT_DIR"

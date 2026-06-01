@@ -1395,10 +1395,10 @@ def run_files(start_path: str) -> int:
         if polkit_agent_running():
             return True
         candidates = (
-            "/usr/lib/polkit-kde-authentication-agent-1",
             "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1",
             shutil.which("lxqt-policykit-agent") or "",
             shutil.which("mate-polkit") or "",
+            "/usr/lib/polkit-kde-authentication-agent-1",
         )
         for candidate in candidates:
             if candidate and Path(candidate).exists():
@@ -1414,6 +1414,40 @@ def run_files(start_path: str) -> int:
                 except OSError:
                     continue
         return False
+
+    def seven_disk_mount_helper() -> Path | None:
+        candidates: list[Path] = []
+        if ROOT_DIR is not None:
+            candidates.append(ROOT_DIR / "bin" / "seven-disk-mount")
+        candidates.extend((Path("/opt/SevenOS/bin/seven-disk-mount"), Path.home() / "Code/OS/SevenOS/bin/seven-disk-mount"))
+        for candidate in candidates:
+            if candidate.exists() and os.access(candidate, os.X_OK):
+                return candidate
+        return None
+
+    def privileged_mount_device(device: str, label: str = "") -> tuple[str, str]:
+        helper = seven_disk_mount_helper()
+        pkexec = shutil.which("pkexec")
+        if not helper or not pkexec:
+            return "", tr_text("Administrator mount helper is not available.")
+        try:
+            result = subprocess.run(
+                [pkexec, str(helper), "mount", device, label],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=120,
+            )
+        except Exception as exc:
+            return "", str(exc)
+        output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
+        if result.returncode == 0:
+            for line in reversed(output.splitlines()):
+                cleaned = line.strip().rstrip(".")
+                if cleaned.startswith(("/run/media/", "/media/", "/mnt/")):
+                    return cleaned, ""
+            return "", output or tr_text("Mount completed, but SevenOS could not find the mount point.")
+        return "", output or tr_text("Administrator authorization was cancelled or failed.")
 
     def volume_label(label: str, fstype: str, size: str, device: str) -> str:
         if label:
@@ -5934,6 +5968,13 @@ def run_files(start_path: str) -> int:
                             error = tr_text("Polkit authentication agent is not running.")
                 except Exception as exc:
                     error = str(exc)
+            if not mountpoint and error and "NotAuthorized" in error:
+                admin_mountpoint, admin_error = privileged_mount_device(device, label)
+                if admin_mountpoint:
+                    mountpoint = admin_mountpoint
+                    error = ""
+                elif admin_error:
+                    error = admin_error
             if not mountpoint and shutil.which("lsblk"):
                 try:
                     result = subprocess.run(
@@ -5959,7 +6000,7 @@ def run_files(start_path: str) -> int:
                     set_status(tr_text("Mounted {name}", name=label or Path(mountpoint).name))
                 else:
                     if "NotAuthorized" in error or "authentication agent" in error:
-                        message = tr_text("Mount needs authorization. SevenOS started Polkit; click the disk again.")
+                        message = tr_text("Mount needs authorization. Confirm the administrator prompt, then Seven Files will open the disk.")
                     elif "hibernated" in error.lower() or "unsafe state" in error.lower() or "fast startup" in error.lower():
                         message = tr_text("Windows left this disk locked. Disable Fast Startup or shut Windows down fully.")
                     else:

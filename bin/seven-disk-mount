@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+usage() {
+  cat <<'EOF'
+SevenOS disk mount helper
+
+Usage:
+  seven-disk-mount mount DEVICE [LABEL]
+  seven-disk-mount unmount DEVICE
+
+This helper is intentionally small and is meant to be executed through pkexec
+by Seven Files when udisks refuses an internal Windows/data partition.
+EOF
+}
+
+action="${1:-}"
+device="${2:-}"
+label="${3:-}"
+
+[[ "$action" == "mount" || "$action" == "unmount" ]] || { usage >&2; exit 2; }
+[[ "$device" == /dev/* && -b "$device" ]] || { echo "Invalid block device: $device" >&2; exit 2; }
+
+fstype="$(lsblk -no FSTYPE "$device" 2>/dev/null | head -n1 | tr '[:upper:]' '[:lower:]')"
+case "$fstype" in
+  ntfs|ntfs3|exfat|vfat|fat32|ext2|ext3|ext4|btrfs) ;;
+  "") echo "Unknown filesystem for $device" >&2; exit 3 ;;
+  *) echo "SevenOS does not auto-mount $fstype through this helper." >&2; exit 3 ;;
+esac
+
+owner_uid="${PKEXEC_UID:-${SUDO_UID:-1000}}"
+owner_user="$(getent passwd "$owner_uid" | cut -d: -f1 || true)"
+owner_user="${owner_user:-seven}"
+owner_gid="$(id -g "$owner_user" 2>/dev/null || printf '%s' "$owner_uid")"
+
+safe_label="$label"
+if [[ -z "$safe_label" ]]; then
+  safe_label="$(lsblk -no LABEL "$device" 2>/dev/null | head -n1 || true)"
+fi
+safe_label="${safe_label:-$(basename "$device")}"
+safe_label="$(printf '%s' "$safe_label" | tr -c 'A-Za-z0-9._ -' '_' | sed 's/^_*//; s/_*$//')"
+safe_label="${safe_label:-$(basename "$device")}"
+
+mountpoint_for_device() {
+  findmnt -rn -S "$device" -o TARGET 2>/dev/null | head -n1 || true
+}
+
+if [[ "$action" == "unmount" ]]; then
+  mounted="$(mountpoint_for_device)"
+  [[ -n "$mounted" ]] || exit 0
+  umount "$mounted"
+  echo "$device unmounted"
+  exit 0
+fi
+
+mounted="$(mountpoint_for_device)"
+if [[ -n "$mounted" ]]; then
+  echo "$mounted"
+  exit 0
+fi
+
+base="/run/media/$owner_user"
+mkdir -p "$base"
+chown "$owner_uid:$owner_gid" "$base" 2>/dev/null || true
+mountpoint="$base/$safe_label"
+if [[ -e "$mountpoint" ]] && mountpoint -q "$mountpoint"; then
+  mountpoint="$base/${safe_label}-$(basename "$device")"
+fi
+mkdir -p "$mountpoint"
+
+mount_common=()
+case "$fstype" in
+  ntfs|ntfs3)
+    if command -v mount.ntfs >/dev/null 2>&1; then
+      mount_common=(-t ntfs-3g -o "uid=$owner_uid,gid=$owner_gid,umask=022,big_writes,windows_names")
+      mount "${mount_common[@]}" "$device" "$mountpoint"
+    else
+      mount_common=(-t ntfs3 -o "uid=$owner_uid,gid=$owner_gid,umask=022,windows_names")
+      mount "${mount_common[@]}" "$device" "$mountpoint"
+    fi
+    ;;
+  exfat|vfat|fat32)
+    mount -o "uid=$owner_uid,gid=$owner_gid,umask=022" "$device" "$mountpoint"
+    ;;
+  ext2|ext3|ext4|btrfs)
+    mount "$device" "$mountpoint"
+    chown "$owner_uid:$owner_gid" "$mountpoint" 2>/dev/null || true
+    ;;
+esac
+
+echo "$mountpoint"

@@ -5,6 +5,9 @@ amd-ucode
 intel-ucode
 arch-install-scripts
 archiso
+mkinitcpio
+mkinitcpio-archiso
+mkinitcpio-nfs-utils
 calamares
 syslinux
 systemd
@@ -46,10 +49,12 @@ rofi
 kitty
 mako
 libnotify
+zenity
 plymouth
 sddm
 xorg-server
 xorg-xauth
+polkit-gnome
 polkit-kde-agent
 polkit
 gtk3

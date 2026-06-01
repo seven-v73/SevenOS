@@ -44,6 +44,10 @@ Inside the ISO:
 - user `seven` is created with passwordless sudo and live autologin
 - SDDM opens the `SevenOS Live` Wayland session automatically
 - TTY1 has a fallback autologin that starts the same SevenOS live session
+- UEFI, BIOS and PXE boot entries use quiet SevenOS splash options so normal
+  users see SevenOS first instead of Arch/systemd boot chatter
+- the initramfs uses the `mkinitcpio-archiso` hooks, so the kernel mounts the
+  live medium instead of waiting for `/dev/gpt-auto-root`
 - NetworkManager is enabled
 - SSH is installed but not enabled by default
 - `sevenos-live-ready` imports the live environment, prepares user folders,
@@ -87,6 +91,10 @@ Inside the ISO:
   or network preparation
 - GNOME Disks is available in the live image for a graphical, non-destructive
   disk inspection route before launching destructive installer steps
+- `/etc/calamares/settings.conf`, `/etc/calamares/modules/shellprocess.conf`
+  and `/usr/share/calamares/branding/sevenos` are installed into the live
+  system, so the graphical installer follows the SevenOS profile instead of a
+  generic Calamares/Arch path
 - `seven-installer live-retry` resets and relaunches the live first-screen
   flow if the installer window was closed too early
 - the live first-screen helper keeps a lightweight lock and tracks the launched
@@ -117,6 +125,8 @@ Implemented:
 - TTY fallback that starts the SevenOS session
 - live first-screen feedback, user folder preparation and SevenOS user service startup
 - persisted live first-screen status and retry command for Helper/Hub recovery
+- bootloader quiet/splash gates and Calamares config injection checks in the
+  ISO builder dry-run
 
 Still planned:
 

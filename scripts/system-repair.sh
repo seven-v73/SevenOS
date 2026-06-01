@@ -45,6 +45,9 @@ sudo systemctl reset-failed || true
 if systemctl --user list-unit-files sevenos-polkit-agent.service >/dev/null 2>&1; then
   systemctl --user daemon-reload || true
   systemctl --user enable --now sevenos-polkit-agent.service || true
+  if ! pgrep -u "$USER" -f '^/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1($| )|^/usr/lib/polkit-kde-authentication-agent-1($| )|lxqt-policykit-agent|mate-polkit' >/dev/null 2>&1; then
+    systemctl --user restart sevenos-polkit-agent.service || true
+  fi
 fi
 
 if systemctl is-active --quiet ufw.service 2>/dev/null; then
@@ -81,6 +84,9 @@ apply_repair() {
   if systemctl --user list-unit-files sevenos-polkit-agent.service >/dev/null 2>&1; then
     systemctl --user daemon-reload || true
     systemctl --user enable --now sevenos-polkit-agent.service || true
+    if ! pgrep -u "$USER" -f '^/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1($| )|^/usr/lib/polkit-kde-authentication-agent-1($| )|lxqt-policykit-agent|mate-polkit' >/dev/null 2>&1; then
+      systemctl --user restart sevenos-polkit-agent.service || true
+    fi
   fi
   rm -f "$PLAN"
   log_success "Host service repair applied."
