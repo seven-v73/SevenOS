@@ -185,6 +185,7 @@ install_user_command "$ROOT_DIR/bin/seven-recorder-native" seven-recorder-native
 install_user_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_user_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_user_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
+install_user_command "$ROOT_DIR/bin/seven-kitty" seven-kitty
 install_user_command "$ROOT_DIR/bin/seven-terminal-native" seven-terminal-native
 install_user_command "$ROOT_DIR/bin/seven-terminal-palette" seven-terminal-palette
 install_user_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
@@ -280,6 +281,7 @@ install_system_command "$ROOT_DIR/bin/seven-recorder-native" seven-recorder-nati
 install_system_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_system_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_system_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
+install_system_command "$ROOT_DIR/bin/seven-kitty" seven-kitty
 install_system_command "$ROOT_DIR/bin/seven-terminal-native" seven-terminal-native
 install_system_command "$ROOT_DIR/bin/seven-terminal-palette" seven-terminal-palette
 install_system_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell

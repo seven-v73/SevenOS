@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Seven Kitty
+Comment=Kitty-backed SevenOS terminal alternative
+Exec=seven-kitty
+Icon=utilities-terminal
+Terminal=false
+Categories=System;TerminalEmulator;SevenOS;
+StartupWMClass=SevenTerminalClassic
+Keywords=SevenOS;Kitty;Terminal;console;shell;

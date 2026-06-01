@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven-terminal" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/seven-terminal" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -x "$candidate/bin/seven-terminal" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-kitty: could not find SevenOS terminal runtime\n' >&2
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  seven-kitty [profile] [-- command...]
+  seven-kitty menu
+  seven-kitty status
+
+Seven Kitty opens the Kitty-backed SevenOS terminal alternative.
+The default Seven Terminal remains native VTE when available.
+EOF
+}
+
+ROOT_DIR="$(resolve_root)"
+
+case "${1:-}" in
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    exec env SEVENOS_TERMINAL_NATIVE=0 SEVENOS_TERMINAL_BACKEND=kitty "$ROOT_DIR/bin/seven-terminal" "$@"
+    ;;
+esac

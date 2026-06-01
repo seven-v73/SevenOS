@@ -162,13 +162,22 @@ notes.status	System	Notes Status	seven-notes --json	safe	Show local note count, 
 widgets.menu	Desktop	Desktop Widgets Menu	seven widgets menu	safe	Open the SevenOS desktop widget menu.
 widgets.open	Desktop	Show Desktop Widgets	seven widgets open	safe	Show the optional SevenOS widget layer on the home screen.
 widgets.hide	Desktop	Hide Desktop Widgets	seven widgets hide	safe	Hide the optional SevenOS widget layer.
+widgets.toggle	Desktop	Toggle Desktop Widgets	seven widgets toggle	safe	Show or hide the SevenOS widget layer from the desktop menu or a shortcut.
 widgets.settings	Desktop	Widget Settings	seven widgets settings	safe	Choose which SevenOS widgets appear on the home screen.
 widgets.home	Desktop	Use Workspace 1 as Home	seven widgets home 1	changes	Set workspace 1 as the SevenOS home screen for widgets.
+widgets.preset.active	Desktop	Active Widget Preset	seven widgets preset active && seven widgets open	changes	Apply the widget preset for the active SevenOS Mini OS.
+widgets.preset.merge	Desktop	Complete Active Widget Preset	seven widgets merge active && seven widgets open	changes	Add recommended widgets for the active Mini OS without removing the user's current widgets.
+widgets.restore	Desktop	Restore Previous Widgets	seven widgets restore && seven widgets open	changes	Restore the previous SevenOS home widget configuration.
+widgets.layout.calm	Desktop	Calm Widget Layout	seven widgets layout calm-grid && seven widgets open	changes	Use the balanced SevenOS home widget layout.
+widgets.layout.compact	Desktop	Compact Widget Layout	seven widgets layout compact-grid && seven widgets open	changes	Show more widgets on the SevenOS home workspace.
+widgets.layout.focus	Desktop	Focus Widget Layout	seven widgets layout focus-stack && seven widgets open	changes	Use a single-column widget layout for notes, tasks and essential status.
+widgets.reset	Desktop	Reset Widgets	seven widgets reset	changes	Restore the default SevenOS home widgets.
 widgets.rightclick.off	Desktop	Disable Widget Right Click	seven widgets right-click disable	changes	Keep desktop widget menus opt-in and preserve app context menus.
 widgets.doctor	System	Widget Doctor	seven widgets doctor --json	safe	Validate SevenOS widget configuration, catalog and commands.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
 notifications.open	Desktop	Open Notifications	seven-waybar-notifications menu	safe	Open the SevenOS notification center.
 terminal.open	Desktop	Open Terminal	seven-terminal	safe	Open the active mini OS terminal.
+terminal.kitty	Desktop	Open Seven Kitty	seven-kitty	safe	Open the Kitty-backed SevenOS terminal alternative.
 terminal.forge	Desktop	Forge Terminal	seven-terminal forge	safe	Open a SevenOS terminal tuned for development, Git and builds.
 terminal.cyber	Desktop	Cyber Terminal	seven-terminal cyber	safe	Open a SevenOS terminal tuned for logs, diagnostics and security work.
 terminal.palette	Desktop	Terminal Actions	seven-terminal-palette	safe	Open Seven Terminal quick actions for history, diagnosis and SevenAI help.

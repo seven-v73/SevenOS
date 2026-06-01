@@ -177,6 +177,8 @@ tools = [
         "category": "workspace",
         "native": "bin/seven-terminal-native",
         "desktop": "seven-hub/seven-terminal.desktop",
+        "alternative": "seven-kitty",
+        "alternative_desktop": "seven-hub/seven-kitty.desktop",
         "probe": ["bin/seven-terminal", "status"],
         "action": "terminal.open",
         "open": ["seven-terminal"],

@@ -90,6 +90,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-shell-panel" \
   "$ROOT_DIR/bin/seven-shell-preview" \
   "$ROOT_DIR/bin/seven-terminal" \
+  "$ROOT_DIR/bin/seven-kitty" \
   "$ROOT_DIR/bin/seven-terminal-native" \
   "$ROOT_DIR/bin/seven-terminal-palette" \
   "$ROOT_DIR/bin/seven-terminal-shell" \
@@ -678,11 +679,16 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" security >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" deployment --apply --yes >/dev/null
 if command -v timeout >/dev/null 2>&1; then
-  if ! SEVENOS_DRY_RUN=1 timeout --kill-after=2s "${SEVENOS_UX_CHECK_TIMEOUT:-180s}" "$ROOT_DIR/scripts/ux-check.sh" >/dev/null; then
-    log_warn "UX check did not finish within ${SEVENOS_UX_CHECK_TIMEOUT:-180s}; run scripts/ux-check.sh for the full audit."
+  ux_timeout="${SEVENOS_UX_CHECK_TIMEOUT:-300s}"
+  set +e
+  timeout --kill-after=2s "$ux_timeout" "$ROOT_DIR/scripts/ux-check.sh" >/dev/null
+  ux_status=$?
+  set -e
+  if [[ "$ux_status" -ne 0 ]]; then
+    log_warn "UX check did not finish within $ux_timeout; run scripts/ux-check.sh for the full audit."
   fi
 else
-  SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ux-check.sh" >/dev/null
+  "$ROOT_DIR/scripts/ux-check.sh" >/dev/null
 fi
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null

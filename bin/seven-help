@@ -898,7 +898,13 @@ seven-terminal
 seven-terminal -- btop
 seven-terminal forge
 seven-terminal menu
+seven-kitty
+seven-kitty forge
 ```
+
+`seven-kitty` est l’alternative officielle basée sur Kitty. Elle garde le titre
+visuel `SevenOS`, utilise le même shell SevenOS et reste utile si l’utilisateur
+préfère le rendu ou les raccourcis Kitty.
 
 Raccourcis internes :
 
@@ -2408,7 +2414,13 @@ seven-terminal
 seven-terminal -- btop
 seven-terminal forge
 seven-terminal menu
+seven-kitty
+seven-kitty forge
 ```
+
+`seven-kitty` is the official Kitty-backed alternative. It keeps the visible
+title as `SevenOS`, uses the same SevenOS shell and remains useful for users who
+prefer Kitty rendering or keyboard behavior.
 
 Internal shortcuts:
 

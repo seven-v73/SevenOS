@@ -63,6 +63,8 @@ if grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css"
    grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
    grep -q 'font_family SF Mono' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'env SEVENOS_TERMINAL_BACKEND=kitty' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'window_logo_path /opt/SevenOS/branding/sddm/sevenos/assets/seven-prism.png' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'SF Pro Display</family><prefer><family>Inter' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'SF Pro Rounded' "$ROOT_DIR/hyprland/fontconfig/fonts.conf"; then
@@ -355,6 +357,8 @@ if [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]] &&
    grep -q 'sevenos-shell-experience.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
    grep -q 'ExecStart=%h/.local/bin/seven experience warmup' "$ROOT_DIR/systemd/user/sevenos-shell-experience.service" &&
    grep -q 'warmup_shell_experience' "$ROOT_DIR/bin/seven-session" &&
+   grep -q 'sevenos/language.env' "$ROOT_DIR/bin/seven-session" &&
+   grep -q 'SEVENOS_LANGUAGE LANG LANGUAGE LC_MESSAGES' "$ROOT_DIR/bin/seven-session" &&
    grep -q 'def experience()' "$ROOT_DIR/bin/seven-waybar-status" &&
    grep -q 'Suggestion:' "$ROOT_DIR/bin/seven-waybar-status" &&
    grep -q '"shell_experience"' "$ROOT_DIR/bin/seven-home-native" &&
@@ -419,7 +423,7 @@ fi
 
 if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1 &&
-   timeout 14s "$ROOT_DIR/bin/seven-settings-native" --smoke-open general >/dev/null 2>&1 &&
+   ( [[ "${SEVENOS_DESIGN_GUI_SMOKE:-0}" != "1" ]] || timeout 14s "$ROOT_DIR/bin/seven-settings-native" --smoke-open general >/dev/null 2>&1 ) &&
    grep -q 'SevenSettingsNative' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'settings-shell' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'file_wallpaper_button' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -466,7 +470,7 @@ else
 fi
 
 if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
-   python -m py_compile "$ROOT_DIR/scripts/seven_theme.py" >/dev/null 2>&1 &&
+   python -c 'import py_compile, sys, tempfile; py_compile.compile(sys.argv[1], cfile=tempfile.mktemp(suffix=".pyc"), doraise=True)' "$ROOT_DIR/scripts/seven_theme.py" >/dev/null 2>&1 &&
    grep -q 'def gtk_app_css' "$ROOT_DIR/scripts/seven_theme.py" &&
    grep -q 'def surface_css' "$ROOT_DIR/scripts/seven_theme.py" &&
    grep -q 'def resolved_theme' "$ROOT_DIR/scripts/seven_theme.py" &&
@@ -604,6 +608,39 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    grep -q 'Ctrl+F' "$ROOT_DIR/bin/seven-tools-native" &&
    grep -q 'category_filter' "$ROOT_DIR/bin/seven-tools-native" &&
    grep -q 'category_label' "$ROOT_DIR/bin/seven-tools-native" &&
+   grep -q '"battery"' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q '"media"' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q '"tasks"' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'WIDGET_CATEGORIES' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'widget_category_title' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'widget_search_text' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'Gtk.SearchEntry' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'search-row' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'category-count' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'set_weather_location' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'preset_widgets' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'apply_preset' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'merge_preset' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'Compléter' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'BACKUP_FILE' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'backup_config' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'restore_previous_config' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'mark_action' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'last_action_text' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'feedback-row' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'Restaurer' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'move_widget' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'toggle_widgets' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'menu-state' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'Active preset' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'Ordre de l’accueil' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'order-index' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'widget_icon' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'LAYOUTS' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'set_layout' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'focus-stack' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'tasks_widget_card' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'mini_os_widget_card' "$ROOT_DIR/bin/seven-widgets-native" &&
    grep -q '"categories": categories' "$ROOT_DIR/scripts/tools.sh" &&
    grep -q 'sevenos.tools.detail.v1' "$ROOT_DIR/scripts/tools.sh" &&
    grep -q 'tools.detail.files' "$ROOT_DIR/scripts/actions.sh" &&
@@ -884,7 +921,9 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'SevenAI Reading Companion' "$ROOT_DIR/bin/seven-reader-native" &&
    grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/dark.conf"; then
+   grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'Exec=seven-kitty' "$ROOT_DIR/seven-hub/seven-kitty.desktop" &&
+   grep -q 'SEVENOS_TERMINAL_NATIVE=0' "$ROOT_DIR/bin/seven-kitty"; then
   ok "SevenOS default UI is dark, transparent and cinematic with glass accents"
 else
   fail "SevenOS default UI should ship dark transparent cinematic glass"

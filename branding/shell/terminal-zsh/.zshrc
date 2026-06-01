@@ -109,6 +109,9 @@ __sevenos_duration() {
 
 precmd() {
   local exit_code="$?"
+  if [[ -n "${KITTY_WINDOW_ID:-}${SEVENOS_TERMINAL_NATIVE_SESSION:-}${VTE_VERSION:-}" ]]; then
+    print -n $'\e]0;SevenOS\a'
+  fi
   if [[ "$__sevenos_cmd_started" -gt 0 ]]; then
     __sevenos_last_duration=$((EPOCHSECONDS - __sevenos_cmd_started))
   else

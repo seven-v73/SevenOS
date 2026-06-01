@@ -155,7 +155,7 @@ __sevenos_terminal_notify_done() {
 }
 
 __sevenos_terminal_osc() {
-  [[ -n "${SEVENOS_TERMINAL_NATIVE_SESSION:-}${VTE_VERSION:-}" ]] || return 0
+  [[ -n "${SEVENOS_TERMINAL_NATIVE_SESSION:-}${VTE_VERSION:-}${KITTY_WINDOW_ID:-}" ]] || return 0
   local host path title
   host="${HOSTNAME%%.*}"
   path="$PWD"
@@ -163,11 +163,9 @@ __sevenos_terminal_osc() {
   path="${path// /%20}"
   path="${path//\#/%23}"
   path="${path//\?/%3F}"
-  title="${PWD##*/}"
-  [[ -n "$title" ]] || title="Terminal"
-  [[ "$PWD" == "$HOME" ]] && title="Home"
+  title="SevenOS"
   printf '\e]7;file://%s%s\a' "$host" "$path"
-  printf '\e]0;%s - Terminal\a' "$title"
+  printf '\e]0;%s\a' "$title"
 }
 
 __sevenos_prompt() {

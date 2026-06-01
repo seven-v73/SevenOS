@@ -447,21 +447,27 @@ def doctor_payload() -> dict[str, object]:
         }
     )
     systemd_env = systemd_user_environment()
+    expected_systemd_env = {
+        "SEVENOS_LANGUAGE": status["current"],
+        "LANG": status["current"],
+        "LANGUAGE": language_code(str(status["current"])),
+    }
+    systemd_env_source = "runtime"
+    if not systemd_env and language_file_locale(environment_d) == status["current"]:
+        systemd_env = {**expected_systemd_env, "LC_MESSAGES": str(status["current"])}
+        systemd_env_source = "environment.d"
     checks.append(
         {
             "id": "session.systemd-env",
             "label": "Current user services see the active SevenOS language",
             "state": "ok"
-            if systemd_env.get("SEVENOS_LANGUAGE") == status["current"]
-            and systemd_env.get("LANG") == status["current"]
-            and systemd_env.get("LANGUAGE") == language_code(str(status["current"]))
+            if systemd_env.get("SEVENOS_LANGUAGE") == expected_systemd_env["SEVENOS_LANGUAGE"]
+            and systemd_env.get("LANG") == expected_systemd_env["LANG"]
+            and systemd_env.get("LANGUAGE") == expected_systemd_env["LANGUAGE"]
             else "missing",
-            "expected": {
-                "SEVENOS_LANGUAGE": status["current"],
-                "LANG": status["current"],
-                "LANGUAGE": language_code(str(status["current"])),
-            },
+            "expected": expected_systemd_env,
             "actual": systemd_env,
+            "source": systemd_env_source,
         }
     )
     service_files = [

@@ -542,7 +542,7 @@ configure_file_experience() {
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'install Seven Files desktop entry\n'
-    printf 'install SevenOS Spotlight, AI, Reader, Notes, Recorder, Terminal, Experience Center and Public Readiness desktop entries\n'
+    printf 'install SevenOS Spotlight, AI, Reader, Notes, Recorder, Terminal, Kitty, Experience Center and Public Readiness desktop entries\n'
     printf 'install SevenOS Windows Apps and USB Writer desktop entries and MIME defaults\n'
     printf 'install SevenOS Mini OS Boundaries desktop entry\n'
     printf 'write SevenOS default terminal contract\n'
@@ -574,6 +574,7 @@ configure_file_experience() {
   cp "$ROOT_DIR/seven-hub/seven-recorder.desktop" "$HOME/.local/share/applications/seven-recorder.desktop"
   cp "$ROOT_DIR/seven-hub/seven-store.desktop" "$HOME/.local/share/applications/seven-store.desktop"
   cp "$ROOT_DIR/seven-hub/seven-terminal.desktop" "$HOME/.local/share/applications/seven-terminal.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-kitty.desktop" "$HOME/.local/share/applications/seven-kitty.desktop"
   cp "$ROOT_DIR/seven-hub/seven-doctor.desktop" "$HOME/.local/share/applications/seven-doctor.desktop"
   cp "$ROOT_DIR/seven-hub/seven-experience-center.desktop" "$HOME/.local/share/applications/seven-experience-center.desktop"
   cp "$ROOT_DIR/seven-hub/seven-public-studio.desktop" "$HOME/.local/share/applications/seven-public-studio.desktop"
@@ -589,6 +590,7 @@ configure_file_experience() {
 
   {
     printf 'seven-terminal.desktop\n'
+    printf 'seven-kitty.desktop\n'
   } > "$CONFIG_HOME/xdg-terminals.list"
 
   if command -v xdg-mime >/dev/null 2>&1; then

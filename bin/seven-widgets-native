@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import time
+import calendar
 from pathlib import Path
 
 import gi
@@ -28,6 +29,7 @@ CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / 
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "sevenos" / "widgets"
 DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "sevenos"
 CONFIG_FILE = CONFIG_DIR / "widgets.json"
+BACKUP_FILE = CONFIG_DIR / "widgets.previous.json"
 NOTE_FILE = STATE_DIR / "notes.txt"
 SEVEN_NOTES_FILE = DATA_DIR / "notes" / "notes.json"
 DEFAULT_WIDGETS = ["clock", "system", "doctor", "prism", "notes"]
@@ -35,14 +37,91 @@ HOME_WORKSPACE = "1"
 
 
 CATALOG = [
-    {"key": "clock", "title": "Horloge", "title_en": "Clock", "note": "Heure, date et langue active.", "note_en": "Time, date and active language."},
-    {"key": "system", "title": "Système", "title_en": "System", "note": "CPU, mémoire et disque.", "note_en": "CPU, memory and disk."},
-    {"key": "doctor", "title": "Seven Doctor", "title_en": "Seven Doctor", "note": "Santé système et alertes.", "note_en": "System health and alerts."},
-    {"key": "prism", "title": "Prism", "title_en": "Prism", "note": "Mini OS actif et identité.", "note_en": "Active Mini OS and identity."},
-    {"key": "notes", "title": "Notes", "title_en": "Notes", "note": "Mémo local rapide.", "note_en": "Small local memo."},
-    {"key": "network", "title": "Réseau", "title_en": "Network", "note": "État réseau et raccourci Wi-Fi.", "note_en": "Network state and Wi-Fi shortcut."},
-    {"key": "quick", "title": "Actions", "title_en": "Actions", "note": "Raccourcis SevenOS utiles.", "note_en": "Useful SevenOS shortcuts."},
+    {"key": "clock", "category": "daily", "title": "Horloge", "title_en": "Clock", "note": "Heure, date et langue active.", "note_en": "Time, date and active language."},
+    {"key": "calendar", "category": "daily", "title": "Calendrier", "title_en": "Calendar", "note": "Jour, semaine et rythme du mois.", "note_en": "Day, week and monthly rhythm."},
+    {"key": "weather", "category": "daily", "title": "Météo", "title_en": "Weather", "note": "Carte locale opt-in, sans réseau par défaut.", "note_en": "Opt-in local card, no network by default."},
+    {"key": "system", "category": "status", "title": "Système", "title_en": "System", "note": "CPU, mémoire et disque.", "note_en": "CPU, memory and disk."},
+    {"key": "battery", "category": "status", "title": "Énergie", "title_en": "Power", "note": "Batterie, charge et profil énergie.", "note_en": "Battery, charging and power profile."},
+    {"key": "storage", "category": "status", "title": "Stockage", "title_en": "Storage", "note": "Espace disponible et accès fichiers.", "note_en": "Available space and Files shortcut."},
+    {"key": "network", "category": "status", "title": "Réseau", "title_en": "Network", "note": "État réseau et raccourci Wi-Fi.", "note_en": "Network state and Wi-Fi shortcut."},
+    {"key": "doctor", "category": "sevenos", "title": "Seven Doctor", "title_en": "Seven Doctor", "note": "Santé système et alertes.", "note_en": "System health and alerts."},
+    {"key": "prism", "category": "sevenos", "title": "Prism", "title_en": "Prism", "note": "Mini OS actif et identité.", "note_en": "Active Mini OS and identity."},
+    {"key": "mini-os", "category": "sevenos", "title": "Mini OS", "title_en": "Mini OS", "note": "Changer d’espace SevenOS rapidement.", "note_en": "Switch SevenOS space quickly."},
+    {"key": "quick", "category": "sevenos", "title": "Actions", "title_en": "Actions", "note": "Raccourcis SevenOS utiles.", "note_en": "Useful SevenOS shortcuts."},
+    {"key": "notes", "category": "work", "title": "Notes", "title_en": "Notes", "note": "Mémo local rapide.", "note_en": "Small local memo."},
+    {"key": "tasks", "category": "work", "title": "Tâches", "title_en": "Tasks", "note": "Capturer les prochaines actions.", "note_en": "Capture next actions."},
+    {"key": "media", "category": "media", "title": "Média", "title_en": "Media", "note": "Lecture en cours via playerctl.", "note_en": "Now playing through playerctl."},
 ]
+
+
+WIDGET_CATEGORIES = [
+    ("daily", "Quotidien", "Daily"),
+    ("status", "État du système", "System status"),
+    ("sevenos", "SevenOS", "SevenOS"),
+    ("work", "Notes et travail", "Notes and work"),
+    ("media", "Média", "Media"),
+]
+
+PRESETS = {
+    "equinox": ["clock", "system", "doctor", "prism", "notes", "network", "quick"],
+    "forge": ["clock", "system", "storage", "doctor", "tasks", "mini-os", "quick"],
+    "studio": ["clock", "system", "storage", "media", "tasks", "notes", "quick"],
+    "shield": ["clock", "system", "doctor", "network", "storage", "tasks", "mini-os"],
+    "atlas": ["clock", "calendar", "notes", "tasks", "storage", "network", "quick"],
+    "baobab": ["clock", "calendar", "notes", "weather", "media", "prism", "quick"],
+    "pulse": ["clock", "system", "battery", "media", "network", "quick", "mini-os"],
+    "calm": ["clock", "notes", "calendar", "prism"],
+    "focus": ["clock", "tasks", "notes", "system"],
+}
+
+
+LAYOUTS = {
+    "calm-grid": {
+        "title": "Calme",
+        "title_en": "Calm",
+        "note": "Grille équilibrée pour l’accueil SevenOS.",
+        "note_en": "Balanced grid for SevenOS Home.",
+        "columns": 2,
+        "width": 760,
+        "height": 520,
+    },
+    "compact-grid": {
+        "title": "Compacte",
+        "title_en": "Compact",
+        "note": "Plus de widgets visibles avec des cartes resserrées.",
+        "note_en": "More visible widgets with tighter cards.",
+        "columns": 3,
+        "width": 900,
+        "height": 520,
+    },
+    "focus-stack": {
+        "title": "Focus",
+        "title_en": "Focus",
+        "note": "Une colonne plus lisible pour notes, tâches et état essentiel.",
+        "note_en": "A readable single column for notes, tasks and essential state.",
+        "columns": 1,
+        "width": 430,
+        "height": 620,
+    },
+}
+
+
+WIDGET_ICONS = {
+    "clock": "◷",
+    "system": "▰",
+    "battery": "▱",
+    "storage": "▤",
+    "doctor": "✦",
+    "prism": "◇",
+    "mini-os": "⬡",
+    "notes": "✎",
+    "tasks": "✓",
+    "calendar": "□",
+    "media": "♪",
+    "network": "◆",
+    "weather": "☼",
+    "quick": "⌘",
+}
 
 
 def lang_is_fr() -> bool:
@@ -52,6 +131,65 @@ def lang_is_fr() -> bool:
 
 def tr(fr: str, en: str) -> str:
     return fr if lang_is_fr() else en
+
+
+def catalog_keys() -> set[str]:
+    return {item["key"] for item in CATALOG}
+
+
+def widget_icon(key: str) -> str:
+    return WIDGET_ICONS.get(key, "•")
+
+
+def widget_title(key: str) -> str:
+    for item in CATALOG:
+        if item["key"] == key:
+            return item["title"] if lang_is_fr() else item["title_en"]
+    return key
+
+
+def widget_category(key: str) -> str:
+    for item in CATALOG:
+        if item["key"] == key:
+            return str(item.get("category") or "sevenos")
+    return "sevenos"
+
+
+def widget_category_title(key: str) -> str:
+    for category, fr, en in WIDGET_CATEGORIES:
+        if category == key:
+            return fr if lang_is_fr() else en
+    return key.title()
+
+
+def widget_search_text(item: dict) -> str:
+    fields = [
+        str(item.get("key") or ""),
+        str(item.get("title") or ""),
+        str(item.get("title_en") or ""),
+        str(item.get("note") or ""),
+        str(item.get("note_en") or ""),
+        widget_category_title(str(item.get("category") or "")),
+    ]
+    return " ".join(fields).casefold()
+
+
+def preset_widgets(name: str) -> list[str]:
+    key = name.strip().lower()
+    if key == "active":
+        key = current_profile()
+    wanted = PRESETS.get(key, PRESETS["equinox"])
+    return [item for item in wanted if item in catalog_keys()]
+
+
+def layout_key(value: str | None) -> str:
+    key = str(value or "calm-grid").strip().lower()
+    return key if key in LAYOUTS else "calm-grid"
+
+
+def layout_title(key: str) -> str:
+    item = LAYOUTS.get(layout_key(key), LAYOUTS["calm-grid"])
+    return item["title"] if lang_is_fr() else item["title_en"]
 
 
 def run(command: list[str], timeout: float = 1.5) -> str:
@@ -73,6 +211,9 @@ def config() -> dict:
                 data.setdefault("visible", False)
                 data.setdefault("desktop_right_click", False)
                 data.setdefault("home_workspace", HOME_WORKSPACE)
+                data.setdefault("layout", "calm-grid")
+                data.setdefault("last_preset", "")
+                data.setdefault("last_action", {})
                 save_config(data)
                 return data
         except json.JSONDecodeError:
@@ -84,12 +225,60 @@ def config() -> dict:
         "desktop_right_click": False,
         "home_workspace": HOME_WORKSPACE,
         "layout": "calm-grid",
+        "last_action": {},
     }
 
 
 def save_config(data: dict) -> None:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    CONFIG_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        CONFIG_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        # Some probes run from restricted contexts. Keep the UI readable and let
+        # explicit write commands report through their returned state.
+        return
+
+
+def backup_config(data: dict | None = None) -> None:
+    payload = dict(data or config())
+    payload["backup_created"] = int(time.time())
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        BACKUP_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        return
+
+
+def restore_previous_config() -> dict:
+    if BACKUP_FILE.exists():
+        try:
+            data = json.loads(BACKUP_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                data.pop("backup_created", None)
+                data["schema"] = "sevenos.widgets.config.v2"
+                mark_action(data, "Configuration widgets précédente restaurée.", "Previous widget configuration restored.")
+                save_config(data)
+                return data
+        except Exception:
+            pass
+    return config()
+
+
+def mark_action(data: dict, fr: str, en: str) -> dict:
+    data["last_action"] = {"fr": fr, "en": en, "time": int(time.time())}
+    return data
+
+
+def last_action_text(data: dict) -> str:
+    action = data.get("last_action")
+    if not isinstance(action, dict):
+        return ""
+    text = str(action.get("fr" if lang_is_fr() else "en") or "")
+    try:
+        age = int(time.time()) - int(action.get("time") or 0)
+    except Exception:
+        age = 999999
+    return text if text and age < 900 else ""
 
 
 def current_profile() -> str:
@@ -136,6 +325,77 @@ def disk_percent() -> int:
     except OSError:
         return 0
     return round(usage.used / usage.total * 100) if usage.total else 0
+
+
+def disk_summary() -> dict:
+    try:
+        usage = shutil.disk_usage(str(Path.home()))
+    except OSError:
+        return {"percent": 0, "free": "?", "used": "?"}
+    gib = 1024 ** 3
+    return {
+        "percent": round(usage.used / usage.total * 100) if usage.total else 0,
+        "free": f"{usage.free / gib:.0f} GiB",
+        "used": f"{usage.used / gib:.0f} GiB",
+    }
+
+
+def battery_summary() -> dict:
+    power_supply = Path("/sys/class/power_supply")
+    batteries = sorted(power_supply.glob("BAT*")) if power_supply.exists() else []
+    if not batteries:
+        profile = run(["powerprofilesctl", "get"], timeout=0.7) if shutil.which("powerprofilesctl") else ""
+        return {"present": False, "percent": None, "status": tr("Secteur", "AC power"), "profile": profile or "balanced"}
+    battery = batteries[0]
+    capacity = (battery / "capacity").read_text(encoding="utf-8", errors="ignore").strip() if (battery / "capacity").exists() else ""
+    status = (battery / "status").read_text(encoding="utf-8", errors="ignore").strip() if (battery / "status").exists() else ""
+    try:
+        percent = max(0, min(100, int(capacity)))
+    except Exception:
+        percent = None
+    profile = run(["powerprofilesctl", "get"], timeout=0.7) if shutil.which("powerprofilesctl") else ""
+    return {"present": True, "percent": percent, "status": status or "unknown", "profile": profile or "balanced"}
+
+
+def media_summary() -> dict:
+    if not shutil.which("playerctl"):
+        return {"state": "missing", "title": tr("Playerctl absent", "playerctl missing"), "artist": "", "player": ""}
+    status = run(["playerctl", "status"], timeout=0.6)
+    title = run(["playerctl", "metadata", "title"], timeout=0.6)
+    artist = run(["playerctl", "metadata", "artist"], timeout=0.6)
+    player = run(["playerctl", "-l"], timeout=0.6).splitlines()
+    return {
+        "state": status or tr("Aucune lecture", "No playback"),
+        "title": title or tr("Rien en lecture", "Nothing playing"),
+        "artist": artist,
+        "player": player[0] if player else "",
+    }
+
+
+def month_summary() -> dict:
+    now = time.localtime()
+    _, days = calendar.monthrange(now.tm_year, now.tm_mon)
+    return {
+        "day": now.tm_mday,
+        "days": days,
+        "weekday": time.strftime("%A", now),
+        "month": time.strftime("%B", now),
+        "week": time.strftime("%V", now),
+        "fraction": now.tm_mday / max(days, 1),
+    }
+
+
+def weather_summary(data: dict | None = None) -> dict:
+    prefs = data or config()
+    weather = prefs.get("weather") if isinstance(prefs.get("weather"), dict) else {}
+    enabled = bool(weather.get("enabled", False))
+    location = str(weather.get("location") or "")
+    summary = str(weather.get("summary") or "")
+    return {
+        "enabled": enabled,
+        "location": location or tr("Non configuré", "Not configured"),
+        "summary": summary or tr("Ajoute une ville dans les réglages widgets.", "Add a city in widget settings."),
+    }
 
 
 def doctor_state() -> dict:
@@ -202,6 +462,7 @@ def widget_payload() -> dict:
     data = config()
     doctor = doctor_state()
     summary = doctor.get("summary") if isinstance(doctor.get("summary"), dict) else {}
+    disk = disk_summary()
     return {
         "schema": "sevenos.widgets.status.v1",
         "config": data,
@@ -210,7 +471,12 @@ def widget_payload() -> dict:
         "runtime": {
             "cpu": cpu_percent(),
             "memory": memory_percent(),
-            "disk": disk_percent(),
+            "disk": disk["percent"],
+            "disk_summary": disk,
+            "battery": battery_summary(),
+            "media": media_summary(),
+            "calendar": month_summary(),
+            "weather": weather_summary(data),
             "network": network_state(),
             "doctor": {"decision": doctor.get("decision", "unknown"), "issues": summary.get("issues", 0)},
             "workspace": current_workspace(),
@@ -262,8 +528,30 @@ window {
   background: alpha(@seven_panel_2, 0.96);
   border: 1px solid alpha(@seven_border, 0.96);
 }
+.widget.compact {
+  padding: 12px;
+}
+.widget.focus {
+  padding: 18px;
+}
 .widget:hover {
   background: alpha(@seven_hover, 0.72);
+}
+.widget-row {
+  padding: 12px;
+  border-radius: 18px;
+  color: @seven_text;
+  background: alpha(@seven_panel_2, 0.86);
+  border: 1px solid alpha(@seven_border, 0.76);
+}
+.widget-row:hover {
+  background: alpha(@seven_hover, 0.64);
+}
+.widget-row label {
+  color: @seven_text;
+}
+.widget-row .subtitle {
+  color: @seven_muted;
 }
 .widget label {
   color: @seven_text;
@@ -288,6 +576,84 @@ window {
   font-size: 25px;
   font-weight: 600;
   color: @seven_text;
+}
+.widget-icon {
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 12px;
+  background: alpha(@seven_accent, 0.12);
+  color: @seven_accent;
+}
+.section-title {
+  color: @seven_muted;
+  font-size: 12px;
+}
+.category-title {
+  padding: 8px 2px 2px 2px;
+  color: @seven_muted;
+  font-size: 12px;
+}
+.category-count {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: @seven_text;
+  background: alpha(@seven_panel, 0.70);
+  border: 1px solid alpha(@seven_border, 0.68);
+}
+.search-row {
+  padding: 8px;
+  border-radius: 999px;
+  background: alpha(@seven_panel_2, 0.78);
+  border: 1px solid alpha(@seven_border, 0.72);
+}
+.search-row entry {
+  color: @seven_text;
+  background: transparent;
+  border: 0;
+}
+.feedback-row {
+  padding: 10px 12px;
+  border-radius: 18px;
+  color: @seven_text;
+  background: alpha(@seven_accent, 0.10);
+  border: 1px solid alpha(@seven_accent, 0.28);
+}
+.preset-strip {
+  padding: 12px;
+  border-radius: 20px;
+  background: alpha(@seven_panel_2, 0.70);
+  border: 1px solid alpha(@seven_border, 0.72);
+}
+.menu-state {
+  padding: 14px;
+  border-radius: 22px;
+  background: alpha(@seven_accent, 0.10);
+  border: 1px solid alpha(@seven_accent, 0.24);
+}
+.menu-grid {
+  padding: 10px;
+  border-radius: 20px;
+  background: alpha(@seven_panel_2, 0.64);
+  border: 1px solid alpha(@seven_border, 0.68);
+}
+.preset-button {
+  padding: 7px 10px;
+  border-radius: 999px;
+}
+.primary-action {
+  background: alpha(@seven_accent, 0.22);
+  border-color: alpha(@seven_accent, 0.52);
+}
+.layout-active {
+  background: alpha(@seven_accent, 0.18);
+  border-color: alpha(@seven_accent, 0.55);
+}
+.empty-state {
+  padding: 28px;
+  border-radius: 24px;
+  color: @seven_text;
+  background: alpha(@seven_panel_2, 0.82);
+  border: 1px solid alpha(@seven_border, 0.80);
 }
 .home-header {
   padding: 12px 14px;
@@ -314,6 +680,20 @@ button.compact {
 button:hover {
   background: @seven_hover;
 }
+.profile-chip {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: alpha(@seven_panel, 0.76);
+  border: 1px solid alpha(@seven_border, 0.74);
+  color: @seven_text;
+}
+.order-index {
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 999px;
+  background: alpha(@seven_panel, 0.74);
+  color: @seven_muted;
+}
 switch {
   border-radius: 999px;
 }
@@ -332,7 +712,12 @@ progressbar progress {
 
 def install_css() -> None:
     mode = seven_theme.current_theme_mode() if seven_theme else os.environ.get("SEVENOS_THEME_MODE", "dark")
-    base = seven_theme.gtk_app_css("widgets", mode) if seven_theme else ""
+    base = (
+        seven_theme.gtk_app_css("widgets", mode)
+        + seven_theme.surface_css("widgets", mode=mode)
+        if seven_theme
+        else ""
+    )
     provider = Gtk.CssProvider()
     provider.load_from_data((base + CSS).encode())
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -347,8 +732,15 @@ class WidgetsWindow(Gtk.Window):
         }.get(mode, "Seven Widgets")
         super().__init__(title=title)
         self.mode = mode
+        self.settings_query = ""
         self.set_position(Gtk.WindowPosition.CENTER)
-        self.set_default_size(380 if mode == "menu" else 760, 420 if mode == "menu" else 520)
+        layout = LAYOUTS[layout_key(config().get("layout"))]
+        if mode == "menu":
+            self.set_default_size(380, 420)
+        elif mode == "desktop":
+            self.set_default_size(int(layout["width"]), int(layout["height"]))
+        else:
+            self.set_default_size(780, 620)
         self.set_keep_above(False)
         self.set_skip_taskbar_hint(mode == "desktop")
         self.set_decorated(mode != "desktop")
@@ -387,14 +779,76 @@ class WidgetsWindow(Gtk.Window):
         header.pack_start(sub, False, False, 0)
         self.root.pack_start(header, False, False, 0)
 
+    def section_label(self, text: str):
+        label = Gtk.Label(label=text.upper(), xalign=0)
+        label.get_style_context().add_class("section-title")
+        self.root.pack_start(label, False, False, 0)
+
     def render_menu(self):
-        self.render_header(tr("Bureau SevenOS", "SevenOS Desktop"), tr("Widgets, apparence et actions rapides.", "Widgets, appearance and quick actions."))
+        data = config()
+        enabled = [item for item in data.get("enabled", []) if item in catalog_keys()]
+        visible = bool(data.get("visible"))
+        profile = current_profile()
+        self.render_header(
+            tr("Accueil SevenOS", "SevenOS Home"),
+            tr("Widgets, presets et actions du bureau.", "Widgets, presets and desktop actions."),
+        )
+
+        state = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        state.get_style_context().add_class("menu-state")
+        status = tr("Visible", "Visible") if visible else tr("Masqué", "Hidden")
+        status_label = Gtk.Label(
+            label=tr(
+                f"{status} · {len(enabled)}/{len(CATALOG)} widgets · {layout_title(str(data.get('layout')))}",
+                f"{status} · {len(enabled)}/{len(CATALOG)} widgets · {layout_title(str(data.get('layout')))}",
+            ),
+            xalign=0,
+        )
+        status_label.get_style_context().add_class("value")
+        note = Gtk.Label(
+            label=tr(
+                f"Workspace {data.get('home_workspace', HOME_WORKSPACE)} · Mini OS {profile.title()}",
+                f"Workspace {data.get('home_workspace', HOME_WORKSPACE)} · Mini OS {profile.title()}",
+            ),
+            xalign=0,
+        )
+        note.get_style_context().add_class("subtitle")
+        state.pack_start(status_label, False, False, 0)
+        state.pack_start(note, False, False, 0)
+        self.root.pack_start(state, False, False, 0)
+
+        primary = Gtk.Grid(column_spacing=8, row_spacing=8)
+        primary.get_style_context().add_class("menu-grid")
+        primary_actions = [
+            (tr("Afficher", "Show") if not visible else tr("Masquer", "Hide"), toggle_widgets),
+            (tr("Ajouter", "Add"), lambda: launch_native("settings")),
+            (tr("Preset actif", "Active preset"), lambda: (apply_preset("active"), show_widgets())),
+            (tr("Notes", "Notes"), lambda: subprocess.Popen(["seven-notes"])),
+        ]
+        for index, (label, callback) in enumerate(primary_actions):
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("preset-button")
+            if index == 0:
+                button.get_style_context().add_class("primary-action")
+            button.connect("clicked", lambda _b, cb=callback: (cb(), Gtk.main_quit()))
+            primary.attach(button, index % 2, index // 2, 1, 1)
+        self.root.pack_start(primary, False, False, 0)
+
+        layout_row = Gtk.Grid(column_spacing=8, row_spacing=8)
+        layout_row.get_style_context().add_class("menu-grid")
+        for index, key in enumerate(("calm-grid", "compact-grid", "focus-stack")):
+            button = Gtk.Button(label=layout_title(key))
+            button.get_style_context().add_class("preset-button")
+            if layout_key(str(data.get("layout"))) == key:
+                button.get_style_context().add_class("layout-active")
+            button.connect("clicked", lambda _b, layout=key: (set_layout(layout), show_widgets(), Gtk.main_quit()))
+            layout_row.attach(button, index, 0, 1, 1)
+        self.root.pack_start(layout_row, False, False, 0)
+
         actions = [
-            (tr("Ajouter un widget", "Add widget"), lambda: launch_native("settings")),
-            (tr("Afficher les widgets", "Show widgets"), lambda: show_widgets()),
-            (tr("Masquer les widgets", "Hide widgets"), lambda: hide_widgets()),
             (tr("Fond d’écran", "Wallpaper"), lambda: subprocess.Popen(["seven-settings", "wallpaper"])),
-            (tr("Réglages", "Settings"), lambda: subprocess.Popen(["seven-settings", "general"])),
+            (tr("Réglages widgets", "Widget settings"), lambda: launch_native("settings")),
+            (tr("Réglages SevenOS", "SevenOS Settings"), lambda: subprocess.Popen(["seven-settings", "general"])),
         ]
         for label, callback in actions:
             button = Gtk.Button(label=label)
@@ -405,8 +859,94 @@ class WidgetsWindow(Gtk.Window):
         self.render_header(tr("Widgets SevenOS", "SevenOS Widgets"), tr("Choisis ce qui reste visible sur l’écran d’accueil.", "Choose what stays visible on the home screen."))
         state = config()
         enabled = set(state.get("enabled", []))
+        summary = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        summary.get_style_context().add_class("preset-strip")
+        summary_label = Gtk.Label(
+            label=tr(
+                f"{len(enabled)}/{len(CATALOG)} widgets actifs · {layout_title(str(state.get('layout')))} · workspace {state.get('home_workspace', HOME_WORKSPACE)}",
+                f"{len(enabled)}/{len(CATALOG)} active widgets · {layout_title(str(state.get('layout')))} · workspace {state.get('home_workspace', HOME_WORKSPACE)}",
+            ),
+            xalign=0,
+        )
+        summary_label.get_style_context().add_class("subtitle")
+        summary.pack_start(summary_label, True, True, 0)
+        active_preset = Gtk.Button(label=tr("Preset Mini OS actif", "Active Mini OS preset"))
+        active_preset.get_style_context().add_class("compact")
+        active_preset.connect("clicked", lambda *_: (apply_preset("active"), self.render()))
+        complete_preset = Gtk.Button(label=tr("Compléter", "Complete"))
+        complete_preset.get_style_context().add_class("compact")
+        complete_preset.set_tooltip_text(
+            tr(
+                "Ajoute les widgets recommandés du Mini OS actif sans supprimer tes choix.",
+                "Add recommended widgets from the active Mini OS without removing your choices.",
+            )
+        )
+        complete_preset.connect("clicked", lambda *_: (merge_preset("active"), self.render()))
+        summary.pack_start(active_preset, False, False, 0)
+        summary.pack_start(complete_preset, False, False, 0)
+        self.root.pack_start(summary, False, False, 0)
+        feedback = last_action_text(state)
+        if feedback:
+            feedback_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            feedback_row.get_style_context().add_class("feedback-row")
+            feedback_icon = Gtk.Label(label="✓", xalign=0.5)
+            feedback_icon.get_style_context().add_class("widget-icon")
+            feedback_label = Gtk.Label(label=feedback, xalign=0)
+            feedback_label.get_style_context().add_class("subtitle")
+            feedback_row.pack_start(feedback_icon, False, False, 0)
+            feedback_row.pack_start(feedback_label, True, True, 0)
+            self.root.pack_start(feedback_row, False, False, 0)
+
+        self.section_label(tr("Presets rapides", "Quick presets"))
+        presets = Gtk.Grid(column_spacing=8, row_spacing=8)
+        presets.get_style_context().add_class("preset-strip")
+        preset_keys = ("equinox", "forge", "studio", "shield", "atlas", "baobab", "pulse", "calm", "focus")
+        for index, key in enumerate(preset_keys):
+            label = {
+                "equinox": "Equinox",
+                "forge": "Forge",
+                "studio": "Studio",
+                "shield": "Shield",
+                "atlas": "Atlas",
+                "baobab": "Baobab",
+                "pulse": "Pulse",
+                "calm": tr("Calme", "Calm"),
+                "focus": "Focus",
+            }[key]
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("preset-button")
+            button.connect("clicked", lambda _b, preset=key: (apply_preset(preset), self.render()))
+            presets.attach(button, index % 3, index // 3, 1, 1)
+        self.root.pack_start(presets, False, False, 0)
+
+        self.section_label(tr("Disposition", "Layout"))
+        layout_grid = Gtk.Grid(column_spacing=8, row_spacing=8)
+        layout_grid.get_style_context().add_class("preset-strip")
+        active_layout = layout_key(str(state.get("layout")))
+        for index, key in enumerate(("calm-grid", "compact-grid", "focus-stack")):
+            item = LAYOUTS[key]
+            button_label = item["title"] if lang_is_fr() else item["title_en"]
+            button = Gtk.Button(label=button_label)
+            button.get_style_context().add_class("preset-button")
+            if key == active_layout:
+                button.get_style_context().add_class("layout-active")
+            button.set_tooltip_text(item["note"] if lang_is_fr() else item["note_en"])
+            button.connect("clicked", lambda _b, layout=key: (set_layout(layout), self.render()))
+            layout_grid.attach(button, index, 0, 1, 1)
+        layout_note = Gtk.Label(
+            label=tr(
+                "Calme pour l’usage quotidien, Compacte pour voir plus, Focus pour un accueil vertical.",
+                "Calm for daily use, Compact for more cards, Focus for a vertical home.",
+            ),
+            xalign=0,
+        )
+        layout_note.get_style_context().add_class("subtitle")
+        layout_grid.attach(layout_note, 0, 1, 3, 1)
+        self.root.pack_start(layout_grid, False, False, 0)
+
+        self.section_label(tr("Comportement", "Behavior"))
         menu_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        menu_row.get_style_context().add_class("widget")
+        menu_row.get_style_context().add_class("widget-row")
         menu_labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
         menu_labels.pack_start(Gtk.Label(label=tr("Menu au clic droit", "Right-click menu"), xalign=0), False, False, 0)
         menu_note = Gtk.Label(
@@ -425,7 +965,7 @@ class WidgetsWindow(Gtk.Window):
         menu_row.pack_start(menu_switch, False, False, 0)
         self.root.pack_start(menu_row, False, False, 0)
         home_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        home_row.get_style_context().add_class("widget")
+        home_row.get_style_context().add_class("widget-row")
         home_labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
         home_labels.pack_start(Gtk.Label(label=tr("Workspace d’accueil", "Home workspace"), xalign=0), False, False, 0)
         home_note = Gtk.Label(
@@ -445,35 +985,182 @@ class WidgetsWindow(Gtk.Window):
         home_combo.connect("changed", lambda combo: set_home_workspace(combo.get_active_id() or HOME_WORKSPACE))
         home_row.pack_start(home_combo, False, False, 0)
         self.root.pack_start(home_row, False, False, 0)
-        for item in CATALOG:
-            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-            row.get_style_context().add_class("widget")
-            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-            title = item["title"] if lang_is_fr() else item["title_en"]
-            note = item["note"] if lang_is_fr() else item["note_en"]
-            labels.pack_start(Gtk.Label(label=title, xalign=0), False, False, 0)
-            note_label = Gtk.Label(label=note, xalign=0)
-            note_label.get_style_context().add_class("subtitle")
-            labels.pack_start(note_label, False, False, 0)
-            row.pack_start(labels, True, True, 0)
-            switch = Gtk.Switch()
-            switch.set_active(item["key"] in enabled)
-            switch.connect("notify::active", lambda sw, _p, key=item["key"]: set_widget(key, sw.get_active()))
-            row.pack_start(switch, False, False, 0)
+        weather_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        weather_row.get_style_context().add_class("widget-row")
+        weather_labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        weather_labels.pack_start(Gtk.Label(label=tr("Météo locale", "Local weather"), xalign=0), False, False, 0)
+        weather_note = Gtk.Label(
+            label=tr(
+                "Carte opt-in : SevenOS n’appelle aucun service météo sans ville configurée.",
+                "Opt-in card: SevenOS does not call weather services without a configured city.",
+            ),
+            xalign=0,
+        )
+        weather_note.get_style_context().add_class("subtitle")
+        weather_labels.pack_start(weather_note, False, False, 0)
+        weather_entry = Gtk.Entry()
+        weather_entry.set_placeholder_text(tr("Ville ou zone", "City or area"))
+        weather_entry.set_text(str((state.get("weather") or {}).get("location") or ""))
+        weather_save = Gtk.Button(label=tr("Enregistrer", "Save"))
+        weather_save.connect("clicked", lambda *_: set_weather_location(weather_entry.get_text()))
+        weather_row.pack_start(weather_labels, True, True, 0)
+        weather_row.pack_start(weather_entry, False, False, 0)
+        weather_row.pack_start(weather_save, False, False, 0)
+        self.root.pack_start(weather_row, False, False, 0)
+
+        ordered_enabled = [key for key in state.get("enabled", []) if key in catalog_keys()]
+        self.section_label(tr("Ordre de l’accueil", "Home order"))
+        if ordered_enabled:
+            for index, key in enumerate(ordered_enabled):
+                row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+                row.get_style_context().add_class("widget-row")
+                order_label = Gtk.Label(label=str(index + 1), xalign=0.5)
+                order_label.get_style_context().add_class("order-index")
+                icon = Gtk.Label(label=widget_icon(key), xalign=0.5)
+                icon.get_style_context().add_class("widget-icon")
+                labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+                labels.pack_start(Gtk.Label(label=widget_title(key), xalign=0), False, False, 0)
+                note = Gtk.Label(
+                    label=tr("Position sur l’écran d’accueil.", "Position on the home screen."),
+                    xalign=0,
+                )
+                note.get_style_context().add_class("subtitle")
+                labels.pack_start(note, False, False, 0)
+                up = Gtk.Button(label="↑")
+                up.get_style_context().add_class("compact")
+                down = Gtk.Button(label="↓")
+                down.get_style_context().add_class("compact")
+                remove = Gtk.Button(label=tr("Retirer", "Remove"))
+                remove.get_style_context().add_class("compact")
+                up.set_sensitive(index > 0)
+                down.set_sensitive(index < len(ordered_enabled) - 1)
+                up.set_tooltip_text(tr("Monter ce widget", "Move this widget up"))
+                down.set_tooltip_text(tr("Descendre ce widget", "Move this widget down"))
+                remove.set_tooltip_text(tr("Retirer ce widget de l’accueil", "Remove this widget from Home"))
+                up.connect("clicked", lambda _b, selected=key: (move_widget(selected, "up"), self.render()))
+                down.connect("clicked", lambda _b, selected=key: (move_widget(selected, "down"), self.render()))
+                remove.connect("clicked", lambda _b, selected=key: (set_widget(selected, False), self.render()))
+                row.pack_start(order_label, False, False, 0)
+                row.pack_start(icon, False, False, 0)
+                row.pack_start(labels, True, True, 0)
+                row.pack_start(up, False, False, 0)
+                row.pack_start(down, False, False, 0)
+                row.pack_start(remove, False, False, 0)
+                self.root.pack_start(row, False, False, 0)
+        else:
+            row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            row.get_style_context().add_class("widget-row")
+            row.pack_start(Gtk.Label(label=tr("Aucun widget actif", "No active widgets"), xalign=0), False, False, 0)
+            note = Gtk.Label(
+                label=tr("Applique un preset ou active des widgets ci-dessous.", "Apply a preset or enable widgets below."),
+                xalign=0,
+            )
+            note.get_style_context().add_class("subtitle")
+            row.pack_start(note, False, False, 0)
             self.root.pack_start(row, False, False, 0)
+
+        self.section_label(tr("Widgets disponibles", "Available widgets"))
+        search_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        search_row.get_style_context().add_class("search-row")
+        search_icon = Gtk.Label(label="⌕", xalign=0.5)
+        search_icon.get_style_context().add_class("micro")
+        search = Gtk.SearchEntry()
+        search.set_placeholder_text(tr("Rechercher un widget, une catégorie ou un usage…", "Search a widget, category or use…"))
+        search.set_text(self.settings_query)
+        search_row.pack_start(search_icon, False, False, 0)
+        search_row.pack_start(search, True, True, 0)
+        self.root.pack_start(search_row, False, False, 0)
+
+        visible_groups: list[tuple[Gtk.Box, Gtk.Label, list[tuple[Gtk.Box, dict]]]] = []
+        for category, _fr, _en in WIDGET_CATEGORIES:
+            items = [item for item in CATALOG if item.get("category") == category]
+            if not items:
+                continue
+            active_count = sum(1 for item in items if item["key"] in enabled)
+            category_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            title = Gtk.Label(label=widget_category_title(category).upper(), xalign=0)
+            title.get_style_context().add_class("category-title")
+            count = Gtk.Label(label=f"{active_count}/{len(items)}", xalign=0.5)
+            count.get_style_context().add_class("category-count")
+            category_row.pack_start(title, True, True, 0)
+            category_row.pack_start(count, False, False, 0)
+            self.root.pack_start(category_row, False, False, 0)
+            group_rows: list[tuple[Gtk.Box, dict]] = []
+            for item in items:
+                row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+                row.get_style_context().add_class("widget-row")
+                icon = Gtk.Label(label=widget_icon(item["key"]), xalign=0.5)
+                icon.get_style_context().add_class("widget-icon")
+                row.pack_start(icon, False, False, 0)
+                labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+                title_text = item["title"] if lang_is_fr() else item["title_en"]
+                note = item["note"] if lang_is_fr() else item["note_en"]
+                labels.pack_start(Gtk.Label(label=title_text, xalign=0), False, False, 0)
+                note_label = Gtk.Label(label=note, xalign=0)
+                note_label.get_style_context().add_class("subtitle")
+                labels.pack_start(note_label, False, False, 0)
+                row.pack_start(labels, True, True, 0)
+                switch = Gtk.Switch()
+                switch.set_active(item["key"] in enabled)
+                switch.connect("notify::active", lambda sw, _p, key=item["key"]: (set_widget(key, sw.get_active()), self.render()))
+                row.pack_start(switch, False, False, 0)
+                self.root.pack_start(row, False, False, 0)
+                group_rows.append((row, item))
+            visible_groups.append((category_row, count, group_rows))
+        empty_filter = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        empty_filter.get_style_context().add_class("empty-state")
+        empty_filter.pack_start(Gtk.Label(label=tr("Aucun widget trouvé", "No widget found"), xalign=0), False, False, 0)
+        empty_note = Gtk.Label(
+            label=tr("Essaie un autre mot, une catégorie ou un usage.", "Try another word, category or use."),
+            xalign=0,
+        )
+        empty_note.get_style_context().add_class("subtitle")
+        empty_filter.pack_start(empty_note, False, False, 0)
+        self.root.pack_start(empty_filter, False, False, 0)
+
+        def update_filter(*_args):
+            query = search.get_text().strip().casefold()
+            self.settings_query = query
+            any_visible = False
+            for category_row, count_label, rows in visible_groups:
+                visible_in_group = 0
+                for row, item in rows:
+                    matched = not query or query in widget_search_text(item)
+                    row.set_visible(matched)
+                    visible_in_group += 1 if matched else 0
+                category_row.set_visible(visible_in_group > 0)
+                count_label.set_text(f"{sum(1 for _row, item in rows if item['key'] in enabled and (not query or query in widget_search_text(item)))}/{visible_in_group or len(rows)}")
+                any_visible = any_visible or visible_in_group > 0
+            empty_filter.set_visible(not any_visible)
+            return False
+
+        search.connect("search-changed", update_filter)
+        search.connect("activate", update_filter)
+        GLib.idle_add(update_filter)
         footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         show = Gtk.Button(label=tr("Afficher", "Show"))
         show.connect("clicked", lambda *_: show_widgets())
+        restore = Gtk.Button(label=tr("Restaurer", "Restore"))
+        restore.set_tooltip_text(tr("Revenir à la configuration widgets précédente.", "Return to the previous widget configuration."))
+        restore.set_sensitive(BACKUP_FILE.exists())
+        restore.connect("clicked", lambda *_: (restore_previous_config(), self.render()))
+        reset = Gtk.Button(label=tr("Réinitialiser", "Reset"))
+        reset.connect("clicked", lambda *_: (reset_widgets(), self.render()))
         close = Gtk.Button(label=tr("Fermer", "Close"))
         close.connect("clicked", lambda *_: Gtk.main_quit())
         footer.pack_start(show, True, True, 0)
+        footer.pack_start(restore, True, True, 0)
+        footer.pack_start(reset, True, True, 0)
         footer.pack_start(close, True, True, 0)
         self.root.pack_end(footer, False, False, 0)
 
     def render_desktop(self):
         payload = widget_payload()
         state = payload["config"]
-        enabled = [key for key in state.get("enabled", []) if key in {item["key"] for item in CATALOG}]
+        layout_name = layout_key(str(state.get("layout")))
+        layout = LAYOUTS[layout_name]
+        columns = int(layout.get("columns") or 2)
+        enabled = [key for key in state.get("enabled", []) if key in catalog_keys()]
         header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         header.get_style_context().add_class("home-header")
         labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -482,8 +1169,8 @@ class WidgetsWindow(Gtk.Window):
         updated = time.strftime("%H:%M", time.localtime(payload["runtime"].get("updated", time.time())))
         subtitle = Gtk.Label(
             label=tr(
-                f"Workspace {state.get('home_workspace', HOME_WORKSPACE)} · {payload['profile'].title()} · mis à jour {updated}",
-                f"Workspace {state.get('home_workspace', HOME_WORKSPACE)} · {payload['profile'].title()} · updated {updated}",
+                f"{layout_title(layout_name)} · Workspace {state.get('home_workspace', HOME_WORKSPACE)} · {payload['profile'].title()} · mis à jour {updated}",
+                f"{layout_title(layout_name)} · Workspace {state.get('home_workspace', HOME_WORKSPACE)} · {payload['profile'].title()} · updated {updated}",
             ),
             xalign=0,
         )
@@ -500,10 +1187,33 @@ class WidgetsWindow(Gtk.Window):
         header.pack_start(settings, False, False, 0)
         header.pack_start(hide, False, False, 0)
         self.root.pack_start(header, False, False, 0)
-        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
-        grid.set_column_homogeneous(True)
+        spacing = 10 if layout_name == "compact-grid" else 12
+        grid = Gtk.Grid(column_spacing=spacing, row_spacing=spacing)
+        grid.set_column_homogeneous(columns > 1)
+        if not enabled:
+            empty = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+            empty.get_style_context().add_class("empty-state")
+            empty_title = Gtk.Label(label=tr("Aucun widget actif", "No active widgets"), xalign=0)
+            empty_title.get_style_context().add_class("value")
+            empty_note = Gtk.Label(
+                label=tr("Ajoute un preset ou choisis tes widgets pour personnaliser l’accueil.", "Add a preset or choose widgets to personalize Home."),
+                xalign=0,
+            )
+            empty_note.get_style_context().add_class("subtitle")
+            preset = Gtk.Button(label=tr("Appliquer le preset actif", "Apply active preset"))
+            preset.connect("clicked", lambda *_: (apply_preset("active"), self.render(), show_widgets()))
+            empty.pack_start(empty_title, False, False, 0)
+            empty.pack_start(empty_note, False, False, 0)
+            empty.pack_start(preset, False, False, 0)
+            self.root.pack_start(empty, True, True, 0)
+            return
         for index, key in enumerate(enabled):
-            grid.attach(self.widget_card(key, payload), index % 2, index // 2, 1, 1)
+            card = self.widget_card(key, payload)
+            if layout_name == "compact-grid":
+                card.get_style_context().add_class("compact")
+            if layout_name == "focus-stack":
+                card.get_style_context().add_class("focus")
+            grid.attach(card, index % columns, index // columns, 1, 1)
         self.root.pack_start(grid, True, True, 0)
 
     def widget_card(self, key: str, payload: dict):
@@ -513,16 +1223,55 @@ class WidgetsWindow(Gtk.Window):
         profile = payload["profile"]
         if key == "notes":
             return self.notes_widget_card(payload)
+        if key == "tasks":
+            return self.tasks_widget_card(payload)
+        if key == "mini-os":
+            return self.mini_os_widget_card(payload)
+        if key == "quick":
+            return self.quick_widget_card(payload)
         title, value, note, fraction, action = {
             "clock": (tr("Horloge", "Clock"), time.strftime("%H:%M"), time.strftime("%A %d %B"), None, None),
             "system": (tr("Système", "System"), f"CPU {runtime['cpu']}%", f"RAM {runtime['memory']}% · Disk {runtime['disk']}%", runtime["cpu"] / 100, ["seven", "doctor"]),
+            "battery": (
+                tr("Énergie", "Power"),
+                f"{runtime['battery']['percent']}%" if runtime["battery"].get("percent") is not None else runtime["battery"].get("status", "AC"),
+                f"{runtime['battery'].get('status', '')} · {runtime['battery'].get('profile', 'balanced')}",
+                (runtime["battery"].get("percent") or 0) / 100 if runtime["battery"].get("percent") is not None else None,
+                ["seven-settings", "power"],
+            ),
+            "storage": (
+                tr("Stockage", "Storage"),
+                runtime["disk_summary"].get("free", "?"),
+                tr("disponible · {used} utilisé", "free · {used} used").format(used=runtime["disk_summary"].get("used", "?")),
+                runtime["disk_summary"].get("percent", 0) / 100,
+                ["seven-files"],
+            ),
             "doctor": ("Seven Doctor", str(runtime["doctor"]["decision"]), f"{runtime['doctor']['issues']} issue(s)", None, ["seven", "doctor"]),
             "prism": ("Prism", profile.title(), tr("Mini OS actif", "Active Mini OS"), None, ["seven-settings", "prism"]),
-            "notes": (tr("Notes", "Notes"), NOTE_FILE.read_text(encoding="utf-8", errors="ignore").strip()[:42] if NOTE_FILE.exists() else tr("Rien à noter", "Nothing yet"), tr("Mémo local", "Local memo"), None, ["seven", "widgets", "settings"]),
+            "calendar": (
+                tr("Calendrier", "Calendar"),
+                f"{runtime['calendar']['day']}/{runtime['calendar']['days']}",
+                tr("Semaine {week} · {month}", "Week {week} · {month}").format(week=runtime["calendar"]["week"], month=runtime["calendar"]["month"]),
+                runtime["calendar"]["fraction"],
+                ["seven-settings", "general"],
+            ),
+            "media": (
+                tr("Média", "Media"),
+                runtime["media"].get("title", ""),
+                f"{runtime['media'].get('state', '')} · {runtime['media'].get('artist', '')}".strip(" ·"),
+                None,
+                ["playerctl", "play-pause"] if shutil.which("playerctl") else None,
+            ),
             "network": (tr("Réseau", "Network"), runtime["network"], tr("Wi-Fi et connexions", "Wi-Fi and connections"), None, ["seven-wifi"]),
-            "quick": (tr("Actions", "Actions"), "SevenOS", tr("Réglages · Doctor · Store", "Settings · Doctor · Store"), None, ["seven-settings", "general"]),
+            "weather": (
+                tr("Météo", "Weather"),
+                runtime["weather"].get("location", ""),
+                runtime["weather"].get("summary", ""),
+                None,
+                ["seven", "widgets", "settings"],
+            ),
         }.get(key, (key, "", "", None, None))
-        title_label = Gtk.Label(label=title, xalign=0)
+        title_label = Gtk.Label(label=f"{widget_icon(key)}  {title}", xalign=0)
         title_label.get_style_context().add_class("subtitle")
         value_label = Gtk.Label(label=str(value), xalign=0)
         value_label.get_style_context().add_class("value")
@@ -542,11 +1291,60 @@ class WidgetsWindow(Gtk.Window):
             card.pack_start(button, False, False, 0)
         return card
 
+    def mini_os_widget_card(self, payload: dict):
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.get_style_context().add_class("widget")
+        profile = payload["profile"]
+        title_label = Gtk.Label(label=f"{widget_icon('mini-os')}  {tr('Mini OS', 'Mini OS')}", xalign=0)
+        title_label.get_style_context().add_class("subtitle")
+        value_label = Gtk.Label(label=profile.title(), xalign=0)
+        value_label.get_style_context().add_class("value")
+        card.pack_start(title_label, False, False, 0)
+        card.pack_start(value_label, False, False, 0)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        for label, command in (
+            ("EQ", ["seven", "profile", "activate", "equinox"]),
+            ("FG", ["seven", "profile", "activate", "forge"]),
+            ("ST", ["seven", "profile", "activate", "studio"]),
+            ("PL", ["seven", "profile", "activate", "pulse"]),
+        ):
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("compact")
+            button.connect("clicked", lambda *_a, cmd=command: subprocess.Popen(cmd))
+            row.pack_start(button, True, True, 0)
+        card.pack_start(row, False, False, 0)
+        open_settings = Gtk.Button(label=tr("Tous les espaces", "All spaces"))
+        open_settings.get_style_context().add_class("compact")
+        open_settings.connect("clicked", lambda *_a: subprocess.Popen(["seven-settings", "profiles"]))
+        card.pack_start(open_settings, False, False, 0)
+        return card
+
+    def quick_widget_card(self, payload: dict):
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.get_style_context().add_class("widget")
+        title_label = Gtk.Label(label=f"{widget_icon('quick')}  {tr('Actions', 'Actions')}", xalign=0)
+        title_label.get_style_context().add_class("subtitle")
+        value_label = Gtk.Label(label="SevenOS", xalign=0)
+        value_label.get_style_context().add_class("value")
+        card.pack_start(title_label, False, False, 0)
+        card.pack_start(value_label, False, False, 0)
+        for label, command in (
+            (tr("Réglages", "Settings"), ["seven-settings", "general"]),
+            ("Doctor", ["seven", "doctor", "open"]),
+            ("Store", ["seven", "store"]),
+            (tr("Fichiers", "Files"), ["seven-files"]),
+        ):
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("compact")
+            button.connect("clicked", lambda *_a, cmd=command: subprocess.Popen(cmd))
+            card.pack_start(button, False, False, 0)
+        return card
+
     def notes_widget_card(self, payload: dict):
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         card.get_style_context().add_class("widget")
         notes = sorted(seven_notes(), key=lambda item: (bool(item.get("pinned")), int(item.get("updated") or 0)), reverse=True)
-        title_label = Gtk.Label(label=tr("Notes", "Notes"), xalign=0)
+        title_label = Gtk.Label(label=f"{widget_icon('notes')}  {tr('Notes', 'Notes')}", xalign=0)
         title_label.get_style_context().add_class("subtitle")
         value_label = Gtk.Label(label=notes[0].get("title", tr("Rien à noter", "Nothing yet")) if notes else tr("Rien à noter", "Nothing yet"), xalign=0)
         value_label.get_style_context().add_class("value")
@@ -582,15 +1380,127 @@ class WidgetsWindow(Gtk.Window):
         card.pack_start(row, False, False, 0)
         return card
 
+    def tasks_widget_card(self, payload: dict):
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.get_style_context().add_class("widget")
+        notes = sorted(seven_notes(), key=lambda item: int(item.get("updated") or 0), reverse=True)
+        tasks = []
+        for item in notes:
+            text = " ".join([str(item.get("title") or ""), str(item.get("body") or "")]).strip()
+            if text.lower().startswith(("todo", "à faire", "a faire", "- [ ]")) or "#task" in text.lower():
+                tasks.append(text.replace("#task", "").strip())
+        title_label = Gtk.Label(label=f"{widget_icon('tasks')}  {tr('Tâches', 'Tasks')}", xalign=0)
+        title_label.get_style_context().add_class("subtitle")
+        value_label = Gtk.Label(label=str(len(tasks)) if tasks else tr("Prêt", "Ready"), xalign=0)
+        value_label.get_style_context().add_class("value")
+        card.pack_start(title_label, False, False, 0)
+        card.pack_start(value_label, False, False, 0)
+        for task in tasks[:3]:
+            chip = Gtk.Label(label=task[:54], xalign=0)
+            chip.get_style_context().add_class("note-chip")
+            card.pack_start(chip, False, False, 0)
+        entry = Gtk.Entry()
+        entry.set_placeholder_text(tr("Nouvelle tâche…", "New task…"))
+        save = Gtk.Button(label=tr("Ajouter", "Add"))
+        save.get_style_context().add_class("compact")
+
+        def submit(*_args):
+            text = entry.get_text().strip()
+            if text:
+                add_widget_note(f"#task {text}")
+                entry.set_text("")
+                self.render()
+
+        entry.connect("activate", submit)
+        save.connect("clicked", submit)
+        card.pack_start(entry, False, False, 0)
+        card.pack_start(save, False, False, 0)
+        return card
+
 
 def set_widget(key: str, enabled: bool) -> dict:
     data = config()
-    current = [item for item in data.get("enabled", []) if item in {entry["key"] for entry in CATALOG}]
+    current = [item for item in data.get("enabled", []) if item in catalog_keys()]
+    previous = list(current)
     if enabled and key not in current:
         current.append(key)
     if not enabled:
         current = [item for item in current if item != key]
+    if current != previous:
+        backup_config(data)
     data["enabled"] = current
+    if current != previous:
+        verb = ("Widget ajouté", "Widget added") if enabled else ("Widget retiré", "Widget removed")
+        mark_action(data, f"{verb[0]} : {widget_title(key)}.", f"{verb[1]}: {widget_title(key)}.")
+    save_config(data)
+    return data
+
+
+def move_widget(key: str, direction: str) -> dict:
+    data = config()
+    current = [item for item in data.get("enabled", []) if item in catalog_keys()]
+    if key not in current:
+        return data
+    index = current.index(key)
+    target = index - 1 if direction == "up" else index + 1
+    if target < 0 or target >= len(current):
+        return data
+    backup_config(data)
+    current[index], current[target] = current[target], current[index]
+    data["enabled"] = current
+    data["last_preset"] = "custom"
+    mark_action(data, f"{widget_title(key)} déplacé.", f"{widget_title(key)} moved.")
+    save_config(data)
+    return data
+
+
+def apply_preset(name: str) -> dict:
+    data = config()
+    backup_config(data)
+    preset_name = name.strip().lower() or "equinox"
+    if preset_name == "active":
+        preset_name = current_profile()
+    data["enabled"] = preset_widgets(preset_name)
+    data["last_preset"] = preset_name
+    data["layout"] = "calm-grid"
+    mark_action(data, f"Preset {preset_name.title()} appliqué.", f"{preset_name.title()} preset applied.")
+    save_config(data)
+    return data
+
+
+def merge_preset(name: str) -> dict:
+    data = config()
+    backup_config(data)
+    preset_name = name.strip().lower() or "equinox"
+    if preset_name == "active":
+        preset_name = current_profile()
+    current = [item for item in data.get("enabled", []) if item in catalog_keys()]
+    for item in preset_widgets(preset_name):
+        if item not in current:
+            current.append(item)
+    data["enabled"] = current
+    data["last_preset"] = f"{preset_name}-merged"
+    mark_action(data, f"Recommandations {preset_name.title()} ajoutées.", f"{preset_name.title()} recommendations added.")
+    save_config(data)
+    return data
+
+
+def set_layout(name: str) -> dict:
+    data = config()
+    if layout_key(str(data.get("layout"))) != layout_key(name):
+        backup_config(data)
+    data["layout"] = layout_key(name)
+    mark_action(data, f"Disposition {layout_title(name)} activée.", f"{layout_title(name)} layout enabled.")
+    save_config(data)
+    return data
+
+
+def reset_widgets() -> dict:
+    data = config()
+    backup_config(data)
+    data["enabled"] = list(DEFAULT_WIDGETS)
+    data["last_preset"] = "default"
+    mark_action(data, "Widgets réinitialisés.", "Widgets reset.")
     save_config(data)
     return data
 
@@ -598,6 +1508,7 @@ def set_widget(key: str, enabled: bool) -> dict:
 def set_right_click(enabled: bool) -> dict:
     data = config()
     data["desktop_right_click"] = bool(enabled)
+    mark_action(data, "Menu clic droit mis à jour.", "Right-click menu updated.")
     save_config(data)
     return data
 
@@ -605,6 +1516,25 @@ def set_right_click(enabled: bool) -> dict:
 def set_home_workspace(workspace: str) -> dict:
     data = config()
     data["home_workspace"] = str(workspace or HOME_WORKSPACE)
+    mark_action(data, f"Workspace d’accueil réglé sur {data['home_workspace']}.", f"Home workspace set to {data['home_workspace']}.")
+    save_config(data)
+    return data
+
+
+def set_weather_location(location: str) -> dict:
+    data = config()
+    location = location.strip()
+    data["weather"] = {
+        "enabled": bool(location),
+        "location": location,
+        "summary": tr("Météo locale configurée.", "Local weather configured.") if location else "",
+    }
+    if location:
+        current = [item for item in data.get("enabled", []) if item in catalog_keys()]
+        if "weather" not in current:
+            current.append("weather")
+        data["enabled"] = current
+    mark_action(data, "Météo locale mise à jour.", "Local weather updated.")
     save_config(data)
     return data
 
@@ -635,25 +1565,46 @@ def hide_widgets() -> None:
     close_desktop_widgets()
 
 
+def toggle_widgets() -> None:
+    if bool(config().get("visible", False)):
+        hide_widgets()
+    else:
+        show_widgets()
+
+
 def doctor() -> dict:
     data = config()
-    keys = {item["key"] for item in CATALOG}
+    keys = catalog_keys()
     invalid = [item for item in data.get("enabled", []) if item not in keys]
     return {
         "schema": "sevenos.widgets.doctor.v1",
         "state": "ready" if not invalid else "needs-attention",
         "score": 100 if not invalid else 82,
         "config": str(CONFIG_FILE),
+        "backup": str(BACKUP_FILE),
+        "backup_available": BACKUP_FILE.exists(),
         "catalog": len(CATALOG),
+        "categories": [category for category, _fr, _en in WIDGET_CATEGORIES],
+        "presets": sorted(PRESETS.keys()),
+        "layouts": sorted(LAYOUTS.keys()),
+        "layout": layout_key(str(data.get("layout"))),
+        "last_preset": data.get("last_preset", ""),
         "enabled": data.get("enabled", []),
         "invalid": invalid,
         "commands": {
             "menu": "seven widgets menu",
             "add": "seven widgets add clock",
+            "move": "seven widgets move notes up",
             "settings": "seven widgets settings",
             "open": "seven widgets open",
             "hide": "seven widgets hide",
+            "toggle": "seven widgets toggle",
             "home": "seven widgets home 1",
+            "preset": "seven widgets preset active",
+            "merge": "seven widgets merge active",
+            "restore": "seven widgets restore",
+            "layout": "seven widgets layout calm-grid",
+            "reset": "seven widgets reset",
         },
     }
 
@@ -667,7 +1618,7 @@ def main() -> int:
         print(json.dumps(widget_payload(), ensure_ascii=False, indent=2))
         return 0
     if action == "catalog":
-        print(json.dumps({"schema": "sevenos.widgets.catalog.v1", "catalog": CATALOG}, ensure_ascii=False, indent=2))
+        print(json.dumps({"schema": "sevenos.widgets.catalog.v1", "catalog": CATALOG, "presets": PRESETS, "layouts": LAYOUTS}, ensure_ascii=False, indent=2))
         return 0
     if action == "doctor":
         print(json.dumps(doctor(), ensure_ascii=False, indent=2))
@@ -675,11 +1626,32 @@ def main() -> int:
     if action == "add" and len(sys.argv) > 2:
         print(json.dumps(set_widget(sys.argv[2], True), ensure_ascii=False, indent=2))
         return 0
+    if action == "move" and len(sys.argv) > 3:
+        print(json.dumps(move_widget(sys.argv[2], sys.argv[3]), ensure_ascii=False, indent=2))
+        return 0
     if action in {"remove", "rm"} and len(sys.argv) > 2:
         print(json.dumps(set_widget(sys.argv[2], False), ensure_ascii=False, indent=2))
         return 0
     if action == "home" and len(sys.argv) > 2:
         print(json.dumps(set_home_workspace(sys.argv[2]), ensure_ascii=False, indent=2))
+        return 0
+    if action == "weather" and len(sys.argv) > 2:
+        print(json.dumps(set_weather_location(" ".join(sys.argv[2:])), ensure_ascii=False, indent=2))
+        return 0
+    if action == "preset" and len(sys.argv) > 2:
+        print(json.dumps(apply_preset(sys.argv[2]), ensure_ascii=False, indent=2))
+        return 0
+    if action in {"merge", "complete", "recommend"} and len(sys.argv) > 2:
+        print(json.dumps(merge_preset(sys.argv[2]), ensure_ascii=False, indent=2))
+        return 0
+    if action in {"restore", "undo"}:
+        print(json.dumps(restore_previous_config(), ensure_ascii=False, indent=2))
+        return 0
+    if action == "layout" and len(sys.argv) > 2:
+        print(json.dumps(set_layout(sys.argv[2]), ensure_ascii=False, indent=2))
+        return 0
+    if action == "reset":
+        print(json.dumps(reset_widgets(), ensure_ascii=False, indent=2))
         return 0
     if action == "right-click" and len(sys.argv) > 2:
         print(json.dumps(set_right_click(sys.argv[2].lower() in {"1", "on", "true", "yes", "enable", "enabled"}), ensure_ascii=False, indent=2))
@@ -689,6 +1661,9 @@ def main() -> int:
         return 0
     if action == "hide":
         hide_widgets()
+        return 0
+    if action == "toggle":
+        toggle_widgets()
         return 0
     if action in {"desktop-menu", "right-click"}:
         if not config().get("desktop_right_click", True) or active_window_present():

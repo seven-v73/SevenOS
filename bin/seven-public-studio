@@ -280,7 +280,7 @@ def first_run_checks() -> list[dict]:
     checks: list[dict] = []
     required_commands = [
         "seven", "seven-settings-native", "seven-experience-center", "seven-help-native", "seven-hub-native",
-        "seven-files", "seven-store", "seven-wallpaper", "seven-widgets-native", "seven-waybar", "seven-profile-run",
+        "seven-files", "seven-store", "seven-wallpaper", "seven-widgets-native", "seven-waybar", "seven-kitty", "seven-profile-run",
         "seven-profile-rootfs", "seven-public-studio",
     ]
     for command in required_commands:
@@ -307,6 +307,7 @@ def first_run_checks() -> list[dict]:
         "seven-public-studio.desktop",
         "seven-store.desktop",
         "seven-terminal.desktop",
+        "seven-kitty.desktop",
         "seven-doctor.desktop",
     ]
     for entry in desktop_entries:

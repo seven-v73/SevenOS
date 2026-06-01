@@ -2298,7 +2298,7 @@ profiles = {
     "studio": {"position": "top", "max_modules": 19, "identity": "Studio", "required": {"custom/canvas", "custom/media", "custom/recorder"}},
     "atlas": {"position": "top", "max_modules": 19, "identity": "Atlas", "required": {"custom/atlas-home", "custom/apps", "custom/atlas-folders"}},
     "pulse": {"position": "top", "max_modules": 20, "identity": "Pulse", "required": {"custom/performance", "custom/gamemode", "custom/recorder"}},
-    "baobab": {"position": "top", "height": 38, "max_modules": 19, "identity": "Baobab", "identity_contains": True, "identity_module": "custom/baobab", "root": "baobab/waybar", "common_required": False, "required": {"custom/entry", "custom/compass", "custom/ritual", "custom/route", "custom/ambiance", "custom/language", "custom/sound", "custom/ai", "custom/wifi"}},
+    "baobab": {"position": "top", "height": 30, "max_modules": 19, "identity": "Baobab", "identity_contains": True, "identity_module": "custom/baobab", "root": "baobab/waybar", "common_required": False, "required": {"hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more", "custom/language", "custom/sound", "custom/ai", "custom/mini-context", "custom/system-status", "custom/experience", "custom/spotlight", "clock", "tray", "custom/profile-switch"}},
 }
 common_required = {"hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more", "custom/mini-context", "custom/system-status", "clock", "tray", "custom/profile-switch", "custom/experience", "custom/spotlight"}
 css_tokens = re.compile(r"@(accent|warn|danger|text|tooltip_bg|line|radius)\\b")

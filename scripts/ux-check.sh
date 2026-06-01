@@ -1755,13 +1755,17 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'map ctrl+shift+c copy_to_clipboard' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'map ctrl+shift+v paste_from_clipboard' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'tab_bar_min_tabs 1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'tab_title_template "  {title}  "' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'shell /opt/SevenOS/bin/seven-terminal-shell' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'tab_title_template "  SevenOS  "' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'map ctrl+shift+s launch --type=overlay --stdin-source=@screen_scrollback fzf' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'map ctrl+shift+space launch --type=overlay --cwd=current seven-terminal-palette' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'map ctrl+shift+w close_window' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'map ctrl+shift+f launch --type=background hyprctl dispatch fullscreen 1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'env SEVENOS_TERMINAL_CLASSIC=1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'env SEVENOS_TERMINAL_PROMPT=1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'env SEVENOS_TERMINAL_BACKEND=kitty' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'window_logo_path /opt/SevenOS/branding/sddm/sevenos/assets/seven-prism.png' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'enabled_layouts splits,stack,tall' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'forge | cyber | focus | admin | atlas' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'profile_overrides' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'SevenTerminalForge' "$ROOT_DIR/bin/seven-terminal" &&
@@ -1805,13 +1809,16 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'toggle_zoom_or_tile' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'kitty-default' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'SEVENOS_TERMINAL_NATIVE' "$ROOT_DIR/bin/seven-terminal" &&
+   grep -q 'SEVENOS_TERMINAL_NATIVE=0' "$ROOT_DIR/bin/seven-kitty" &&
    grep -q 'terminal_log_path' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'Avoid post-launch' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'Exec=seven-terminal' "$ROOT_DIR/seven-hub/seven-terminal.desktop" &&
+   grep -q 'Exec=seven-kitty' "$ROOT_DIR/seven-hub/seven-kitty.desktop" &&
    grep -q 'terminal: "seven-terminal";' "$ROOT_DIR/hyprland/rofi/config.rasi" &&
    grep -q 'env = TERMINAL,seven-terminal' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'env = SEVENOS_TERMINAL,seven-terminal' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'seven-terminal.desktop' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'seven-kitty.desktop' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'TERMINAL=seven-terminal' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'xdg-terminals.list' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'seven-terminal focus -- bash -lc' "$ROOT_DIR/bin/seven-help" &&
@@ -1841,12 +1848,15 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'initial_window_height 24c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'wayland_titlebar_color #12131A' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'map ctrl+shift+u kitten hints' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'window_logo_path /opt/SevenOS/branding/sddm/sevenos/assets/seven-prism.png' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'background #E9EEF7' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    grep -q 'font_size 11.0' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    grep -q 'scrollback_lines 20000' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    grep -q 'map ctrl+shift+space launch --type=overlay --cwd=current seven-terminal-palette' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    grep -q 'env SEVENOS_TERMINAL_LIGHT=1' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
+   grep -q 'env SEVENOS_TERMINAL_BACKEND=kitty' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" classic | grep -q 'DRY-RUN > Terminal > Open classic' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-kitty" classic | grep -q 'kitty-default' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" forge | grep -q 'DRY-RUN > Terminal > Open forge' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" cyber | grep -q 'DRY-RUN > Terminal > Open cyber' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" focus | grep -q 'DRY-RUN > Terminal > Open focus' &&

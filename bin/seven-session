@@ -29,6 +29,11 @@ ROOT_DIR="$(resolve_root)"
 export SEVENOS_ROOT="$ROOT_DIR"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 
+if [[ -r "$CONFIG_HOME/sevenos/language.env" ]]; then
+  # shellcheck disable=SC1091
+  . "$CONFIG_HOME/sevenos/language.env"
+fi
+
 log() {
   printf '[seven-session] %s\n' "$*"
 }
@@ -147,7 +152,7 @@ if command -v dbus-update-activation-environment >/dev/null 2>&1; then
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     log "DRY-RUN update dbus activation environment"
   else
-    dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE SEVENOS_THEME_MODE SEVENOS_COLOR_SCHEME GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE >/dev/null 2>&1 || true
+    dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE SEVENOS_LANGUAGE LANG LANGUAGE LC_MESSAGES SEVENOS_THEME_MODE SEVENOS_COLOR_SCHEME GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE >/dev/null 2>&1 || true
   fi
 fi
 
