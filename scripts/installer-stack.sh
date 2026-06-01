@@ -225,6 +225,16 @@ release_json() {
   installer_portal_state="$("$ROOT_DIR/bin/seven-installer" status --json 2>/dev/null | grep -q 'sevenos.installer-portal.v1' && printf OK || printf MISS)"
   live_desktop_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Exec=seven-installer")"
   calamares_branding_state="$(file_state installer/calamares/branding/sevenos/branding.desc)"
+  calamares_branding_contract_state="$([[ \
+    $(contains_state installer/calamares/branding/sevenos/branding.desc "productName: SevenOS") == OK && \
+    $(contains_state installer/calamares/branding/sevenos/branding.desc "sidebar: widget") == OK && \
+    $(contains_state installer/calamares/branding/sevenos/branding.desc "navigation: widget") == OK && \
+    $(contains_state installer/calamares/branding/sevenos/branding.desc "productLogo: \"seven-prism.png\"") == OK && \
+    $(contains_state installer/calamares/branding/sevenos/branding.desc "slideshow: \"show.qml\"") == OK && \
+    $(contains_state installer/calamares/branding/sevenos/branding.desc "slideshowAPI: 2") == OK && \
+    $(file_state installer/calamares/branding/sevenos/show.qml) == OK && \
+    -s "$ROOT_DIR/installer/calamares/branding/sevenos/seven-prism.png" \
+  ]] && printf OK || printf MISS)"
   archiso_state="$(dir_state archiso/profile)"
   build_state="$([[ -x "$ROOT_DIR/scripts/build-iso.sh" ]] && printf OK || printf MISS)"
   packages_state="$(file_state archiso/profile/packages.x86_64)"
@@ -287,6 +297,7 @@ release_json() {
   LIVE_DESKTOP_STATE="$live_desktop_state" \
   LIVE_NATIVE_STATE="$live_native_state" \
   CALAMARES_BRANDING_STATE="$calamares_branding_state" \
+  CALAMARES_BRANDING_CONTRACT_STATE="$calamares_branding_contract_state" \
   ARCHISO_STATE="$archiso_state" \
   BUILD_STATE="$build_state" \
   PACKAGES_STATE="$packages_state" \
@@ -457,6 +468,14 @@ checks = [
         "required": True,
         "title": "SevenOS Calamares branding",
         "command": "seven installer graphical",
+    },
+    {
+        "key": "calamares-branding-contract",
+        "state": os.environ["CALAMARES_BRANDING_CONTRACT_STATE"],
+        "required": True,
+        "title": "SevenOS Calamares branding contract",
+        "command": "./install.sh iso --dry-run",
+        "reason": "Calamares 3.4 requires sidebar, navigation and slideshow keys before the live installer can stay open.",
     },
     {
         "key": "archiso-profile",

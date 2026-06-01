@@ -136,6 +136,20 @@ preflight_graphical_profile() {
     "installer/calamares/modules/shellprocess.conf" "/opt/SevenOS/bin/seven-calamares-finalize"
   check_repo "Calamares finalizer must write an install log" \
     "bin/seven-calamares-finalize" "/var/log/sevenos-install.log"
+  check_repo "Calamares branding must define the SevenOS product name" \
+    "installer/calamares/branding/sevenos/branding.desc" "productName: SevenOS"
+  check_repo "Calamares branding must define a sidebar contract" \
+    "installer/calamares/branding/sevenos/branding.desc" "sidebar: widget"
+  check_repo "Calamares branding must define a navigation contract" \
+    "installer/calamares/branding/sevenos/branding.desc" "navigation: widget"
+  check_repo "Calamares branding must define the SevenOS prism asset" \
+    "installer/calamares/branding/sevenos/branding.desc" "productLogo: \"seven-prism.png\""
+  check_repo "Calamares branding must define a slideshow entry" \
+    "installer/calamares/branding/sevenos/branding.desc" "slideshow: \"show.qml\""
+  check_repo "Calamares branding must define the slideshow API" \
+    "installer/calamares/branding/sevenos/branding.desc" "slideshowAPI: 2"
+  check_repo "Calamares slideshow must stay branded as SevenOS" \
+    "installer/calamares/branding/sevenos/show.qml" "SevenOS"
   check_repo "The ISO package list must include the graphical installer" \
     "archiso/profile/packages.x86_64" "calamares"
   check_repo "The ISO package list must include live ISO initramfs hooks" \

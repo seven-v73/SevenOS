@@ -1,25 +1,43 @@
 ---
 componentName: sevenos
 
+welcomeStyleCalamares: false
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 980px,660px
+windowPlacement: center
+
+sidebar: widget
+navigation: widget
+
 strings:
   productName: SevenOS
   shortProductName: SevenOS
   version: rolling
   shortVersion: rolling
-  versionedName: SevenOS
+  versionedName: SevenOS rolling
   shortVersionedName: SevenOS
   bootloaderEntryName: SevenOS
-  productUrl: https://sevenos.local
-  supportUrl: https://sevenos.local/support
-  knownIssuesUrl: https://sevenos.local/issues
-  releaseNotesUrl: https://sevenos.local/release-notes
+  productUrl: https://github.com/seven-v73/SevenOS
+  supportUrl: https://github.com/seven-v73/SevenOS/issues
+  knownIssuesUrl: https://github.com/seven-v73/SevenOS/issues
+  releaseNotesUrl: https://github.com/seven-v73/SevenOS
 
 images:
-  productLogo: ""
-  productIcon: ""
-  productWelcome: ""
+  productIcon: "seven-prism.png"
+  productLogo: "seven-prism.png"
+  productWelcome: "seven-prism.png"
 
 style:
-  sidebarBackground: "#f7f8f6"
-  sidebarText: "#1c1f1d"
-  sidebarTextSelect: "#111412"
+  SidebarBackground: "#101624"
+  SidebarText: "#F8FAFC"
+  SidebarTextCurrent: "#FFFFFF"
+  SidebarBackgroundCurrent: "#6D5EF8"
+
+slideshow: "show.qml"
+slideshowAPI: 2
+
+uploadServer:
+  type: "none"
+  url: ""
+  sizeLimit: -1
