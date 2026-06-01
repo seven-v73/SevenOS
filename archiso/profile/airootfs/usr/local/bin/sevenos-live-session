@@ -26,6 +26,9 @@ fi
 
 printf '[sevenos-live-session] starting Hyprland\n' >>"$log_file"
 if command -v Hyprland >/dev/null 2>&1; then
+  if [[ -r /etc/sevenos/live-hyprland.conf ]]; then
+    Hyprland -c /etc/sevenos/live-hyprland.conf >>"$log_file" 2>&1 && exit 0
+  fi
   Hyprland >>"$log_file" 2>&1 && exit 0
   status=$?
   printf '[sevenos-live-session] Hyprland exited with status %s\n' "$status" >>"$log_file"

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export SEVENOS_ROOT="${SEVENOS_ROOT:-/opt/SevenOS}"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+log_file="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos/live-guard.log"
+mkdir -p "$state_dir" "$(dirname "$log_file")"
+
+log() {
+  printf '[sevenos-live-guard] %s\n' "$*" >>"$log_file"
+}
+
+client_count() {
+  if ! command -v hyprctl >/dev/null 2>&1; then
+    printf '0'
+    return 0
+  fi
+  hyprctl clients -j 2>/dev/null | python - <<'PY' 2>/dev/null || printf '0'
+import json
+import sys
+try:
+    print(len(json.load(sys.stdin)))
+except Exception:
+    print(0)
+PY
+}
+
+open_installer() {
+  log "opening installer portal"
+  if command -v seven-installer >/dev/null 2>&1; then
+    seven-installer gui >/dev/null 2>&1 &
+    return 0
+  fi
+  if command -v calamares >/dev/null 2>&1; then
+    if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+      sudo -E calamares -d >/dev/null 2>&1 &
+    else
+      calamares -d >/dev/null 2>&1 &
+    fi
+    return 0
+  fi
+  return 1
+}
+
+open_rescue_terminal() {
+  log "opening rescue terminal"
+  local shell_cmd
+  shell_cmd='printf "SevenOS Live rescue\n\n"; seven-installer live-status || true; printf "\nLogs:\n  ~/.cache/sevenos/live-session.log\n  ~/.cache/sevenos/live-ready.log\n  ~/.cache/sevenos/live-guard.log\n\n"; exec bash'
+  if command -v seven-terminal >/dev/null 2>&1; then
+    seven-terminal -- bash -lc "$shell_cmd" >/dev/null 2>&1 &
+  elif command -v kitty >/dev/null 2>&1; then
+    kitty --class SevenOSLiveRescue bash -lc "$shell_cmd" >/dev/null 2>&1 &
+  elif command -v xterm >/dev/null 2>&1; then
+    xterm -e bash -lc "$shell_cmd" >/dev/null 2>&1 &
+  fi
+}
+
+main() {
+  log "guard started"
+  sleep 3
+  if [[ "$(client_count)" -eq 0 ]]; then
+    open_installer || true
+  fi
+  sleep 7
+  if [[ "$(client_count)" -eq 0 ]]; then
+    open_installer || true
+  fi
+  sleep 8
+  if [[ "$(client_count)" -eq 0 ]]; then
+    open_rescue_terminal
+  fi
+}
+
+main "$@"

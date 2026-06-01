@@ -66,6 +66,10 @@ preflight_graphical_profile() {
     "syslinux/archiso_sys-linux.cfg" "quiet splash"
   check_profile "SevenOS live service must start the graphical session directly" \
     "airootfs/etc/systemd/system/sevenos-live-session.service" "ExecStart=/usr/local/bin/sevenos-live-session"
+  check_profile "SevenOS live session must use the live Hyprland fallback profile" \
+    "airootfs/usr/local/bin/sevenos-live-session" "live-hyprland.conf"
+  check_profile "SevenOS live profile must relaunch the installer if no window appears" \
+    "airootfs/usr/local/bin/sevenos-live-guard" "open_rescue_terminal"
   check_profile "SevenOS live service must run as the live user" \
     "airootfs/etc/systemd/system/sevenos-live-session.service" "User=seven"
   check_profile "Live build must enable the SevenOS live service" \
