@@ -46,6 +46,17 @@ preflight_graphical_profile() {
     failures=$((failures + 1))
   }
 
+  reject_profile() {
+    local label="$1"
+    local path="$2"
+    local pattern="$3"
+    if [[ -s "$PROFILE_SOURCE/$path" ]] && grep -Eq -- "$pattern" "$PROFILE_SOURCE/$path"; then
+      log_error "SevenOS ISO graphical preflight failed: $label"
+      log_info "Rejected pattern in $path: $pattern"
+      failures=$((failures + 1))
+    fi
+  }
+
   check_repo() {
     local label="$1"
     local path="$2"
@@ -86,6 +97,16 @@ preflight_graphical_profile() {
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/settings.conf"
   check_profile "Live build must install Calamares SevenOS branding" \
     "airootfs/root/customize_airootfs.sh" "/usr/share/calamares/branding/sevenos"
+  check_profile "Live Hyprland class rules must use current matcher syntax" \
+    "airootfs/etc/sevenos/live-hyprland.conf" "windowrule = float, class:"
+  check_profile "Live Hyprland title rules must use current matcher syntax" \
+    "airootfs/etc/sevenos/live-hyprland.conf" "windowrule = float, title:"
+  reject_profile "Live Hyprland config must not use deprecated windowrulev2" \
+    "airootfs/etc/sevenos/live-hyprland.conf" '(^|[[:space:]])windowrulev2[[:space:]]*='
+  reject_profile "Live Hyprland config must not use legacy match: window rules" \
+    "airootfs/etc/sevenos/live-hyprland.conf" 'windowrule[[:space:]]*=[[:space:]]*match:'
+  reject_profile "Live Hyprland config must not use custom style keys" \
+    "airootfs/etc/sevenos/live-hyprland.conf" '^[[:space:]]*style[[:space:]]*='
 
   check_repo "Calamares must use the standard shellprocess module" \
     "installer/calamares/settings.conf" "- shellprocess"
