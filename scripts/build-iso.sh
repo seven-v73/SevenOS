@@ -113,6 +113,10 @@ preflight_graphical_profile() {
     "profiledef.sh" "/usr/share/sevenos/live-background.png"
   check_profile "Live build must install Calamares SevenOS settings" \
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/settings.conf"
+  check_profile "Live build must install Calamares unpackfs configuration" \
+    "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/unpackfs.conf"
+  check_profile "Live build must install Calamares live cleanup configuration" \
+    "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/shellprocess-livecleanup.conf"
   check_profile "Live build must install Calamares SevenOS branding" \
     "airootfs/root/customize_airootfs.sh" "/usr/share/calamares/branding/sevenos"
   check_profile "Live Hyprland config must delegate window placement to the guard" \
@@ -132,10 +136,22 @@ preflight_graphical_profile() {
 
   check_repo "Calamares must use the standard shellprocess module" \
     "installer/calamares/settings.conf" "- shellprocess"
+  check_repo "Calamares must copy the live rootfs explicitly" \
+    "installer/calamares/settings.conf" "- unpackfs"
+  check_repo "Calamares must clean the live user before creating the installed user" \
+    "installer/calamares/settings.conf" "shellprocess@livecleanup"
+  check_repo "Calamares unpackfs must use the mounted ArchISO rootfs" \
+    "installer/calamares/modules/unpackfs.conf" "/run/archiso/airootfs"
+  check_repo "Calamares unpackfs must not use the default CHANGES example" \
+    "installer/calamares/modules/unpackfs.conf" "sourcefs: \"file\""
   check_repo "Calamares shellprocess must finalize SevenOS through the guarded wrapper" \
     "installer/calamares/modules/shellprocess.conf" "/opt/SevenOS/bin/seven-calamares-finalize"
+  check_repo "Calamares live cleanup must remove the live user before users module" \
+    "installer/calamares/modules/shellprocess-livecleanup.conf" "userdel -r seven"
   check_repo "Calamares finalizer must write an install log" \
     "bin/seven-calamares-finalize" "/var/log/sevenos-install.log"
+  check_repo "Calamares finalizer must remove live ISO services from installed systems" \
+    "bin/seven-calamares-finalize" "Clean live ISO residue"
   check_repo "Calamares branding must define the SevenOS product name" \
     "installer/calamares/branding/sevenos/branding.desc" "productName: SevenOS"
   check_repo "Calamares branding must define a sidebar contract" \
@@ -152,6 +168,8 @@ preflight_graphical_profile() {
     "installer/calamares/branding/sevenos/show.qml" "SevenOS"
   check_repo "The ISO package list must include the graphical installer" \
     "archiso/profile/packages.x86_64" "calamares"
+  check_repo "The ISO package list must include GRUB for the Calamares bootloader module" \
+    "archiso/profile/packages.x86_64" "grub"
   check_repo "The ISO package list must include live ISO initramfs hooks" \
     "archiso/profile/packages.x86_64" "mkinitcpio-archiso"
   check_repo "The live initramfs must use archiso hooks" \

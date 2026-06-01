@@ -216,9 +216,11 @@ release_json() {
   planner_state="$([[ -x "$ROOT_DIR/installer/plan.sh" ]] && printf OK || printf MISS)"
   calamares_settings_state="$(file_state installer/calamares/settings.conf)"
   calamares_module_state="$(file_state installer/calamares/modules/sevenos.conf)"
+  calamares_unpackfs_state="$([[ $(contains_state installer/calamares/settings.conf "- unpackfs") == OK && $(contains_state installer/calamares/modules/unpackfs.conf "/run/archiso/airootfs") == OK && $(contains_state installer/calamares/modules/unpackfs.conf "sourcefs: \"file\"") == OK && $(contains_state installer/calamares/modules/unpackfs.conf "../CHANGES") != OK ]] && printf OK || printf MISS)"
   calamares_shellprocess_state="$([[ $(contains_state installer/calamares/settings.conf "- shellprocess") == OK && $(file_state installer/calamares/modules/shellprocess.conf) == OK ]] && printf OK || printf MISS)"
-  calamares_postinstall_state="$([[ $(contains_state installer/calamares/modules/shellprocess.conf "/opt/SevenOS/bin/seven-calamares-finalize") == OK && -x "$ROOT_DIR/bin/seven-calamares-finalize" ]] && printf OK || printf MISS)"
-  calamares_iso_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/etc/calamares/settings.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/usr/share/calamares/branding/sevenos") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess.conf") == OK ]] && printf OK || printf MISS)"
+  calamares_livecleanup_state="$([[ $(contains_state installer/calamares/settings.conf "shellprocess@livecleanup") == OK && $(contains_state installer/calamares/settings.conf "shellprocess-livecleanup.conf") == OK && $(contains_state installer/calamares/modules/shellprocess-livecleanup.conf "userdel -r seven") == OK ]] && printf OK || printf MISS)"
+  calamares_postinstall_state="$([[ $(contains_state installer/calamares/modules/shellprocess.conf "/opt/SevenOS/bin/seven-calamares-finalize") == OK && $(contains_state bin/seven-calamares-finalize "Clean live ISO residue") == OK && -x "$ROOT_DIR/bin/seven-calamares-finalize" ]] && printf OK || printf MISS)"
+  calamares_iso_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/etc/calamares/settings.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/usr/share/calamares/branding/sevenos") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "unpackfs.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess-livecleanup.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess.conf") == OK ]] && printf OK || printf MISS)"
   graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
   native_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer-native" ]] && printf OK || printf MISS)"
   native_live_ui_state="$([[ $(contains_state bin/seven-installer-native "live-status") == OK && $(contains_state bin/seven-installer-native "status_cards") == OK && $(contains_state bin/seven-installer-native "installer-progress") == OK && $(contains_state bin/seven-installer-native "timeline_card") == OK && $(contains_state bin/seven-installer-native "GLib.timeout_add_seconds") == OK && $(contains_state bin/seven-installer-native "active_step_label") == OK && $(contains_state bin/seven-installer-native "decision_label") == OK && $(contains_state bin/seven-installer-native "attention_label") == OK && $(contains_state bin/seven-installer-native "primary_live_action") == OK && $(contains_state bin/seven-installer-native "secondary_action_buttons") == OK && $(contains_state bin/seven-installer "user_message") == OK && $(contains_state bin/seven-installer "primary_command") == OK && $(contains_state bin/seven-installer "secondary_actions") == OK && $(contains_state bin/seven-installer "attention_items") == OK ]] && printf OK || printf MISS)"
@@ -238,6 +240,7 @@ release_json() {
   archiso_state="$(dir_state archiso/profile)"
   build_state="$([[ -x "$ROOT_DIR/scripts/build-iso.sh" ]] && printf OK || printf MISS)"
   packages_state="$(file_state archiso/profile/packages.x86_64)"
+  bootloader_runtime_state="$([[ $(contains_state archiso/profile/packages.x86_64 "grub") == OK && $(contains_state archiso/profile/packages.x86_64 "efibootmgr") == OK && $(contains_state installer/calamares/settings.conf "- bootloader") == OK ]] && printf OK || printf MISS)"
   live_qt_runtime_state="$([[ $(contains_state archiso/profile/packages.x86_64 "qt6-wayland") == OK && $(contains_state archiso/profile/packages.x86_64 "qt5-wayland") == OK && $(contains_state archiso/profile/packages.x86_64 "xorg-xwayland") == OK && $(contains_state archiso/profile/packages.x86_64 "xorg-xhost") == OK ]] && printf OK || printf MISS)"
   repo_injection_state="$(contains_state scripts/build-iso.sh "sevenos-local")"
   live_cli_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/opt/SevenOS/bin/seven")"
@@ -287,7 +290,9 @@ release_json() {
   PLANNER_STATE="$planner_state" \
   CALAMARES_SETTINGS_STATE="$calamares_settings_state" \
   CALAMARES_MODULE_STATE="$calamares_module_state" \
+  CALAMARES_UNPACKFS_STATE="$calamares_unpackfs_state" \
   CALAMARES_SHELLPROCESS_STATE="$calamares_shellprocess_state" \
+  CALAMARES_LIVECLEANUP_STATE="$calamares_livecleanup_state" \
   CALAMARES_POSTINSTALL_STATE="$calamares_postinstall_state" \
   CALAMARES_ISO_CONFIG_STATE="$calamares_iso_config_state" \
   GRAPHICAL_LAUNCHER_STATE="$graphical_launcher_state" \
@@ -301,6 +306,7 @@ release_json() {
   ARCHISO_STATE="$archiso_state" \
   BUILD_STATE="$build_state" \
   PACKAGES_STATE="$packages_state" \
+  BOOTLOADER_RUNTIME_STATE="$bootloader_runtime_state" \
   REPO_INJECTION_STATE="$repo_injection_state" \
   LIVE_CLI_STATE="$live_cli_state" \
   LIVE_SESSION_STATE="$live_session_state" \
@@ -399,12 +405,28 @@ checks = [
         "command": "seven installer doctor",
     },
     {
+        "key": "calamares-unpackfs",
+        "state": os.environ["CALAMARES_UNPACKFS_STATE"],
+        "required": True,
+        "title": "Calamares copies the SevenOS live rootfs explicitly",
+        "command": "cat installer/calamares/modules/unpackfs.conf",
+        "reason": "Without an explicit unpackfs.conf Calamares falls back to its CHANGES example and the install fails.",
+    },
+    {
         "key": "calamares-shellprocess-module",
         "state": os.environ["CALAMARES_SHELLPROCESS_STATE"],
         "required": True,
         "title": "Calamares standard shellprocess hook",
         "command": "seven installer doctor",
         "reason": "SevenOS uses Calamares' built-in shellprocess module so the ISO does not depend on an unpackaged custom plugin.",
+    },
+    {
+        "key": "calamares-livecleanup",
+        "state": os.environ["CALAMARES_LIVECLEANUP_STATE"],
+        "required": True,
+        "title": "Calamares removes live-session residue before creating the installed user",
+        "command": "cat installer/calamares/modules/shellprocess-livecleanup.conf",
+        "reason": "The live ISO has a temporary seven user; it must be removed before the users module creates the real account.",
     },
     {
         "key": "calamares-postinstall",
@@ -497,6 +519,14 @@ checks = [
         "required": True,
         "title": "Live ISO package list",
         "command": "seven installer doctor",
+    },
+    {
+        "key": "calamares-bootloader-runtime",
+        "state": os.environ["BOOTLOADER_RUNTIME_STATE"],
+        "required": True,
+        "title": "Live ISO includes bootloader tools required by Calamares",
+        "command": "cat archiso/profile/packages.x86_64",
+        "reason": "The Calamares bootloader module is configured for GRUB and needs grub plus efibootmgr in the live rootfs.",
     },
     {
         "key": "live-qt-runtime",

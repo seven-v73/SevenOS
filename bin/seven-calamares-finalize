@@ -21,6 +21,17 @@ run_step() {
   log "OK: $label"
 }
 
+cleanup_live_session_state() {
+  log "START: Clean live ISO residue"
+  systemctl disable sevenos-live-session.service >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/sevenos-live-session.service
+  rm -f /etc/systemd/system/getty@tty1.service.d/20-sevenos-live-autologin.conf
+  rm -f /etc/sddm.conf.d/20-sevenos-live.conf
+  rm -f /usr/share/wayland-sessions/sevenos-live.desktop
+  rm -f /home/seven/.bash_profile 2>/dev/null || true
+  log "OK: Clean live ISO residue"
+}
+
 main() {
   install -d "$(dirname "$LOG_FILE")"
   : >"$LOG_FILE"
@@ -36,6 +47,7 @@ main() {
   export SEVENOS_YES=1
   export SEVENOS_ALLOW_ROOT=1
 
+  cleanup_live_session_state
   run_step "Base SevenOS layer" "$ROOT_DIR/install.sh" base --yes
   run_step "Post-install SevenOS checks" "$ROOT_DIR/install.sh" post-install
 

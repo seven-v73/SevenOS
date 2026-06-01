@@ -10,6 +10,7 @@ mkinitcpio-archiso
 mkinitcpio-nfs-utils
 calamares
 syslinux
+grub
 systemd
 efibootmgr
 sudo
