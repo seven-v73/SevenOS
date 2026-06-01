@@ -150,6 +150,12 @@ preflight_graphical_profile() {
     "archiso/profile/packages.x86_64" "hyprpaper"
   check_repo "The ISO package list must include a safe graphics fallback compositor" \
     "archiso/profile/packages.x86_64" "cage"
+  check_repo "The ISO package list must include Qt Wayland support for Calamares" \
+    "archiso/profile/packages.x86_64" "qt6-wayland"
+  check_repo "The ISO package list must include XWayland as a Calamares fallback" \
+    "archiso/profile/packages.x86_64" "xorg-xwayland"
+  check_repo "The ISO package list must include xhost for root Calamares on XWayland" \
+    "archiso/profile/packages.x86_64" "xorg-xhost"
   check_repo "The ISO package list must include a reliable rescue terminal" \
     "archiso/profile/packages.x86_64" "kitty"
   check_repo "The ISO package list must include Mesa for live graphics" \

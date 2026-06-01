@@ -206,7 +206,7 @@ json_string() {
 
 release_json() {
   local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_shellprocess_state calamares_postinstall_state calamares_iso_config_state
-  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state native_launcher_state native_live_ui_state live_desktop_state live_native_state calamares_branding_state installer_portal_state calamares_source_state local_repo_db_state local_repo_pkg_state
+  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state native_launcher_state native_live_ui_state live_desktop_state live_native_state calamares_branding_state installer_portal_state calamares_source_state local_repo_db_state local_repo_pkg_state live_qt_runtime_state
   local live_session_state live_autologin_state live_ready_state live_tty_fallback_state live_user_config_state live_network_state live_graphical_target_state
   local live_feedback_state live_services_state live_user_dirs_state live_status_state live_quiet_boot_state live_initramfs_state live_hypr_syntax_state live_wallpaper_state live_rescue_state
 
@@ -228,6 +228,7 @@ release_json() {
   archiso_state="$(dir_state archiso/profile)"
   build_state="$([[ -x "$ROOT_DIR/scripts/build-iso.sh" ]] && printf OK || printf MISS)"
   packages_state="$(file_state archiso/profile/packages.x86_64)"
+  live_qt_runtime_state="$([[ $(contains_state archiso/profile/packages.x86_64 "qt6-wayland") == OK && $(contains_state archiso/profile/packages.x86_64 "qt5-wayland") == OK && $(contains_state archiso/profile/packages.x86_64 "xorg-xwayland") == OK && $(contains_state archiso/profile/packages.x86_64 "xorg-xhost") == OK ]] && printf OK || printf MISS)"
   repo_injection_state="$(contains_state scripts/build-iso.sh "sevenos-local")"
   live_cli_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/opt/SevenOS/bin/seven")"
   live_native_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "seven-installer-native")"
@@ -328,6 +329,7 @@ release_json() {
   LIVE_UI_I18N_STATE="$live_ui_i18n_state" \
   LOCAL_REPO_DB_STATE="$local_repo_db_state" \
   LOCAL_REPO_PKG_STATE="$local_repo_pkg_state" \
+  LIVE_QT_RUNTIME_STATE="$live_qt_runtime_state" \
   python - <<'PY'
 import json
 import os
@@ -476,6 +478,13 @@ checks = [
         "required": True,
         "title": "Live ISO package list",
         "command": "seven installer doctor",
+    },
+    {
+        "key": "live-qt-runtime",
+        "state": os.environ["LIVE_QT_RUNTIME_STATE"],
+        "required": True,
+        "title": "Live ISO Qt Wayland and XWayland runtime for Calamares",
+        "command": "cat archiso/profile/packages.x86_64",
     },
     {
         "key": "repo-injection",

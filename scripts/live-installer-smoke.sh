@@ -26,6 +26,7 @@ SH
 cat >"$tmp/bin/calamares" <<'SH'
 #!/usr/bin/env bash
 touch "$SEVENOS_TEST_CALAMARES_STARTED"
+printf '%s\n' "${QT_QPA_PLATFORM:-}" >"$SEVENOS_TEST_QT_PLATFORM"
 sleep 5
 SH
 
@@ -45,19 +46,28 @@ for name in notify-send nmcli xdg-user-dirs-update seven-welcome dbus-update-act
   printf '#!/usr/bin/env bash\nexit 0\n' >"$tmp/bin/$name"
   chmod +x "$tmp/bin/$name"
 done
-chmod +x "$tmp/bin/hyprctl" "$tmp/bin/calamares" "$tmp/bin/sudo"
+cat >"$tmp/bin/xhost" <<'SH'
+#!/usr/bin/env bash
+touch "$SEVENOS_TEST_XHOST_STARTED"
+exit 0
+SH
+chmod +x "$tmp/bin/hyprctl" "$tmp/bin/calamares" "$tmp/bin/sudo" "$tmp/bin/xhost"
 
 status_file="$tmp/state/sevenos/live-status.json"
 started_file="$tmp/calamares.started"
+xhost_file="$tmp/xhost.started"
+qt_platform_file="$tmp/qt-platform.txt"
 result_state="FAIL"
 detail="live helper did not report a ready Calamares window"
 exit_code=1
 
 if SEVENOS_TEST_CALAMARES_STARTED="$started_file" \
+  SEVENOS_TEST_XHOST_STARTED="$xhost_file" \
+  SEVENOS_TEST_QT_PLATFORM="$qt_platform_file" \
   HOME="$tmp/home" XDG_STATE_HOME="$tmp/state" XDG_CACHE_HOME="$tmp/cache" \
-  PATH="$tmp/bin:/usr/bin:/bin" WAYLAND_DISPLAY=wayland-1 SEVENOS_ROOT="$ROOT_DIR" \
+  PATH="$tmp/bin:/usr/bin:/bin" WAYLAND_DISPLAY=wayland-1 DISPLAY=:1 SEVENOS_ROOT="$ROOT_DIR" \
   timeout 8 "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-ready" >/dev/null 2>&1; then
-  if [[ -e "$started_file" && -r "$status_file" ]] && python - "$status_file" <<'PY' >/dev/null 2>&1
+  if [[ -e "$started_file" && -e "$xhost_file" && -r "$qt_platform_file" && "$(cat "$qt_platform_file")" == "xcb" && -r "$status_file" ]] && python - "$status_file" <<'PY' >/dev/null 2>&1
 import json
 import sys
 

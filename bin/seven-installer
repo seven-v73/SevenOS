@@ -37,7 +37,17 @@ run_or_print() {
 
 calamares_command() {
   if [[ -n "${SEVENOS_LIVE_SESSION:-}" ]] && command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-    printf 'sudo -E calamares -d\n'
+    local qt_platform
+    if [[ -n "${DISPLAY:-}" ]]; then
+      qt_platform="xcb"
+      if [[ "${SEVENOS_DRY_RUN:-0}" != "1" ]] && command -v xhost >/dev/null 2>&1; then
+        xhost +SI:localuser:root >/dev/null 2>&1 || true
+      fi
+    else
+      qt_platform="wayland"
+    fi
+    printf 'sudo -E env SEVENOS_ROOT=%q SEVENOS_LIVE_SESSION=1 HOME=%q USER=%q LOGNAME=%q XDG_RUNTIME_DIR=%q WAYLAND_DISPLAY=%q DISPLAY=%q XAUTHORITY=%q XDG_CURRENT_DESKTOP=%q XDG_SESSION_DESKTOP=%q QT_QPA_PLATFORM=%q QT_AUTO_SCREEN_SCALE_FACTOR=1 GDK_BACKEND=%q calamares -d\n' \
+      "$ROOT_DIR" "${HOME:-/home/seven}" "${USER:-seven}" "${LOGNAME:-seven}" "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" "${WAYLAND_DISPLAY:-wayland-1}" "${DISPLAY:-:0}" "${XAUTHORITY:-${HOME:-/home/seven}/.Xauthority}" "${XDG_CURRENT_DESKTOP:-Hyprland}" "${XDG_SESSION_DESKTOP:-SevenOS}" "${SEVENOS_CALAMARES_QT_PLATFORM:-$qt_platform}" "${GDK_BACKEND:-wayland,x11}"
     return 0
   fi
   if command -v pkexec >/dev/null 2>&1; then
@@ -133,7 +143,7 @@ PY
 }
 
 live_status_json() {
-  local live_state_dir live_cache_dir started_marker ready_marker log_file status_file live_session first_screen log_tail live_ready_payload
+  local live_state_dir live_cache_dir started_marker ready_marker log_file calamares_log_file status_file live_session first_screen log_tail calamares_log_tail live_ready_payload
   local nm_state nm_wifi nm_connectivity
   local storage_payload
   live_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
@@ -141,6 +151,7 @@ live_status_json() {
   started_marker="$live_state_dir/live-first-screen-started"
   ready_marker="$live_state_dir/live-installer-opened"
   log_file="$live_cache_dir/live-ready.log"
+  calamares_log_file="$live_cache_dir/calamares-live.log"
   status_file="$live_state_dir/live-status.json"
   [[ -n "${SEVENOS_LIVE_SESSION:-}" ]] && live_session=true || live_session=false
   if [[ -e "$ready_marker" ]]; then
@@ -154,6 +165,11 @@ live_status_json() {
     log_tail="$(tail -n 12 "$log_file" | python -c 'import json,sys; print(json.dumps(sys.stdin.read().splitlines()))')"
   else
     log_tail="[]"
+  fi
+  if [[ -r "$calamares_log_file" ]]; then
+    calamares_log_tail="$(tail -n 20 "$calamares_log_file" | python -c 'import json,sys; print(json.dumps(sys.stdin.read().splitlines()))')"
+  else
+    calamares_log_tail="[]"
   fi
   if [[ -r "$status_file" ]]; then
     live_ready_payload="$(python -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))))' "$status_file" 2>/dev/null || printf '{}')"
@@ -177,7 +193,9 @@ live_status_json() {
   LIVE_SESSION="$live_session" \
   FIRST_SCREEN="$first_screen" \
   LOG_FILE="$log_file" \
+  CALAMARES_LOG_FILE="$calamares_log_file" \
   LOG_TAIL="$log_tail" \
+  CALAMARES_LOG_TAIL="$calamares_log_tail" \
   LIVE_READY_PAYLOAD="$live_ready_payload" \
   NM_STATE="$nm_state" \
   NM_WIFI="$nm_wifi" \
@@ -197,6 +215,10 @@ try:
     log_tail = json.loads(os.environ.get("LOG_TAIL", "[]"))
 except json.JSONDecodeError:
     log_tail = []
+try:
+    calamares_log_tail = json.loads(os.environ.get("CALAMARES_LOG_TAIL", "[]"))
+except json.JSONDecodeError:
+    calamares_log_tail = []
 try:
     live_ready = json.loads(os.environ.get("LIVE_READY_PAYLOAD", "{}"))
 except json.JSONDecodeError:
@@ -658,6 +680,8 @@ print(json.dumps({
     "recommended_action": recommended_action,
     "log_file": os.environ.get("LOG_FILE", ""),
     "log_tail": log_tail,
+    "calamares_log_file": os.environ.get("CALAMARES_LOG_FILE", ""),
+    "calamares_log_tail": calamares_log_tail,
     "commands": {
         "open": "seven-installer open",
         "reset": "seven-installer live-reset",
@@ -728,10 +752,17 @@ print(f"next:         {data.get('recommended_action')} · {data.get('commands', 
 for item in readiness.get("issues", [])[:4]:
     print(f"  - {item.get('severity')}: {item.get('title')} · {item.get('action')}")
 print(f"log:          {data.get('log_file')}")
+if data.get("calamares_log_file"):
+    print(f"calamares:    {data.get('calamares_log_file')}")
 if data.get("log_tail"):
     print()
     print("Recent log:")
     for line in data.get("log_tail", [])[-6:]:
+        print(f"  {line}")
+if data.get("calamares_log_tail"):
+    print()
+    print("Calamares log:")
+    for line in data.get("calamares_log_tail", [])[-8:]:
         print(f"  {line}")
 PY
 }

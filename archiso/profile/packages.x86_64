@@ -54,7 +54,9 @@ zenity
 plymouth
 sddm
 xorg-server
+xorg-xwayland
 xorg-xauth
+xorg-xhost
 polkit-gnome
 polkit-kde-agent
 polkit
@@ -67,6 +69,8 @@ xdg-user-dirs
 desktop-file-utils
 qt6-declarative
 qt5-declarative
+qt6-wayland
+qt5-wayland
 mesa
 vulkan-icd-loader
 libva-mesa-driver
