@@ -14,10 +14,33 @@ if [[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]]; then
   . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"
 fi
 
+log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+log_file="$log_dir/live-session.log"
+mkdir -p "$log_dir"
+
 if command -v dbus-update-activation-environment >/dev/null 2>&1; then
   dbus-update-activation-environment --systemd \
     SEVENOS_ROOT SEVENOS_LIVE_SESSION XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE \
     LANG LANGUAGE LC_MESSAGES TERMINAL SEVENOS_TERMINAL >/dev/null 2>&1 || true
 fi
 
-exec Hyprland
+printf '[sevenos-live-session] starting Hyprland\n' >>"$log_file"
+if command -v Hyprland >/dev/null 2>&1; then
+  Hyprland >>"$log_file" 2>&1 && exit 0
+  status=$?
+  printf '[sevenos-live-session] Hyprland exited with status %s\n' "$status" >>"$log_file"
+else
+  printf '[sevenos-live-session] Hyprland command not found\n' >>"$log_file"
+fi
+
+printf '[sevenos-live-session] starting safe graphical installer fallback\n' >>"$log_file"
+export XDG_CURRENT_DESKTOP=SevenOS
+export XDG_SESSION_DESKTOP=SevenOS-Safe
+if command -v cage >/dev/null 2>&1 && command -v seven-installer >/dev/null 2>&1; then
+  exec cage -s -- seven-installer gui
+fi
+
+printf '\nSevenOS Live could not start the graphical session.\n' >&2
+printf 'Open another TTY and inspect: journalctl -b -u sevenos-live-session.service\n' >&2
+printf 'Live log: %s\n' "$log_file" >&2
+sleep infinity

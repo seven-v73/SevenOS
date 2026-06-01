@@ -5,7 +5,7 @@ ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 systemctl enable NetworkManager.service
 systemctl enable ModemManager.service 2>/dev/null || true
 systemctl enable plymouth-quit.service 2>/dev/null || true
-systemctl enable sddm.service 2>/dev/null || true
+systemctl enable sevenos-live-session.service 2>/dev/null || true
 systemctl set-default graphical.target
 
 useradd -m -G wheel -s /bin/bash seven

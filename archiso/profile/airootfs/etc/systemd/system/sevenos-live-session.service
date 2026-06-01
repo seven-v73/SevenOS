@@ -1,0 +1,29 @@
+[Unit]
+Description=SevenOS Live Graphical Session
+Documentation=https://github.com/seven-v73/SevenOS
+After=systemd-user-sessions.service systemd-logind.service NetworkManager.service
+Wants=NetworkManager.service
+Conflicts=getty@tty1.service sddm.service
+
+[Service]
+User=seven
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+StandardInput=tty
+StandardOutput=journal+console
+StandardError=journal+console
+Environment=SEVENOS_ROOT=/opt/SevenOS
+Environment=SEVENOS_LIVE_SESSION=1
+Environment=XDG_CURRENT_DESKTOP=Hyprland
+Environment=XDG_SESSION_DESKTOP=SevenOS
+Environment=XDG_SESSION_TYPE=wayland
+ExecStart=/usr/local/bin/sevenos-live-session
+Restart=on-failure
+RestartSec=2
+StartLimitIntervalSec=45
+StartLimitBurst=3
+
+[Install]
+WantedBy=graphical.target

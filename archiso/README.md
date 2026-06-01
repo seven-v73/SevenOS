@@ -42,10 +42,14 @@ Inside the ISO:
 - hostname is `sevenos-live`
 - repository is available at `/opt/SevenOS`
 - user `seven` is created with passwordless sudo and live autologin
-- SDDM opens the `SevenOS Live` Wayland session automatically
+- the live ISO starts the `SevenOS Live` Wayland session directly from
+  systemd, avoiding a display-manager stop before the installer appears
+- SDDM remains installed and branded for the installed system identity
 - TTY1 has a fallback autologin that starts the same SevenOS live session
 - UEFI, BIOS and PXE boot entries use quiet SevenOS splash options so normal
   users see SevenOS first instead of Arch/systemd boot chatter
+- UEFI and BIOS expose a `SevenOS Live Safe Graphics` route with visible
+  startup messages for machines that would otherwise show a black screen
 - the initramfs uses the `mkinitcpio-archiso` hooks, so the kernel mounts the
   live medium instead of waiting for `/dev/gpt-auto-root`
 - NetworkManager is enabled

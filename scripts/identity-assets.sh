@@ -65,7 +65,7 @@ for path, needle, label in [
     ("scripts/login-theme.sh", "active_profile_color", "login theme active profile colors"),
     ("archiso/profile/airootfs/root/customize_airootfs.sh", "boot-splash.sh theme", "ISO applies boot splash identity"),
     ("archiso/profile/airootfs/root/customize_airootfs.sh", "login-theme.sh apply", "ISO applies login theme identity"),
-    ("archiso/profile/airootfs/root/customize_airootfs.sh", "systemctl enable sddm.service", "ISO enables SDDM login manager"),
+    ("archiso/profile/airootfs/root/customize_airootfs.sh", "sevenos-live-session.service", "ISO enables direct SevenOS live session"),
     ("scripts/new-device.sh", "scripts/packages-identity.txt", "new-device knows identity packages"),
     ("scripts/new-device.sh", "scripts/login-theme.sh", "new-device applies login theme"),
     ("scripts/build-iso.sh", "identity-assets.sh", "ISO build validates identity assets"),

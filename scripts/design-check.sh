@@ -129,7 +129,8 @@ if [[ -s "$ROOT_DIR/branding/sddm/sevenos/Main.qml" ]] &&
    grep -q '^polkit-kde-agent$' "$ROOT_DIR/scripts/packages-identity.txt" &&
    grep -q '^zenity$' "$ROOT_DIR/scripts/packages-base.txt" &&
    grep -q '^sddm$' "$ROOT_DIR/archiso/profile/packages.x86_64" &&
-   grep -q 'systemctl enable sddm.service' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
+   grep -q 'sevenos-live-session.service' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
+   grep -q 'ExecStart=/usr/local/bin/sevenos-live-session' "$ROOT_DIR/archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service" &&
    grep -q 'identity-assets.sh' "$ROOT_DIR/scripts/build-iso.sh" &&
    grep -q 'identity-assets.sh' "$ROOT_DIR/scripts/system-install.sh" &&
    grep -q 'scripts/packages-identity.txt' "$ROOT_DIR/scripts/new-device.sh" &&

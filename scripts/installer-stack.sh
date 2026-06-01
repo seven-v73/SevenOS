@@ -231,11 +231,11 @@ release_json() {
   repo_injection_state="$(contains_state scripts/build-iso.sh "sevenos-local")"
   live_cli_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/opt/SevenOS/bin/seven")"
   live_native_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "seven-installer-native")"
-  live_session_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-session" ]] && contains_state archiso/profile/airootfs/usr/share/wayland-sessions/sevenos-live.desktop "sevenos-live-session")"
-  live_autologin_state="$(contains_state archiso/profile/airootfs/etc/sddm.conf.d/20-sevenos-live.conf "Session=sevenos-live.desktop")"
+  live_session_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-session" && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "ExecStart=/usr/local/bin/sevenos-live-session") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-session.service") == OK ]] && printf OK || printf MISS)"
+  live_autologin_state="$([[ $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "User=seven") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "PAMName=login") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "TTYPath=/dev/tty1") == OK ]] && printf OK || printf MISS)"
   live_ready_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-ready" ]] && contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-ready")"
   live_tty_fallback_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "agetty --autologin seven")"
-  live_quiet_boot_state="$([[ $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "quiet splash") == OK && $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "systemd.show_status=false") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "quiet splash") == OK ]] && printf OK || printf MISS)"
+  live_quiet_boot_state="$([[ $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "quiet splash") == OK && $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "systemd.show_status=false") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "quiet splash") == OK && $(contains_state archiso/profile/efiboot/loader/entries/03-sevenos-live-safe.conf "Safe Graphics") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "Safe ^Graphics") == OK ]] && printf OK || printf MISS)"
   live_initramfs_state="$([[ $(contains_state archiso/profile/packages.x86_64 "mkinitcpio-archiso") == OK && $(contains_state archiso/profile/airootfs/etc/mkinitcpio.conf.d/archiso.conf "archiso_loop_mnt") == OK ]] && printf OK || printf MISS)"
   live_user_config_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/home/seven/.config/hypr/hyprland.conf")"
   live_network_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl enable NetworkManager.service")"
@@ -506,7 +506,7 @@ checks = [
         "key": "live-autologin",
         "state": os.environ["LIVE_AUTOLOGIN_STATE"],
         "required": True,
-        "title": "SDDM autologin into SevenOS Live",
+        "title": "Direct SevenOS Live autologin without a display-manager stop",
         "command": "./install.sh iso --dry-run",
     },
     {
@@ -527,7 +527,7 @@ checks = [
         "key": "live-quiet-boot",
         "state": os.environ["LIVE_QUIET_BOOT_STATE"],
         "required": True,
-        "title": "Live ISO boot hides Arch/systemd text behind SevenOS splash",
+        "title": "Live ISO uses quiet SevenOS boot plus a visible Safe Graphics route",
         "command": "./install.sh iso --dry-run",
     },
     {

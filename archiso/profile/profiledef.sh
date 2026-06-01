@@ -18,4 +18,5 @@ file_permissions=(
   ["/usr/local/bin/sevenos-welcome"]="0:0:755"
   ["/usr/local/bin/sevenos-live-session"]="0:0:755"
   ["/usr/local/bin/sevenos-live-ready"]="0:0:755"
+  ["/etc/systemd/system/sevenos-live-session.service"]="0:0:644"
 )

@@ -43,6 +43,7 @@ pipewire-pulse
 wireplumber
 hyprland
 hyprpaper
+cage
 xdg-desktop-portal-hyprland
 waybar
 rofi
@@ -65,6 +66,11 @@ xdg-utils
 xdg-user-dirs
 desktop-file-utils
 qt6-declarative
+qt5-declarative
+mesa
+vulkan-icd-loader
+libva-mesa-driver
+mesa-utils
 grim
 slurp
 wl-clipboard
