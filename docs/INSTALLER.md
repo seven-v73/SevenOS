@@ -50,6 +50,11 @@ positioned after launch by `sevenos-live-guard` with tolerant `hyprctl` calls.
 This prevents a bad window-rule syntax from producing the worst public failure
 mode: a black desktop with only the pointer visible.
 
+The live session also starts `hyprpaper` with a bundled SevenOS background
+before any installer window appears. If the installer portal still does not
+open, `sevenos-live-guard` retries it and then opens a Kitty-based rescue
+terminal. `Super+Shift+Return` is the manual rescue shortcut in the live ISO.
+
 If SDDM fails, TTY1 autologins to `seven` and starts the same SevenOS live
 session as a recovery fallback. This keeps the ISO usable without asking a
 normal user to understand the Arch live command shell.

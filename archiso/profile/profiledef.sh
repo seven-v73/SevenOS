@@ -20,5 +20,7 @@ file_permissions=(
   ["/usr/local/bin/sevenos-live-ready"]="0:0:755"
   ["/usr/local/bin/sevenos-live-guard"]="0:0:755"
   ["/etc/sevenos/live-hyprland.conf"]="0:0:644"
+  ["/etc/sevenos/live-hyprpaper.conf"]="0:0:644"
+  ["/usr/share/sevenos/live-background.png"]="0:0:644"
   ["/etc/systemd/system/sevenos-live-session.service"]="0:0:644"
 )

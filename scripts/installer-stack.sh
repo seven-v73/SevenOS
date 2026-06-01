@@ -208,7 +208,7 @@ release_json() {
   local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_shellprocess_state calamares_postinstall_state calamares_iso_config_state
   local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state native_launcher_state native_live_ui_state live_desktop_state live_native_state calamares_branding_state installer_portal_state calamares_source_state local_repo_db_state local_repo_pkg_state
   local live_session_state live_autologin_state live_ready_state live_tty_fallback_state live_user_config_state live_network_state live_graphical_target_state
-  local live_feedback_state live_services_state live_user_dirs_state live_status_state live_quiet_boot_state live_initramfs_state live_hypr_syntax_state
+  local live_feedback_state live_services_state live_user_dirs_state live_status_state live_quiet_boot_state live_initramfs_state live_hypr_syntax_state live_wallpaper_state live_rescue_state
 
   archinstall_state="$(state archinstall)"
   calamares_state="$(state calamares)"
@@ -233,6 +233,8 @@ release_json() {
   live_native_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "seven-installer-native")"
   live_session_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-session" && -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-guard" && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "ExecStart=/usr/local/bin/sevenos-live-session") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-session.service") == OK && $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprland.conf "sevenos-live-guard") == OK ]] && printf OK || printf MISS)"
   live_hypr_syntax_state="$([[ $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprland.conf "Window placement is handled after launch by") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-guard "arrange_installer_window") == OK ]] && ! grep -Eq '(^|[[:space:]])windowrulev2[[:space:]]*=|^[[:space:]]*windowrule|^[[:space:]]*style[[:space:]]*=' "$ROOT_DIR/archiso/profile/airootfs/etc/sevenos/live-hyprland.conf" && printf OK || printf MISS)"
+  live_wallpaper_state="$([[ $(contains_state archiso/profile/packages.x86_64 "hyprpaper") == OK && $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprland.conf "live-hyprpaper.conf") == OK && $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprpaper.conf "/usr/share/sevenos/live-background.png") == OK && -s "$ROOT_DIR/archiso/profile/airootfs/usr/share/sevenos/live-background.png" ]] && printf OK || printf MISS)"
+  live_rescue_state="$([[ $(contains_state archiso/profile/packages.x86_64 "kitty") == OK && $(contains_state archiso/profile/airootfs/etc/sevenos/live-hyprland.conf "SevenOS Live Rescue") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-guard "kitty --class SevenOSLiveRescue") == OK ]] && printf OK || printf MISS)"
   live_autologin_state="$([[ $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "User=seven") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "PAMName=login") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "TTYPath=/dev/tty1") == OK ]] && printf OK || printf MISS)"
   live_ready_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-ready" ]] && contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-ready")"
   live_tty_fallback_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "agetty --autologin seven")"
@@ -289,6 +291,8 @@ release_json() {
   LIVE_CLI_STATE="$live_cli_state" \
   LIVE_SESSION_STATE="$live_session_state" \
   LIVE_HYPR_SYNTAX_STATE="$live_hypr_syntax_state" \
+  LIVE_WALLPAPER_STATE="$live_wallpaper_state" \
+  LIVE_RESCUE_STATE="$live_rescue_state" \
   LIVE_AUTOLOGIN_STATE="$live_autologin_state" \
   LIVE_READY_STATE="$live_ready_state" \
   LIVE_TTY_FALLBACK_STATE="$live_tty_fallback_state" \
@@ -511,6 +515,20 @@ checks = [
         "title": "Live Hyprland config avoids fragile window rules",
         "command": "./install.sh iso --dry-run",
         "reason": "The ISO must not boot to a black desktop because of deprecated windowrulev2, changing windowrule syntax, or invalid style keys.",
+    },
+    {
+        "key": "live-branded-background",
+        "state": os.environ["LIVE_WALLPAPER_STATE"],
+        "required": True,
+        "title": "Live session shows a SevenOS background before installer windows appear",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-rescue-terminal",
+        "state": os.environ["LIVE_RESCUE_STATE"],
+        "required": True,
+        "title": "Live session has a reliable rescue terminal path",
+        "command": "./install.sh iso --dry-run",
     },
     {
         "key": "live-autologin",
@@ -849,6 +867,8 @@ keys = {
     "graphical-launcher",
     "live-desktop-entry",
     "live-hyprland-syntax",
+    "live-branded-background",
+    "live-rescue-terminal",
     "calamares-branding",
 }
 checks = [item for item in data.get("checks", []) if item.get("key") in keys]
@@ -878,6 +898,8 @@ keys = (
     "graphical-launcher",
     "live-desktop-entry",
     "live-hyprland-syntax",
+    "live-branded-background",
+    "live-rescue-terminal",
     "calamares-branding",
 )
 checks = [item for item in data.get("checks", []) if item.get("key") in keys]

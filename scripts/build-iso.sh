@@ -93,6 +93,12 @@ preflight_graphical_profile() {
     "airootfs/usr/share/wayland-sessions/sevenos-live.desktop" "sevenos-live-session"
   check_profile "Live session must open the graphical installer portal" \
     "airootfs/usr/local/bin/sevenos-live-ready" "seven-installer gui"
+  check_profile "Live session must show a SevenOS background before installer windows appear" \
+    "airootfs/etc/sevenos/live-hyprland.conf" "live-hyprpaper.conf"
+  check_profile "Live wallpaper config must point to the branded live background" \
+    "airootfs/etc/sevenos/live-hyprpaper.conf" "/usr/share/sevenos/live-background.png"
+  check_profile "Live background asset must be tracked by the ISO profile" \
+    "profiledef.sh" "/usr/share/sevenos/live-background.png"
   check_profile "Live build must install Calamares SevenOS settings" \
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/settings.conf"
   check_profile "Live build must install Calamares SevenOS branding" \
@@ -101,6 +107,10 @@ preflight_graphical_profile() {
     "airootfs/etc/sevenos/live-hyprland.conf" "Window placement is handled after launch by"
   check_profile "Live guard must arrange the installer window after launch" \
     "airootfs/usr/local/bin/sevenos-live-guard" "arrange_installer_window"
+  check_profile "Live session must expose a Kitty rescue terminal shortcut" \
+    "airootfs/etc/sevenos/live-hyprland.conf" "SevenOS Live Rescue"
+  check_profile "Live guard must prefer the reliable Kitty rescue terminal" \
+    "airootfs/usr/local/bin/sevenos-live-guard" "kitty --class SevenOSLiveRescue"
   reject_profile "Live Hyprland config must not use deprecated windowrulev2" \
     "airootfs/etc/sevenos/live-hyprland.conf" '(^|[[:space:]])windowrulev2[[:space:]]*='
   reject_profile "Live Hyprland config must not include window rules" \
@@ -124,8 +134,12 @@ preflight_graphical_profile() {
     "archiso/profile/packages.x86_64" "sddm"
   check_repo "The ISO package list must include Hyprland" \
     "archiso/profile/packages.x86_64" "hyprland"
+  check_repo "The ISO package list must include the live wallpaper renderer" \
+    "archiso/profile/packages.x86_64" "hyprpaper"
   check_repo "The ISO package list must include a safe graphics fallback compositor" \
     "archiso/profile/packages.x86_64" "cage"
+  check_repo "The ISO package list must include a reliable rescue terminal" \
+    "archiso/profile/packages.x86_64" "kitty"
   check_repo "The ISO package list must include Mesa for live graphics" \
     "archiso/profile/packages.x86_64" "mesa"
 

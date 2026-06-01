@@ -69,10 +69,10 @@ open_rescue_terminal() {
   log "opening rescue terminal"
   local shell_cmd
   shell_cmd='printf "SevenOS Live rescue\n\n"; seven-installer live-status || true; printf "\nLogs:\n  ~/.cache/sevenos/live-session.log\n  ~/.cache/sevenos/live-ready.log\n  ~/.cache/sevenos/live-guard.log\n\n"; exec bash'
-  if command -v seven-terminal >/dev/null 2>&1; then
+  if command -v kitty >/dev/null 2>&1; then
+    kitty --class SevenOSLiveRescue --title "SevenOS Live Rescue" bash -lc "$shell_cmd" >/dev/null 2>&1 &
+  elif command -v seven-terminal >/dev/null 2>&1; then
     seven-terminal -- bash -lc "$shell_cmd" >/dev/null 2>&1 &
-  elif command -v kitty >/dev/null 2>&1; then
-    kitty --class SevenOSLiveRescue bash -lc "$shell_cmd" >/dev/null 2>&1 &
   elif command -v xterm >/dev/null 2>&1; then
     xterm -e bash -lc "$shell_cmd" >/dev/null 2>&1 &
   fi
