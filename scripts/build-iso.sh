@@ -93,6 +93,12 @@ preflight_graphical_profile() {
     "airootfs/usr/share/wayland-sessions/sevenos-live.desktop" "sevenos-live-session"
   check_profile "Live session must open the graphical installer portal" \
     "airootfs/usr/local/bin/sevenos-live-ready" "seven-installer gui"
+  check_profile "Live session must fall back to Calamares when the portal closes" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "SevenOS portal closed; falling back to Calamares"
+  check_profile "Live session must launch Calamares directly as a second route" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "open_calamares_direct"
+  check_profile "Live readiness must confirm real installer windows, not only process ids" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "installer_window_visible"
   check_profile "Live session must show a SevenOS background before installer windows appear" \
     "airootfs/etc/sevenos/live-hyprland.conf" "live-hyprpaper.conf"
   check_profile "Live wallpaper config must point to the branded live background" \

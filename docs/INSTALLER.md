@@ -54,6 +54,10 @@ The live session also starts `hyprpaper` with a bundled SevenOS background
 before any installer window appears. If the installer portal still does not
 open, `sevenos-live-guard` retries it and then opens a Kitty-based rescue
 terminal. `Super+Shift+Return` is the manual rescue shortcut in the live ISO.
+If the native SevenOS installer portal starts and then closes too quickly,
+`sevenos-live-ready` automatically opens Calamares directly. The user should
+not have to discover `seven-installer live-retry` just to reach the disk
+installer.
 
 If SDDM fails, TTY1 autologins to `seven` and starts the same SevenOS live
 session as a recovery fallback. This keeps the ISO usable without asking a
