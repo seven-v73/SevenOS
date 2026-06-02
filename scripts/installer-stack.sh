@@ -253,9 +253,9 @@ release_json() {
   live_autologin_state="$([[ $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "User=seven") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "PAMName=login") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "TTYPath=/dev/tty1") == OK ]] && printf OK || printf MISS)"
   live_ready_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-ready" ]] && contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-ready")"
   live_tty_fallback_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "agetty --autologin seven")"
-  live_quiet_boot_state="$([[ $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "quiet splash") == OK && $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "systemd.show_status=false") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "quiet splash") == OK && $(contains_state archiso/profile/efiboot/loader/entries/03-sevenos-live-safe.conf "Safe Graphics") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "Safe ^Graphics") == OK ]] && printf OK || printf MISS)"
+  live_quiet_boot_state="$([[ $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "quiet splash") == OK && $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "loglevel=0") == OK && $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "systemd.show_status=false") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "quiet splash") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "loglevel=0") == OK && $(contains_state archiso/profile/efiboot/loader/entries/03-sevenos-live-safe.conf "Safe Graphics") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "Safe ^Graphics") == OK ]] && printf OK || printf MISS)"
   live_initramfs_state="$([[ $(contains_state archiso/profile/packages.x86_64 "mkinitcpio-archiso") == OK && $(contains_state archiso/profile/airootfs/etc/mkinitcpio.conf.d/archiso.conf "archiso_loop_mnt") == OK ]] && printf OK || printf MISS)"
-  live_user_config_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/home/seven/.config/hypr/hyprland.conf")"
+  live_user_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/home/seven/.config/hypr/hyprland.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "locale-gen") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "StandardOutput=journal") == OK ]] && printf OK || printf MISS)"
   live_network_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl enable NetworkManager.service")"
   live_graphical_target_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl set-default graphical.target")"
   live_feedback_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "notify-send")"
@@ -641,7 +641,7 @@ checks = [
         "key": "live-user-config",
         "state": os.environ["LIVE_USER_CONFIG_STATE"],
         "required": True,
-        "title": "SevenOS user configs preseeded",
+        "title": "SevenOS user configs, locales and journal-only live logs are preseeded",
         "command": "./install.sh iso --dry-run",
     },
     {

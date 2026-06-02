@@ -12,8 +12,8 @@ TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes
 StandardInput=tty
-StandardOutput=journal+console
-StandardError=journal+console
+StandardOutput=journal
+StandardError=journal
 Environment=SEVENOS_ROOT=/opt/SevenOS
 Environment=SEVENOS_LIVE_SESSION=1
 Environment=XDG_CURRENT_DESKTOP=Hyprland

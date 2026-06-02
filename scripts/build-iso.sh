@@ -73,8 +73,12 @@ preflight_graphical_profile() {
     "efiboot/loader/entries/01-sevenos-live.conf" "quiet splash"
   check_profile "UEFI boot must hide systemd status text" \
     "efiboot/loader/entries/01-sevenos-live.conf" "systemd.show_status=false"
+  check_profile "UEFI boot must suppress noisy kernel errors in the normal route" \
+    "efiboot/loader/entries/01-sevenos-live.conf" "loglevel=0"
   check_profile "BIOS boot must be quiet and branded" \
     "syslinux/archiso_sys-linux.cfg" "quiet splash"
+  check_profile "BIOS boot must suppress noisy kernel errors in the normal route" \
+    "syslinux/archiso_sys-linux.cfg" "loglevel=0"
   check_profile "SevenOS live service must start the graphical session directly" \
     "airootfs/etc/systemd/system/sevenos-live-session.service" "ExecStart=/usr/local/bin/sevenos-live-session"
   check_profile "SevenOS live session must use the live Hyprland fallback profile" \
@@ -83,8 +87,12 @@ preflight_graphical_profile() {
     "airootfs/usr/local/bin/sevenos-live-guard" "open_rescue_terminal"
   check_profile "SevenOS live service must run as the live user" \
     "airootfs/etc/systemd/system/sevenos-live-session.service" "User=seven"
+  check_profile "SevenOS live service must keep logs in the journal instead of the console" \
+    "airootfs/etc/systemd/system/sevenos-live-session.service" "StandardOutput=journal"
   check_profile "Live build must enable the SevenOS live service" \
     "airootfs/root/customize_airootfs.sh" "sevenos-live-session.service"
+  check_profile "Live build must generate SevenOS locales before the graphical session" \
+    "airootfs/root/customize_airootfs.sh" "locale-gen"
   check_profile "UEFI boot must expose Safe Graphics" \
     "efiboot/loader/entries/03-sevenos-live-safe.conf" "Safe Graphics"
   check_profile "BIOS boot must expose Safe Graphics" \

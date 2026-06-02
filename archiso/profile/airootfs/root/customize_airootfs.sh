@@ -2,6 +2,16 @@
 set -euo pipefail
 
 ln -sf /usr/share/zoneinfo/UTC /etc/localtime
+install -d /etc
+for locale_line in "en_US.UTF-8 UTF-8" "fr_FR.UTF-8 UTF-8"; do
+  if grep -q "^#${locale_line}$" /etc/locale.gen 2>/dev/null; then
+    sed -i "s/^#${locale_line}$/${locale_line}/" /etc/locale.gen
+  elif ! grep -q "^${locale_line}$" /etc/locale.gen 2>/dev/null; then
+    printf '%s\n' "$locale_line" >>/etc/locale.gen
+  fi
+done
+locale-gen >/var/log/sevenos-locale-gen.log 2>&1 || true
+printf 'LANG=en_US.UTF-8\n' >/etc/locale.conf
 systemctl enable NetworkManager.service
 systemctl enable ModemManager.service 2>/dev/null || true
 systemctl enable plymouth-quit.service 2>/dev/null || true
