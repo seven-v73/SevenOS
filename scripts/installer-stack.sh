@@ -224,7 +224,7 @@ release_json() {
   calamares_iso_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/etc/calamares/settings.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/usr/share/calamares/branding/sevenos") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "unpackfs.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess-livecleanup.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "shellprocess.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "users.conf") == OK ]] && printf OK || printf MISS)"
   graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
   native_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer-native" ]] && printf OK || printf MISS)"
-  native_live_ui_state="$([[ $(contains_state bin/seven-installer-native "live-status") == OK && $(contains_state bin/seven-installer-native "status_cards") == OK && $(contains_state bin/seven-installer-native "installer-progress") == OK && $(contains_state bin/seven-installer-native "timeline_card") == OK && $(contains_state bin/seven-installer-native "GLib.timeout_add_seconds") == OK && $(contains_state bin/seven-installer-native "active_step_label") == OK && $(contains_state bin/seven-installer-native "decision_label") == OK && $(contains_state bin/seven-installer-native "attention_label") == OK && $(contains_state bin/seven-installer-native "primary_live_action") == OK && $(contains_state bin/seven-installer-native "secondary_action_buttons") == OK && $(contains_state bin/seven-installer "user_message") == OK && $(contains_state bin/seven-installer "primary_command") == OK && $(contains_state bin/seven-installer "secondary_actions") == OK && $(contains_state bin/seven-installer "attention_items") == OK ]] && printf OK || printf MISS)"
+  native_live_ui_state="$([[ $(contains_state bin/seven-installer-native "live-status") == OK && $(contains_state bin/seven-installer-native "status_cards") == OK && $(contains_state bin/seven-installer-native "installer-progress") == OK && $(contains_state bin/seven-installer-native "timeline_steps") == OK && $(contains_state bin/seven-installer-native "apply_timeline_strip") == OK && $(contains_state bin/seven-installer-native "installer-step-active") == OK && $(contains_state bin/seven-installer-native "preflight_chips") == OK && $(contains_state bin/seven-installer-native "apply_preflight_cards") == OK && $(contains_state bin/seven-installer-native "timeline_card") == OK && $(contains_state bin/seven-installer-native "GLib.timeout_add_seconds") == OK && $(contains_state bin/seven-installer-native "active_step_label") == OK && $(contains_state bin/seven-installer-native "decision_label") == OK && $(contains_state bin/seven-installer-native "attention_label") == OK && $(contains_state bin/seven-installer-native "flow_hint_label") == OK && $(contains_state bin/seven-installer-native "recovery_hint_label") == OK && $(contains_state bin/seven-installer-native "Gtk.FlowBox") == OK && $(contains_state bin/seven-installer-native "primary_live_action") == OK && $(contains_state bin/seven-installer-native "secondary_action_buttons") == OK && $(contains_state bin/seven-installer-native "seven-installer logs") == OK && $(contains_state bin/seven-installer-native "seven-installer disks") == OK && $(contains_state bin/seven-installer "user_message") == OK && $(contains_state bin/seven-installer "primary_command") == OK && $(contains_state bin/seven-installer "secondary_actions") == OK && $(contains_state bin/seven-installer "attention_items") == OK ]] && printf OK || printf MISS)"
   installer_portal_state="$("$ROOT_DIR/bin/seven-installer" status --json 2>/dev/null | grep -q 'sevenos.installer-portal.v1' && printf OK || printf MISS)"
   live_desktop_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Exec=seven-installer")"
   calamares_branding_state="$(file_state installer/calamares/branding/sevenos/branding.desc)"
@@ -255,14 +255,14 @@ release_json() {
   live_tty_fallback_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "agetty --autologin seven")"
   live_quiet_boot_state="$([[ $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "quiet splash") == OK && $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "loglevel=0") == OK && $(contains_state archiso/profile/efiboot/loader/entries/01-sevenos-live.conf "systemd.show_status=false") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "quiet splash") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "loglevel=0") == OK && $(contains_state archiso/profile/efiboot/loader/entries/03-sevenos-live-safe.conf "Safe Graphics") == OK && $(contains_state archiso/profile/syslinux/archiso_sys-linux.cfg "Safe ^Graphics") == OK ]] && printf OK || printf MISS)"
   live_initramfs_state="$([[ $(contains_state archiso/profile/packages.x86_64 "mkinitcpio-archiso") == OK && $(contains_state archiso/profile/airootfs/etc/mkinitcpio.conf.d/archiso.conf "archiso_loop_mnt") == OK ]] && printf OK || printf MISS)"
-  live_user_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/home/seven/.config/hypr/hyprland.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "locale-gen") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "StandardOutput=journal") == OK ]] && printf OK || printf MISS)"
+  live_user_config_state="$([[ $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/home/seven/.config/hypr/hyprland.conf") == OK && $(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "locale-gen") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-session "locale_available") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-session "read_language_value") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-session "SEVENOS_LIVE_SESSION_LOCALE_PROBE") == OK && $(contains_state archiso/profile/airootfs/etc/systemd/system/sevenos-live-session.service "StandardOutput=journal") == OK ]] && printf OK || printf MISS)"
   live_network_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl enable NetworkManager.service")"
   live_graphical_target_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl set-default graphical.target")"
   live_feedback_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "notify-send")"
   live_services_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "sevenos-session.target")"
   live_user_dirs_state="$([[ $(contains_state archiso/profile/packages.x86_64 "xdg-user-dirs") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "xdg-user-dirs-update") == OK ]] && printf OK || printf MISS)"
   live_status_state="$("$ROOT_DIR/bin/seven-installer" live-status --json 2>/dev/null | grep -q 'sevenos.installer-live.v1' && printf OK || printf MISS)"
-  local live_retry_state live_status_persist_state live_lock_state live_pid_state live_lock_expiry_state live_notify_status_state live_progress_state live_recommended_state live_desktop_i18n_state live_network_status_state live_storage_status_state live_system_status_state live_readiness_summary_state live_process_guard_state live_portal_fallback_state live_smoke_state live_freshness_state live_timeline_state live_ui_i18n_state
+  local live_retry_state live_status_persist_state live_lock_state live_pid_state live_lock_expiry_state live_notify_status_state live_progress_state live_recommended_state live_desktop_i18n_state live_network_status_state live_storage_status_state live_system_status_state live_readiness_summary_state live_process_guard_state live_portal_first_state live_smoke_state live_freshness_state live_timeline_state live_ui_i18n_state
   live_retry_state="$(contains_state bin/seven-installer "live-retry")"
   live_status_persist_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "live-status.json")"
   live_lock_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "live-ready.lock")"
@@ -272,12 +272,12 @@ release_json() {
   live_progress_state="$([[ $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "progress") == OK && $(contains_state bin/seven-installer "progress") == OK ]] && printf OK || printf MISS)"
   live_recommended_state="$(contains_state bin/seven-installer "recommended_action")"
   live_desktop_i18n_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Name[fr]")"
-  live_network_status_state="$([[ $(contains_state bin/seven-installer "NM_STATE") == OK && $(contains_state bin/seven-installer "connect-network") == OK && $(contains_state bin/seven-installer "Installer hors ligne") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "Network is not connected; opening SevenOS network choice before installation.") == OK ]] && printf OK || printf MISS)"
-  live_storage_status_state="$([[ $(contains_state bin/seven-installer "install_targets") == OK && $(contains_state archiso/profile/packages.x86_64 "gnome-disk-utility") == OK ]] && printf OK || printf MISS)"
-  live_system_status_state="$([[ $(contains_state bin/seven-installer "memory_ready") == OK && $(contains_state bin/seven-installer "power_safe") == OK ]] && printf OK || printf MISS)"
+  live_network_status_state="$([[ $(contains_state bin/seven-installer "NM_STATE") == OK && $(contains_state bin/seven-installer "connect-network") == OK && $(contains_state bin/seven-installer "network_command") == OK && $(contains_state bin/seven-installer "logs_command") == OK && $(contains_state bin/seven-installer "Installer hors ligne") == OK && $(contains_state bin/seven-installer "live-offline-accepted") == OK && $(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Desktop Action Network") == OK && $(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Desktop Action Logs") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "Network is not connected; opening SevenOS network choice before installation.") == OK ]] && printf OK || printf MISS)"
+  live_storage_status_state="$([[ $(contains_state bin/seven-installer "install_targets") == OK && $(contains_state bin/seven-installer "disks_command") == OK && $(contains_state archiso/profile/packages.x86_64 "gnome-disk-utility") == OK && $(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Desktop Action Disks") == OK ]] && printf OK || printf MISS)"
+  live_system_status_state="$([[ $(contains_state bin/seven-installer "memory_ready") == OK && $(contains_state bin/seven-installer "power_safe") == OK && $(contains_state bin/seven-installer "boot_mode") == OK && $(contains_state bin/seven-installer "secure_boot") == OK && $(contains_state bin/seven-installer "secure_boot_attention") == OK && $(contains_state bin/seven-installer "graphics_ready") == OK && $(contains_state bin/seven-installer "render_devices") == OK && $(contains_state bin/seven-installer "locale_ready") == OK ]] && printf OK || printf MISS)"
   live_readiness_summary_state="$([[ $(contains_state bin/seven-installer "readiness_state") == OK && $(contains_state bin/seven-installer "issues") == OK ]] && printf OK || printf MISS)"
   live_process_guard_state="$([[ $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "confirm_installer_window") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "installer_window_visible") == OK ]] && printf OK || printf MISS)"
-  live_portal_fallback_state="$([[ $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "open_calamares_direct") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "Calamares did not expose a window; opening SevenOS portal") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "Calamares installer") == OK && $(contains_state bin/seven-installer "SEVENOS_LIVE_SESSION") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-guard "installer_window_count") == OK ]] && printf OK || printf MISS)"
+  live_portal_first_state="$([[ $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "Opening SevenOS portal before Calamares") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "seven-installer gui") == OK && $(contains_state bin/seven-installer "focus_installer_window") == OK && $(contains_state bin/seven-installer "calamares-open.lock") == OK && $(contains_state bin/seven-installer "installer-portal-open.lock") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-guard "installer_window_count") == OK ]] && printf OK || printf MISS)"
   live_smoke_state="$("$ROOT_DIR/scripts/live-installer-smoke.sh" --json 2>/dev/null | python -c 'import json,sys; print(json.load(sys.stdin).get("state","MISS"))' 2>/dev/null || printf MISS)"
   live_freshness_state="$([[ $(contains_state bin/seven-installer "status_age_seconds") == OK && $(contains_state bin/seven-installer "live-helper-stale") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "elapsed_seconds") == OK ]] && printf OK || printf MISS)"
   live_timeline_state="$([[ $(contains_state bin/seven-installer "timeline_specs") == OK && $(contains_state bin/seven-installer '"timeline": timeline') == OK ]] && printf OK || printf MISS)"
@@ -341,7 +341,7 @@ release_json() {
   LIVE_SYSTEM_STATUS_STATE="$live_system_status_state" \
   LIVE_READINESS_SUMMARY_STATE="$live_readiness_summary_state" \
   LIVE_PROCESS_GUARD_STATE="$live_process_guard_state" \
-  LIVE_PORTAL_FALLBACK_STATE="$live_portal_fallback_state" \
+  LIVE_PORTAL_FIRST_STATE="$live_portal_first_state" \
   LIVE_SMOKE_STATE="$live_smoke_state" \
   LIVE_FRESHNESS_STATE="$live_freshness_state" \
   LIVE_TIMELINE_STATE="$live_timeline_state" \
@@ -767,7 +767,7 @@ checks = [
         "key": "live-system-status",
         "state": os.environ["LIVE_SYSTEM_STATUS_STATE"],
         "required": True,
-        "title": "Live first-screen exposes power and memory readiness",
+        "title": "Live first-screen exposes firmware, power and memory readiness",
         "command": "seven-installer live-status --json",
     },
     {
@@ -785,10 +785,10 @@ checks = [
         "command": "seven-installer live-retry",
     },
     {
-        "key": "live-installer-fallback-route",
-        "state": "OK" if os.environ["LIVE_PORTAL_FALLBACK_STATE"] == "OK" and os.environ["LIVE_SMOKE_STATE"] == "OK" else "MISS",
+        "key": "live-installer-portal-first-route",
+        "state": "OK" if os.environ["LIVE_PORTAL_FIRST_STATE"] == "OK" and os.environ["LIVE_SMOKE_STATE"] == "OK" else "MISS",
         "required": True,
-        "title": "Live installer opens Calamares first and confirms an interactive window",
+        "title": "Live installer opens the SevenOS portal first, then Calamares on explicit action",
         "command": "scripts/live-installer-smoke.sh --json",
     },
     {
@@ -948,7 +948,7 @@ keys = {
     "live-hyprland-syntax",
     "live-branded-background",
     "live-rescue-terminal",
-    "live-installer-fallback-route",
+    "live-installer-portal-first-route",
     "calamares-branding",
 }
 checks = [item for item in data.get("checks", []) if item.get("key") in keys]
@@ -980,7 +980,7 @@ keys = (
     "live-hyprland-syntax",
     "live-branded-background",
     "live-rescue-terminal",
-    "live-installer-fallback-route",
+    "live-installer-portal-first-route",
     "calamares-branding",
 )
 checks = [item for item in data.get("checks", []) if item.get("key") in keys]

@@ -7,13 +7,33 @@ Comment[fr]=Ouvrir le portail graphique d’installation SevenOS
 Exec=seven-installer
 Icon=seven-installer
 Terminal=false
-Categories=System;Settings;
-Actions=Status;Retry;
+Categories=System;
+Actions=Network;Disks;Offline;Status;Logs;Retry;
+
+[Desktop Action Network]
+Name=Choose Wi-Fi / Network
+Name[fr]=Choisir le Wi‑Fi / Réseau
+Exec=seven-installer network
+
+[Desktop Action Offline]
+Name=Install offline
+Name[fr]=Installer hors ligne
+Exec=seven-installer offline
+
+[Desktop Action Disks]
+Name=Check disks
+Name[fr]=Vérifier les disques
+Exec=seven-installer disks
 
 [Desktop Action Status]
 Name=Installer Status
 Name[fr]=Statut de l’installation
 Exec=seven-installer live-notify
+
+[Desktop Action Logs]
+Name=Install Logs
+Name[fr]=Journaux d’installation
+Exec=seven-installer logs
 
 [Desktop Action Retry]
 Name=Retry Installer

@@ -101,21 +101,37 @@ preflight_graphical_profile() {
     "airootfs/usr/share/wayland-sessions/sevenos-live.desktop" "sevenos-live-session"
   check_profile "Live session must open the graphical installer portal" \
     "airootfs/usr/local/bin/sevenos-live-ready" "seven-installer gui"
-  check_profile "Live session must launch Calamares directly as the stable first route" \
-    "airootfs/usr/local/bin/sevenos-live-ready" "open_calamares_direct"
-  check_profile "Live session must offer a network choice before Calamares when offline" \
+  check_profile "Live session must open the SevenOS portal before Calamares" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "Opening SevenOS portal before Calamares"
+  check_profile "Live session must offer a network choice before installation when offline" \
     "airootfs/usr/local/bin/sevenos-live-ready" "Network is not connected; opening SevenOS network choice before installation."
-  check_profile "Live session must only use the SevenOS portal as a fallback diagnostic route" \
-    "airootfs/usr/local/bin/sevenos-live-ready" "Calamares did not expose a window; opening SevenOS portal"
   check_profile "Live readiness must confirm real installer windows, not only process ids" \
     "airootfs/usr/local/bin/sevenos-live-ready" "installer_window_visible"
-  check_repo "Live installer launcher must prefer Calamares during the ISO session" \
-    "bin/seven-installer" "SEVENOS_LIVE_SESSION"
+  check_repo "Live installer launcher must focus an existing installer instead of duplicating windows" \
+    "bin/seven-installer" "focus_installer_window"
+  check_repo "Live installer launcher must lock Calamares startup against duplicate windows" \
+    "bin/seven-installer" "calamares-open.lock"
+  check_repo "Live installer portal must be singleton to avoid duplicate setup windows" \
+    "bin/seven-installer" "installer-portal-open.lock"
   check_repo "Live installer portal must allow an explicit offline install choice" \
     "bin/seven-installer" "Installer hors ligne"
-  check_repo "Live installer smoke test must verify the Calamares-first route" \
-    "scripts/live-installer-smoke.sh" "Calamares installer is interactive"
-  check_profile "Live guard must count installer windows explicitly" \
+  check_repo "Live installer offline choice must persist for the session" \
+    "bin/seven-installer" "live-offline-accepted"
+  check_repo "Live installer must own the network action with fallbacks" \
+    "bin/seven-installer" "network_command"
+  check_repo "Live installer must expose readable installation logs" \
+    "bin/seven-installer" "logs_command"
+  check_repo "Live installer must own the disk inspection action with fallbacks" \
+    "bin/seven-installer" "disks_command"
+  check_profile "Live installer desktop entry must expose Wi-Fi as a direct action" \
+    "airootfs/usr/share/applications/seven-installer.desktop" "Desktop Action Network"
+  check_profile "Live installer desktop entry must expose disk inspection" \
+    "airootfs/usr/share/applications/seven-installer.desktop" "Desktop Action Disks"
+  check_profile "Live installer desktop entry must expose installation logs" \
+    "airootfs/usr/share/applications/seven-installer.desktop" "Desktop Action Logs"
+  check_repo "Live installer smoke test must verify the portal-first route" \
+    "scripts/live-installer-smoke.sh" "SevenOS installer portal is interactive"
+  check_profile "Live guard must count installer windows explicitly without launching a duplicate installer" \
     "airootfs/usr/local/bin/sevenos-live-guard" "installer_window_count"
   check_profile "Live session must show a SevenOS background before installer windows appear" \
     "airootfs/etc/sevenos/live-hyprland.conf" "live-hyprpaper.conf"

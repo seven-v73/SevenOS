@@ -10,9 +10,9 @@ SevenOS graphical installer launcher
 Usage:
   seven-installer [open|gui|status|portal|guide|live-status|live-notify|live-reset|live-retry] [--json]
 
-This launcher prefers Calamares when it is available in the live ISO. When the
-graphical runtime is missing, it falls back to the SevenOS guided installer
-status instead of pretending a destructive installer is ready.
+The live ISO opens the SevenOS portal first so Wi-Fi, disks and readiness are
+visible before any destructive disk step. The explicit open action launches
+Calamares once and focuses an existing installer window on repeated clicks.
 EOF
 }
 
@@ -58,8 +58,205 @@ calamares_command() {
 }
 
 run_calamares() {
-  local command_line
+  local command_line lock_file lock_dir
   command_line="$(calamares_command)"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%s\n' "$command_line"
+    return 0
+  fi
+  focus_calamares_window && return 0
+  if calamares_running; then
+    sleep 0.6
+    focus_calamares_window || true
+    return 0
+  fi
+  lock_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+  lock_file="$lock_dir/calamares-open.lock"
+  mkdir -p "$lock_dir"
+  exec 9>"$lock_file"
+  if ! flock -n 9; then
+    focus_calamares_window || focus_installer_window || true
+    return 0
+  fi
+  if calamares_running; then
+    sleep 0.6
+    focus_calamares_window || true
+    return 0
+  fi
+  bash -lc "$command_line"
+}
+
+run_portal() {
+  local lock_file lock_dir
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%q ' "$ROOT_DIR/bin/seven-installer-native"
+    printf '\n'
+    return 0
+  fi
+  focus_installer_window && return 0
+  lock_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+  lock_file="$lock_dir/installer-portal-open.lock"
+  mkdir -p "$lock_dir"
+  exec 8>"$lock_file"
+  if ! flock -n 8; then
+    sleep 0.4
+    focus_installer_window || true
+    return 0
+  fi
+  if focus_installer_window; then
+    return 0
+  fi
+  "$ROOT_DIR/bin/seven-installer-native"
+}
+
+installer_window_query() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  hyprctl clients -j 2>/dev/null | python -c '
+import json
+import re
+import sys
+
+try:
+    clients = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(1)
+
+class_re = re.compile(r"^(SevenOSInstallerNative|Calamares|calamares)$")
+title_re = re.compile(r"^(SevenOS Installer|Install SevenOS|Installer SevenOS).*$")
+for client in clients:
+    klass = str(client.get("class") or "")
+    title = str(client.get("title") or "")
+    if class_re.search(klass) or title_re.search(title):
+        print(klass or title)
+        raise SystemExit(0)
+raise SystemExit(1)
+' 2>/dev/null
+}
+
+focus_installer_window() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  installer_window_query >/dev/null || return 1
+  local selector
+  for selector in \
+    'class:^(SevenOSInstallerNative)$' \
+    'class:^(Calamares)$' \
+    'class:^(calamares)$' \
+    'title:^(SevenOS Installer|Install SevenOS|Installer SevenOS)(.*)$'
+  do
+    if hyprctl dispatch focuswindow "$selector" >/dev/null 2>&1; then
+      hyprctl dispatch centerwindow >/dev/null 2>&1 || true
+      return 0
+    fi
+  done
+  return 0
+}
+
+calamares_window_query() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  hyprctl clients -j 2>/dev/null | python -c '
+import json
+import re
+import sys
+
+try:
+    clients = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(1)
+
+class_re = re.compile(r"^(Calamares|calamares)$")
+for client in clients:
+    klass = str(client.get("class") or "")
+    if class_re.search(klass):
+        print(klass)
+        raise SystemExit(0)
+raise SystemExit(1)
+' 2>/dev/null
+}
+
+focus_calamares_window() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  calamares_window_query >/dev/null || return 1
+  local selector
+  for selector in \
+    'class:^(Calamares)$' \
+    'class:^(calamares)$'
+  do
+    if hyprctl dispatch focuswindow "$selector" >/dev/null 2>&1; then
+      hyprctl dispatch centerwindow >/dev/null 2>&1 || true
+      return 0
+    fi
+  done
+  return 0
+}
+
+calamares_running() {
+  command -v pgrep >/dev/null 2>&1 || return 1
+  pgrep -f '(^|[ /])calamares([[:space:]]|$)' >/dev/null 2>&1
+}
+
+network_command() {
+  if command -v seven-wifi >/dev/null 2>&1; then
+    printf 'seven-wifi\n'
+  elif command -v nm-connection-editor >/dev/null 2>&1; then
+    printf 'nm-connection-editor\n'
+  elif command -v nmtui >/dev/null 2>&1; then
+    printf 'kitty --class SevenOSLiveNetwork --title "SevenOS Network" nmtui\n'
+  else
+    printf 'seven-installer live-status\n'
+  fi
+}
+
+open_network() {
+  local command_line
+  command_line="$(network_command)"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%s\n' "$command_line"
+    return 0
+  fi
+  exec bash -lc "$command_line"
+}
+
+logs_command() {
+  local shell_cmd
+  shell_cmd='printf "SevenOS Live installation report\n\n"; seven-installer live-status || true; printf "\nRecent live log:\n"; tail -n 80 "${XDG_CACHE_HOME:-$HOME/.cache}/sevenos/live-ready.log" 2>/dev/null || true; printf "\nRecent Calamares log:\n"; tail -n 120 "${XDG_CACHE_HOME:-$HOME/.cache}/sevenos/calamares-live.log" 2>/dev/null || true; printf "\n\nPress Enter to close."; read -r _'
+  if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" && -n "$(command -v kitty 2>/dev/null || true)" ]]; then
+    printf 'kitty --class SevenOSLiveLogs --title "SevenOS Install Logs" bash -lc %q\n' "$shell_cmd"
+  elif [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" && -n "$(command -v seven-terminal 2>/dev/null || true)" ]]; then
+    printf 'seven-terminal -- bash -lc %q\n' "$shell_cmd"
+  else
+    printf 'bash -lc %q\n' "$shell_cmd"
+  fi
+}
+
+open_logs() {
+  local command_line
+  command_line="$(logs_command)"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%s\n' "$command_line"
+    return 0
+  fi
+  exec bash -lc "$command_line"
+}
+
+disks_command() {
+  local shell_cmd
+  if command -v gnome-disks >/dev/null 2>&1; then
+    printf 'gnome-disks\n'
+    return 0
+  fi
+  shell_cmd='printf "SevenOS disks\n\n"; lsblk -o NAME,TYPE,SIZE,MODEL,TRAN,RM,MOUNTPOINTS || true; printf "\nPress Enter to close."; read -r _'
+  if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" && -n "$(command -v kitty 2>/dev/null || true)" ]]; then
+    printf 'kitty --class SevenOSLiveDisks --title "SevenOS Disks" bash -lc %q\n' "$shell_cmd"
+  elif [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" && -n "$(command -v seven-terminal 2>/dev/null || true)" ]]; then
+    printf 'seven-terminal -- bash -lc %q\n' "$shell_cmd"
+  else
+    printf 'bash -lc %q\n' "$shell_cmd"
+  fi
+}
+
+open_disks() {
+  local command_line
+  command_line="$(disks_command)"
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf '%s\n' "$command_line"
     return 0
@@ -94,6 +291,7 @@ status_json() {
   python - <<'PY'
 import json
 import os
+import subprocess
 import time
 
 calamares = os.environ.get("CALAMARES_STATE", "MISS")
@@ -143,13 +341,14 @@ PY
 }
 
 live_status_json() {
-  local live_state_dir live_cache_dir started_marker ready_marker log_file calamares_log_file status_file live_session first_screen log_tail calamares_log_tail live_ready_payload
+  local live_state_dir live_cache_dir started_marker ready_marker offline_marker log_file calamares_log_file status_file live_session first_screen offline_accepted log_tail calamares_log_tail live_ready_payload
   local nm_state nm_wifi nm_connectivity
   local storage_payload
   live_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
   live_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
   started_marker="$live_state_dir/live-first-screen-started"
   ready_marker="$live_state_dir/live-installer-opened"
+  offline_marker="$live_state_dir/live-offline-accepted"
   log_file="$live_cache_dir/live-ready.log"
   calamares_log_file="$live_cache_dir/calamares-live.log"
   status_file="$live_state_dir/live-status.json"
@@ -161,6 +360,7 @@ live_status_json() {
   else
     first_screen="not-started"
   fi
+  [[ -e "$offline_marker" ]] && offline_accepted=true || offline_accepted=false
   if [[ -r "$log_file" ]]; then
     log_tail="$(tail -n 12 "$log_file" | python -c 'import json,sys; print(json.dumps(sys.stdin.read().splitlines()))')"
   else
@@ -192,6 +392,7 @@ live_status_json() {
   fi
   LIVE_SESSION="$live_session" \
   FIRST_SCREEN="$first_screen" \
+  OFFLINE_ACCEPTED="$offline_accepted" \
   LOG_FILE="$log_file" \
   CALAMARES_LOG_FILE="$calamares_log_file" \
   LOG_TAIL="$log_tail" \
@@ -279,6 +480,7 @@ nm_state = os.environ.get("NM_STATE", "unknown")
 nm_wifi = os.environ.get("NM_WIFI", "unknown")
 nm_connectivity = os.environ.get("NM_CONNECTIVITY", "unknown")
 network_connected = nm_state == "connected" or nm_connectivity == "full"
+offline_accepted = os.environ.get("OFFLINE_ACCEPTED") == "true"
 devices = flatten_devices(storage_payload.get("blockdevices", []))
 disks = [
     item for item in devices
@@ -338,13 +540,62 @@ if ac_online is None:
     ac_online = battery_percent is None
 power_safe = bool(ac_online) or battery_percent is None or battery_percent >= 35
 memory_ready = mem_total_kib >= 2 * 1024 * 1024
+boot_mode = "uefi" if os.path.isdir("/sys/firmware/efi") else "bios"
+secure_boot = "not-applicable"
+if boot_mode == "uefi":
+    secure_boot = "unknown"
+    efivars_root = "/sys/firmware/efi/efivars"
+    try:
+        for name in os.listdir(efivars_root):
+            if not name.startswith("SecureBoot-"):
+                continue
+            try:
+                with open(os.path.join(efivars_root, name), "rb") as handle:
+                    data = handle.read()
+                if len(data) >= 5:
+                    secure_boot = "enabled" if data[4] == 1 else "disabled"
+                break
+            except OSError:
+                secure_boot = "unknown"
+    except OSError:
+        secure_boot = "unknown"
+secure_boot_attention = secure_boot == "enabled"
+wayland_display = os.environ.get("WAYLAND_DISPLAY", "")
+display_value = os.environ.get("DISPLAY", "")
+desktop_name = os.environ.get("XDG_CURRENT_DESKTOP") or os.environ.get("XDG_SESSION_DESKTOP") or "unknown"
+session_type = os.environ.get("XDG_SESSION_TYPE", "unknown")
+render_devices = []
+try:
+    render_devices = [name for name in os.listdir("/dev/dri") if name.startswith(("card", "renderD"))]
+except OSError:
+    render_devices = []
+graphics_ready = bool(wayland_display or display_value) and (bool(render_devices) or session_type in {"wayland", "x11"})
+graphics_detail = " · ".join([
+    f"desktop {desktop_name}",
+    f"session {session_type}",
+    f"wayland {wayland_display or 'none'}",
+    f"dri {len(render_devices)}",
+])
+locale_current = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG") or "unknown"
+locale_messages = os.environ.get("LC_MESSAGES") or locale_current
+language_name = os.environ.get("LANGUAGE") or locale_current.split("_", 1)[0]
+available_locales = []
+try:
+    available_locales = subprocess.check_output(["locale", "-a"], text=True, stderr=subprocess.DEVNULL, timeout=2).splitlines()
+except Exception:
+    available_locales = []
+def locale_key(value):
+    return str(value or "").lower().replace("utf-8", "utf8")
+locale_ready = bool(locale_current) and locale_key(locale_current) in {locale_key(item) for item in available_locales}
+if locale_current == "C.UTF-8":
+    locale_ready = True
 if state in {"starting", "opening"}:
     recommended_action = "wait"
 elif state == "ready" and pid_alive is not False:
     recommended_action = "continue"
 elif state in {"closed", "error"}:
     recommended_action = "retry"
-elif not network_connected and os.environ.get("LIVE_SESSION") == "true":
+elif not network_connected and os.environ.get("LIVE_SESSION") == "true" and not offline_accepted:
     recommended_action = "connect-network"
 elif os.environ.get("LIVE_SESSION") == "true" and not install_targets:
     recommended_action = "inspect-storage"
@@ -355,19 +606,19 @@ elif first_screen == "not-started":
 else:
     recommended_action = "inspect"
 issues = []
-if os.environ.get("LIVE_SESSION") == "true" and not network_connected:
+if os.environ.get("LIVE_SESSION") == "true" and not network_connected and not offline_accepted:
     issues.append({
         "key": "network",
         "severity": "warning",
         "title": tr("Connexion Internet recommandée avant l’installation", "Internet connection recommended before installation"),
-        "action": "seven-wifi",
+        "action": "seven-installer network",
     })
 if os.environ.get("LIVE_SESSION") == "true" and not install_targets:
     issues.append({
         "key": "storage",
         "severity": "blocker",
         "title": tr("Aucun disque d’installation clair n’a été détecté", "No clear installation target disk detected"),
-        "action": "gnome-disks",
+        "action": "seven-installer disks",
     })
 if not memory_ready:
     issues.append({
@@ -381,6 +632,27 @@ if os.environ.get("LIVE_SESSION") == "true" and not power_safe:
         "key": "power",
         "severity": "warning",
         "title": tr("La batterie est faible ; branche l’alimentation avant d’installer", "Battery is low; connect power before installing"),
+        "action": "seven-installer live-status",
+    })
+if os.environ.get("LIVE_SESSION") == "true" and secure_boot_attention:
+    issues.append({
+        "key": "firmware",
+        "severity": "warning",
+        "title": tr("Secure Boot est actif ; vérifie le démarrage installé après installation", "Secure Boot is enabled; verify installed boot after installation"),
+        "action": "seven-installer live-status",
+    })
+if os.environ.get("LIVE_SESSION") == "true" and not graphics_ready:
+    issues.append({
+        "key": "graphics",
+        "severity": "warning",
+        "title": tr("La session graphique live semble incomplète ; utilise Safe Graphics si l’écran reste noir", "The live graphical session looks incomplete; use Safe Graphics if the screen stays black"),
+        "action": "seven-installer logs",
+    })
+if os.environ.get("LIVE_SESSION") == "true" and not locale_ready:
+    issues.append({
+        "key": "locale",
+        "severity": "warning",
+        "title": tr("La langue système live n’est pas entièrement générée ; SevenOS utilisera le mode sûr UTF-8", "The live system language is not fully generated; SevenOS will use safe UTF-8 mode"),
         "action": "seven-installer live-status",
     })
 if state == "closed":
@@ -463,6 +735,9 @@ action_labels = {
     "connect-power": tr("Brancher l’alimentation", "Connect power"),
     "inspect": tr("Voir l’état", "Inspect status"),
 }
+if os.environ.get("LIVE_SESSION") == "true":
+    action_labels["continue"] = tr("Démarrer l’installation", "Start installation")
+    action_labels["open"] = tr("Démarrer l’installation", "Start installation")
 if readiness_state == "blocked":
     ui_subtitle = tr("Une étape demande ton attention avant de continuer.", "One step needs attention before continuing.")
 elif readiness_state == "attention":
@@ -475,10 +750,10 @@ status_cards = [
     {
         "key": "network",
         "title": tr("Réseau", "Network"),
-        "state": "ok" if network_connected else "attention",
-        "value": tr("Connecté", "Connected") if network_connected else tr("À connecter", "Connect"),
-        "detail": f"{nm_state} · Wi-Fi {nm_wifi} · {nm_connectivity}",
-        "action": "seven-wifi",
+        "state": "ok" if network_connected or offline_accepted else "attention",
+        "value": tr("Connecté", "Connected") if network_connected else (tr("Hors ligne accepté", "Offline accepted") if offline_accepted else tr("À connecter", "Connect")),
+        "detail": f"{nm_state} · Wi-Fi {nm_wifi} · {nm_connectivity}" + (tr(" · installation hors ligne", " · offline installation") if offline_accepted and not network_connected else ""),
+        "action": "seven-installer network",
     },
     {
         "key": "storage",
@@ -504,6 +779,30 @@ status_cards = [
         "detail": tr("Installation sûre", "Safe to install") if power_safe else tr("Branche l’alimentation", "Connect power"),
         "action": "seven-installer live-status",
     },
+    {
+        "key": "firmware",
+        "title": tr("Firmware", "Firmware"),
+        "state": "attention" if secure_boot_attention else "ok",
+        "value": "UEFI" if boot_mode == "uefi" else "BIOS",
+        "detail": tr("Secure Boot actif", "Secure Boot enabled") if secure_boot == "enabled" else (tr("Secure Boot désactivé", "Secure Boot disabled") if secure_boot == "disabled" else tr("Secure Boot non détecté", "Secure Boot not detected")),
+        "action": "seven-installer live-status",
+    },
+    {
+        "key": "graphics",
+        "title": tr("Graphique", "Graphics"),
+        "state": "ok" if graphics_ready else "attention",
+        "value": desktop_name,
+        "detail": graphics_detail,
+        "action": "seven-installer logs",
+    },
+    {
+        "key": "locale",
+        "title": tr("Langue", "Language"),
+        "state": "ok" if locale_ready else "attention",
+        "value": locale_current,
+        "detail": tr(f"Messages {locale_messages} · langue {language_name}", f"Messages {locale_messages} · language {language_name}"),
+        "action": "seven-installer live-status",
+    },
 ]
 priority_order = {"blocked": 0, "attention": 1, "ok": 2}
 priority_card = sorted(status_cards, key=lambda item: priority_order.get(item["state"], 3))[0] if status_cards else None
@@ -521,11 +820,11 @@ if safety_level == "safe":
 elif safety_level == "review":
     user_message = {
         "tone": "review",
-        "headline": tr("SevenOS recommande une connexion", "SevenOS recommends a connection") if not network_connected and os.environ.get("LIVE_SESSION") == "true" else tr("SevenOS recommande une vérification", "SevenOS recommends a quick review"),
+        "headline": tr("SevenOS recommande une connexion", "SevenOS recommends a connection") if not network_connected and os.environ.get("LIVE_SESSION") == "true" and not offline_accepted else tr("SevenOS recommande une vérification", "SevenOS recommends a quick review"),
         "body": tr(
             "Connecte le Wi‑Fi pour optimiser les dépendances et les mises à jour, ou continue hors ligne si tu préfères.",
             "Connect Wi-Fi to optimize dependencies and updates, or continue offline if you prefer.",
-        ) if not network_connected and os.environ.get("LIVE_SESSION") == "true" else tr(
+        ) if not network_connected and os.environ.get("LIVE_SESSION") == "true" and not offline_accepted else tr(
             "L’installation peut avancer, mais un point mérite ton attention avant de modifier le disque.",
             "Installation can continue, but one point deserves attention before changing the disk.",
         ),
@@ -557,8 +856,8 @@ recommended_command = {
     "continue": "seven-installer open",
     "retry": "seven-installer live-retry",
     "open": "seven-installer open",
-    "connect-network": "seven-wifi",
-    "inspect-storage": "gnome-disks",
+    "connect-network": "seven-installer network",
+    "inspect-storage": "seven-installer disks",
     "connect-power": "seven-installer live-status",
     "inspect": "seven-installer live-status",
 }.get(recommended_action, "seven-installer live-status")
@@ -579,16 +878,16 @@ secondary_actions = [
         "command": "gnome-disks",
     },
 ]
-if os.environ.get("LIVE_SESSION") == "true" and not network_connected:
+if os.environ.get("LIVE_SESSION") == "true":
     secondary_actions = [
         {
             "key": "wifi",
-            "label": tr("Choisir le Wi‑Fi", "Choose Wi-Fi"),
-            "command": "seven-wifi",
+            "label": tr("Wi‑Fi / Réseau", "Wi-Fi / Network"),
+            "command": "seven-installer network",
         },
         {
-            "key": "offline",
-            "label": tr("Installer hors ligne", "Install offline"),
+            "key": "install",
+            "label": tr("Démarrer l’installation", "Start installation"),
             "command": "seven-installer open",
         },
         {
@@ -596,7 +895,23 @@ if os.environ.get("LIVE_SESSION") == "true" and not network_connected:
             "label": tr("État détaillé", "Detailed status"),
             "command": "seven-installer live-status",
         },
+        {
+            "key": "logs",
+            "label": tr("Logs", "Logs"),
+            "command": "seven-installer logs",
+        },
+        {
+            "key": "disks",
+            "label": tr("Disques", "Disks"),
+            "command": "seven-installer disks",
+        },
     ]
+    if not network_connected and not offline_accepted:
+        secondary_actions.insert(2, {
+            "key": "offline",
+            "label": tr("Installer hors ligne", "Install offline"),
+            "command": "seven-installer offline",
+        })
 attention_items = [
     {
         "key": item.get("key", "issue"),
@@ -637,6 +952,7 @@ print(json.dumps({
         "wifi": nm_wifi,
         "connectivity": nm_connectivity,
         "connected": network_connected,
+        "offline_accepted": offline_accepted,
     },
     "storage": {
         "disks": len(disks),
@@ -662,15 +978,31 @@ print(json.dumps({
         "battery_percent": battery_percent,
         "battery_status": battery_status,
         "power_supplies": power_supplies[:6],
+        "boot_mode": boot_mode,
+        "secure_boot": secure_boot,
+        "secure_boot_attention": secure_boot_attention,
+        "graphics_ready": graphics_ready,
+        "desktop": desktop_name,
+        "session_type": session_type,
+        "wayland_display": wayland_display,
+        "display": display_value,
+        "render_devices": render_devices[:8],
+        "locale": locale_current,
+        "locale_messages": locale_messages,
+        "language": language_name,
+        "locale_ready": locale_ready,
     },
     "readiness": {
         "state": readiness_state,
         "issues": issues,
         "summary": {
-            "network": network_connected,
+            "network": network_connected or offline_accepted,
             "storage": len(install_targets) > 0,
             "memory": memory_ready,
             "power": power_safe,
+            "firmware": not secure_boot_attention,
+            "graphics": graphics_ready,
+            "locale": locale_ready,
         },
     },
     "timeline": timeline,
@@ -812,7 +1144,7 @@ live_notify_status() {
 live_reset() {
   local live_state_dir
   live_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
-  rm -f "$live_state_dir/live-first-screen-started" "$live_state_dir/live-installer-opened" "$live_state_dir/live-status.json"
+  rm -f "$live_state_dir/live-first-screen-started" "$live_state_dir/live-installer-opened" "$live_state_dir/live-offline-accepted" "$live_state_dir/live-status.json"
   rmdir "$live_state_dir/live-ready.lock" 2>/dev/null || true
   if [[ "$JSON_OUTPUT" -eq 1 ]]; then
     printf '{"schema":"sevenos.installer-live-reset.v1","state":"OK","next":"seven-installer open"}\n'
@@ -820,6 +1152,14 @@ live_reset() {
   fi
   printf 'SevenOS live installer state reset.\n'
   printf 'Run: seven-installer open\n'
+}
+
+live_offline() {
+  local live_state_dir
+  live_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+  mkdir -p "$live_state_dir"
+  touch "$live_state_dir/live-offline-accepted"
+  open_installer
 }
 
 live_retry() {
@@ -905,18 +1245,22 @@ open_installer() {
     return 0
   fi
 
-  if [[ -n "${SEVENOS_LIVE_SESSION:-}" && -z "${SEVENOS_LIVE_FORCE_PORTAL:-}" ]] && command -v calamares >/dev/null 2>&1; then
+  if command -v calamares >/dev/null 2>&1; then
     run_calamares
+    return 0
+  fi
+
+  open_portal
+}
+
+open_portal() {
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    status_json
     return 0
   fi
 
   if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" && -x "$ROOT_DIR/bin/seven-installer-native" ]]; then
-    run_or_print "$ROOT_DIR/bin/seven-installer-native"
-    return 0
-  fi
-
-  if command -v calamares >/dev/null 2>&1; then
-    run_calamares
+    run_portal
     return 0
   fi
 
@@ -933,9 +1277,13 @@ open_installer() {
 
 case "${1:-open}" in
   open) open_installer ;;
-  gui) open_installer ;;
+  gui) open_portal ;;
+  network|wifi) open_network ;;
+  logs|report) open_logs ;;
+  disks|storage) open_disks ;;
+  offline) live_offline ;;
   status) status ;;
-  portal) portal ;;
+  portal) open_portal ;;
   guide) "$ROOT_DIR/bin/seven" installer guide ;;
   live-status) live_status ;;
   live-notify) live_notify_status ;;

@@ -9,9 +9,52 @@ export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export TERMINAL="${TERMINAL:-seven-terminal}"
 export SEVENOS_TERMINAL="${SEVENOS_TERMINAL:-seven-terminal}"
 
+read_language_value() {
+  local key="$1"
+  local file="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"
+  [[ -r "$file" ]] || return 0
+  awk -F= -v wanted="$key" '
+    $1 == wanted {
+      value = $2
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      gsub(/^["'"'"']|["'"'"']$/, "", value)
+      print value
+      exit
+    }
+  ' "$file" 2>/dev/null || true
+}
+
+locale_available() {
+  local wanted="$1"
+  local normalized
+  [[ -n "$wanted" ]] || return 1
+  normalized="$(printf '%s' "$wanted" | tr '[:upper:]' '[:lower:]' | sed 's/utf-8/utf8/g')"
+  locale -a 2>/dev/null | tr '[:upper:]' '[:lower:]' | sed 's/utf-8/utf8/g' | grep -Fxq "$normalized"
+}
+
 if [[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]]; then
-  # shellcheck disable=SC1091
-  . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"
+  requested_language="$(read_language_value SEVENOS_LANGUAGE)"
+  requested_lang="$(read_language_value LANG)"
+  requested_lc_messages="$(read_language_value LC_MESSAGES)"
+  requested_language_name="$(read_language_value LANGUAGE)"
+  preferred_locale="${requested_language:-${requested_lang:-en_US.UTF-8}}"
+  if locale_available "$preferred_locale"; then
+    export SEVENOS_LANGUAGE="$preferred_locale"
+    export LANG="$preferred_locale"
+    export LC_MESSAGES="${requested_lc_messages:-$preferred_locale}"
+    export LANGUAGE="${requested_language_name:-${preferred_locale%%_*}}"
+  else
+    export SEVENOS_LANGUAGE=C.UTF-8
+    export LANG=C.UTF-8
+    export LC_MESSAGES=C.UTF-8
+    export LANGUAGE=en
+  fi
+fi
+
+if [[ "${SEVENOS_LIVE_SESSION_LOCALE_PROBE:-0}" == "1" ]]; then
+  printf 'SEVENOS_LANGUAGE=%s\nLANG=%s\nLC_MESSAGES=%s\nLANGUAGE=%s\n' \
+    "${SEVENOS_LANGUAGE:-}" "${LANG:-}" "${LC_MESSAGES:-}" "${LANGUAGE:-}"
+  exit 0
 fi
 
 log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
