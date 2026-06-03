@@ -279,6 +279,8 @@ preflight_graphical_profile() {
     "archiso/profile/packages.x86_64" "calamares"
   check_repo "The ISO package list must include GRUB for the Calamares bootloader module" \
     "archiso/profile/packages.x86_64" "grub"
+  check_repo "The host ISO tooling manifest must install GRUB for UEFI GRUB images" \
+    "scripts/packages-iso.txt" "grub"
   check_repo "The ISO package list must include live ISO initramfs hooks" \
     "archiso/profile/packages.x86_64" "mkinitcpio-archiso"
   check_repo "The live initramfs must use archiso hooks" \
@@ -358,6 +360,14 @@ require_command rsync
 if ! is_dry_run; then
   if ! command -v mkarchiso >/dev/null 2>&1; then
     log_error "mkarchiso is missing. Install ISO tooling first with: ./install.sh iso-tools"
+    exit 1
+  fi
+  if grep -Fq "uefi.grub" "$PROFILE_SOURCE/profiledef.sh" && ! command -v grub-install >/dev/null 2>&1; then
+    log_error "grub-install is missing, but the SevenOS ISO now uses the UEFI GRUB boot route."
+    log_info "Install the complete ISO tooling first:"
+    log_info "  ./install.sh iso-tools"
+    log_info "Then rebuild the ISO:"
+    log_info "  ./install.sh iso"
     exit 1
   fi
   require_command sudo

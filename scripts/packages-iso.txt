@@ -1,5 +1,6 @@
 # SevenOS ISO build tooling
 archiso
+grub
 libisoburn
 squashfs-tools
 dosfstools
