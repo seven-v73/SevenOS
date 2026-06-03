@@ -90,8 +90,14 @@ preflight_graphical_profile() {
     "grub/grub.cfg" "Safe Graphics"
   check_profile "UEFI GRUB must keep the menu visible long enough" \
     "grub/grub.cfg" "set timeout=20"
+  check_profile "UEFI GRUB must force readable menu colors" \
+    "grub/grub.cfg" "set menu_color_normal=white/black"
+  check_profile "UEFI GRUB must highlight the active entry visibly" \
+    "grub/grub.cfg" "set menu_color_highlight=black/white"
   check_profile "UEFI GRUB loopback must expose SevenOS Live" \
     "grub/loopback.cfg" "SevenOS Live"
+  check_profile "UEFI GRUB loopback must force readable menu colors" \
+    "grub/loopback.cfg" "set menu_color_normal=white/black"
   check_profile "UEFI boot must hide systemd status text" \
     "efiboot/loader/entries/01-sevenos-live.conf" "systemd.show_status=false"
   check_profile "UEFI boot must suppress noisy kernel errors in the normal route" \
@@ -344,6 +350,42 @@ restore_output_ownership() {
   fi
 }
 
+verify_iso_boot_menu() {
+  is_dry_run && return 0
+  local iso_path listing cfg_path cfg_content
+  iso_path="$(find "$OUT_DIR" -maxdepth 1 -type f -name '*.iso' -print -quit)"
+  if [[ -z "$iso_path" ]]; then
+    log_error "No ISO artifact found for boot menu verification."
+    return 1
+  fi
+  if ! command -v bsdtar >/dev/null 2>&1; then
+    log_warn "bsdtar is missing; skipping embedded ISO boot menu verification."
+    return 0
+  fi
+
+  listing="$(bsdtar -tf "$iso_path" 2>/dev/null || true)"
+  if ! grep -Eq '(^|/)grub\.cfg$' <<<"$listing"; then
+    log_error "Generated ISO does not expose an embedded GRUB configuration."
+    log_info "Refusing to leave a bootable-looking USB image with an empty GRUB menu."
+    return 1
+  fi
+
+  for cfg_path in boot/grub/grub.cfg EFI/BOOT/grub.cfg grub/grub.cfg; do
+    cfg_content="$(bsdtar -xOf "$iso_path" "$cfg_path" 2>/dev/null || true)"
+    if [[ -n "$cfg_content" ]]; then
+      if grep -Fq "SevenOS Live" <<<"$cfg_content" &&
+         grep -Fq "set menu_color_normal=white/black" <<<"$cfg_content"; then
+        log_success "Verified embedded GRUB menu: $cfg_path"
+        return 0
+      fi
+    fi
+  done
+
+  log_error "Generated ISO has GRUB files, but not the readable SevenOS GRUB menu."
+  log_info "Expected: SevenOS Live entries and high-contrast menu colors."
+  return 1
+}
+
 for arg in "$@"; do
   case "$arg" in
     --dry-run) export SEVENOS_DRY_RUN=1 ;;
@@ -450,5 +492,7 @@ if ! is_dry_run && ! find "$OUT_DIR" -maxdepth 1 -type f -name '*.iso' -print -q
   log_info "The work directory was cleaned before the build; check mkarchiso output above for the failed stage."
   exit 1
 fi
+
+verify_iso_boot_menu
 
 log_success "ISO build complete. Output directory: $OUT_DIR"
