@@ -55,6 +55,12 @@ remove_group_member() {
 
 main() {
   log "Preparing installed system by removing live user metadata for '$LIVE_USER'"
+  log "Target root: ${TARGET_ROOT:-/}"
+
+  if [[ ! -f "$(target_path /etc/passwd)" ]]; then
+    log "WARN: target passwd file is missing; skipping live user cleanup"
+    return 0
+  fi
 
   remove_user_line "$(target_path /etc/passwd)" "$LIVE_USER"
   remove_user_line "$(target_path /etc/shadow)" "$LIVE_USER"

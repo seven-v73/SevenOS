@@ -213,10 +213,18 @@ preflight_graphical_profile() {
     "installer/calamares/modules/shellprocess.conf" "/bin/bash -lc"
   check_repo "Calamares live cleanup must not kill running live-session processes" \
     "installer/calamares/modules/shellprocess-livecleanup.conf" "seven-calamares-livecleanup"
+  check_repo "Calamares live cleanup must prefer the installed system wrapper" \
+    "installer/calamares/modules/shellprocess-livecleanup.conf" "/usr/local/bin/seven-calamares-livecleanup"
+  check_repo "Calamares live cleanup must keep /opt/SevenOS as fallback" \
+    "installer/calamares/modules/shellprocess-livecleanup.conf" "/opt/SevenOS/bin/seven-calamares-livecleanup"
   check_repo "Calamares live cleanup must run through Bash to avoid executable-bit failures" \
     "installer/calamares/modules/shellprocess-livecleanup.conf" "/bin/bash -lc"
+  check_repo "Calamares live cleanup must not block the install if cleanup needs retry" \
+    "installer/calamares/modules/shellprocess-livecleanup.conf" "finalizer will continue cleanup later"
   check_repo "Calamares live cleanup helper must remove live metadata offline" \
     "bin/seven-calamares-livecleanup" "without touching running live processes"
+  check_repo "Calamares live cleanup helper must skip safely when target files are not ready" \
+    "bin/seven-calamares-livecleanup" "target passwd file is missing"
   check_repo "Calamares users must accept any non-empty password" \
     "installer/calamares/modules/users.conf" "minLength: 1"
   check_repo "Calamares users must allow weak passwords by default" \
