@@ -82,6 +82,16 @@ preflight_graphical_profile() {
 
   check_profile "UEFI boot must be quiet and branded" \
     "efiboot/loader/entries/01-sevenos-live.conf" "quiet splash"
+  check_profile "UEFI boot must provide a readable GRUB route" \
+    "profiledef.sh" "uefi.grub"
+  check_profile "UEFI GRUB must expose SevenOS Live" \
+    "grub/grub.cfg" "SevenOS Live"
+  check_profile "UEFI GRUB must expose Safe Graphics" \
+    "grub/grub.cfg" "Safe Graphics"
+  check_profile "UEFI GRUB must keep the menu visible long enough" \
+    "grub/grub.cfg" "set timeout=20"
+  check_profile "UEFI GRUB loopback must expose SevenOS Live" \
+    "grub/loopback.cfg" "SevenOS Live"
   check_profile "UEFI boot must hide systemd status text" \
     "efiboot/loader/entries/01-sevenos-live.conf" "systemd.show_status=false"
   check_profile "UEFI boot must suppress noisy kernel errors in the normal route" \
