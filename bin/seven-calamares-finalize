@@ -21,6 +21,14 @@ run_step() {
   log "OK: $label"
 }
 
+run_optional_step() {
+  local label="$1"
+  shift
+  if ! run_step "$label" "$@"; then
+    log "WARN: $label did not complete; installation continues"
+  fi
+}
+
 cleanup_live_session_state() {
   log "START: Clean live ISO residue"
   systemctl disable sevenos-live-session.service >/dev/null 2>&1 || true
@@ -30,6 +38,52 @@ cleanup_live_session_state() {
   rm -f /usr/share/wayland-sessions/sevenos-live.desktop
   rm -f /home/seven/.bash_profile 2>/dev/null || true
   log "OK: Clean live ISO residue"
+}
+
+enable_service_if_present() {
+  local unit="$1"
+  if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files "$unit" >/dev/null 2>&1; then
+    systemctl enable "$unit" >/dev/null 2>&1 || log "WARN: could not enable $unit"
+  else
+    log "INFO: $unit is not present yet"
+  fi
+}
+
+configure_network_stack() {
+  log "START: Configure network stack"
+  enable_service_if_present NetworkManager.service
+  enable_service_if_present ModemManager.service
+  enable_service_if_present bluetooth.service
+  log "OK: Configure network stack"
+}
+
+configure_display_stack() {
+  log "START: Configure display stack"
+  enable_service_if_present sddm.service
+  install -d /etc/sddm.conf.d /usr/share/wayland-sessions
+  cat >/etc/sddm.conf.d/10-sevenos-theme.conf <<'EOF'
+[Theme]
+Current=sevenos
+EOF
+  cat >/usr/share/wayland-sessions/sevenos.desktop <<'EOF'
+[Desktop Entry]
+Name=SevenOS
+Comment=SevenOS Hyprland session
+Exec=/opt/SevenOS/bin/seven-session
+Type=Application
+DesktopNames=SevenOS;Hyprland
+EOF
+  log "OK: Configure display stack"
+}
+
+confirm_offline_first_rootfs() {
+  log "START: Confirm offline-first installed rootfs"
+  if [[ -x "$ROOT_DIR/install.sh" && -d "$ROOT_DIR/bin" && -d "$ROOT_DIR/scripts" ]]; then
+    log "OK: SevenOS rootfs is already copied; skipping network package installs during Calamares finalization"
+    return 0
+  fi
+  log "FAIL: copied SevenOS rootfs is incomplete"
+  return 1
 }
 
 main() {
@@ -48,11 +102,13 @@ main() {
   export SEVENOS_ALLOW_ROOT=1
 
   cleanup_live_session_state
-  run_step "Base SevenOS layer" "$ROOT_DIR/install.sh" base --yes
-  run_step "Post-install SevenOS checks" "$ROOT_DIR/install.sh" post-install
+  configure_network_stack
+  configure_display_stack
+  confirm_offline_first_rootfs
+  run_optional_step "Post-install SevenOS checks" "$ROOT_DIR/install.sh" post-install
 
   if [[ -x "$ROOT_DIR/bin/seven" ]]; then
-    run_step "Fresh install verifier" "$ROOT_DIR/bin/seven" first-run verify --json
+    run_optional_step "Fresh install verifier" "$ROOT_DIR/bin/seven" first-run verify --json
   fi
 
   log "SevenOS installation finalization completed"

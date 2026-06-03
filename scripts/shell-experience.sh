@@ -236,6 +236,11 @@ PY
 }
 
 status_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" shell-experience --json
+    return
+  fi
+
   [[ -s "$EXPERIENCE_STATE" ]] || write_state
   RECENT_EVENTS="$(recent_events_json)" RECOMMENDATION="$(recommendation_json)" python - "$EXPERIENCE_STATE" <<'PY'
 import json

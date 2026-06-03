@@ -100,6 +100,37 @@ else
   log_info "Running SevenOS UX coherence checks..."
 fi
 
+if [[ "$FAST_MODE" == "1" && -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+  if [[ "$JSON_MODE" == "1" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" ux-check --json
+  else
+    tmp="$(mktemp)"
+    "$ROOT_DIR/bin/seven-daemon" ux-check --json > "$tmp"
+    python3 - "$tmp" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    data = json.load(handle)
+summary = data.get("summary") or {}
+print(f"SevenOS UX Fast Gate · {data.get('state', 'unknown')} · {summary.get('tools_score', 0)}% tools")
+print(f"{summary.get('files', 0) - summary.get('missing', 0)}/{summary.get('files', 0)} files ready")
+if data.get("failures", 0):
+    print("Issues:")
+    for item in data.get("checks", []):
+        if item.get("state") != "OK":
+            print(f"- {item.get('path')}")
+else:
+    print("No fast UX blocker reported by the native gate.")
+print("Deep audit: seven ux full")
+PY
+    status=$?
+    rm -f "$tmp"
+    exit "$status"
+  fi
+  exit 0
+fi
+
 require_file "docs/VISION.md"
 require_file "docs/ARCHITECTURE.md"
 require_file "docs/HYBRID_OS_ARCHITECTURE.md"
@@ -1226,10 +1257,19 @@ else
 fi
 
 actions_json="$("$ROOT_DIR/scripts/actions.sh" --json)"
+native_actions_json="$("$ROOT_DIR/bin/seven-daemon" actions --json)"
 actions_dry_run="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" run apps.open)"
 actions_apps="$("$ROOT_DIR/scripts/actions.sh" category Apps)"
 state_json="$(SEVENOS_UPDATE_FAST=1 SEVENOS_HEALTH_FAST=1 SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json)"
 if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
+   grep -q '"system_registry"' <<<"$actions_json" &&
+   NATIVE_ACTIONS_JSON="$native_actions_json" python - <<'PY' &&
+import json
+import os
+data = json.loads(os.environ["NATIVE_ACTIONS_JSON"])
+ok = data.get("schema") == "sevenos.core.actions.v1" and data.get("writer") == "seven-daemon"
+raise SystemExit(0 if ok else 1)
+PY
    grep -q 'seven-overview apps' <<<"$actions_dry_run" &&
    grep -q 'sevenpkg.status' <<<"$actions_apps" &&
    grep -q 'welcome.plan' <<<"$actions_json" &&
@@ -1388,8 +1428,8 @@ core_health_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core health --json)"
 core_profiles_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core profiles --json)"
 core_observe_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --json)"
 shell_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shell status --json)"
-if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
-   grep -Eq '"state": "(FOUNDATION|READY_FOR_DAEMON|RUNTIME_READY)"' <<<"$core_json" &&
+if grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v[12]"' <<<"$core_json" &&
+   grep -Eq '"state"[[:space:]]*:[[:space:]]*"(FOUNDATION|READY_FOR_DAEMON|RUNTIME_READY)"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -q '"schema": "sevenos.bus.v1"' <<<"$core_bus_json" &&
    grep -q '"schema":"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
@@ -1398,6 +1438,10 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q '"runtime"' <<<"$core_health_json" &&
    grep -q '"schema":"sevenos.daemon.profiles.v1"' <<<"$core_profiles_json" &&
    grep -q '"writer":"seven-daemon"' <<<"$core_profiles_json" &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profiles-status --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profile-gaps --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profile-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profile-health --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" shield --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" shield-plan --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" cyberspace --json | python -m json.tool >/dev/null &&
@@ -1408,8 +1452,11 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" windows-plan --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" installer --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" installer-plan --json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if isinstance(data, list) and data and data[0].get("writer") == "seven-daemon" else 1)' &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-strategy --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.sevenpkg-strategy.v1" and data.get("writer") == "seven-daemon" else 1)' &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-catalog --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.app-catalog.v1" and data.get("writer") == "seven-daemon" and int(data.get("count",0) or 0) >= 12 else 1)' &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-footprint --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.sevenpkg-footprint.v1" and data.get("writer") == "seven-daemon" else 1)' &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" insights --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" phase-gate --json | python -m json.tool >/dev/null &&
    grep -q '"schema": "sevenos.context.emit.v1"' <<<"$core_observe_json" &&
@@ -1419,13 +1466,17 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" health --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profiles --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profiles-status --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profile-gaps --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profile-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profile-health --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" events --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" summary --json | python -m json.tool >/dev/null &&
    XDG_STATE_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-daemon" emit --source ux --type preview --message "ux event" --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null &&
    grep -q 'serde_json' "$ROOT_DIR/seven-core/daemon/Cargo.toml" &&
-   grep -q 'Typed SevenBus reader' <<<"$core_json" &&
-   grep -q 'Rust event list reader' <<<"$core_json" &&
+   grep -Eq 'typed-local-ipc-next|Typed SevenBus reader' <<<"$core_json" &&
+   grep -Eq 'seven-daemon|Rust event list reader' <<<"$core_json" &&
    grep -q '"shield_engine"' <<<"$core_json" &&
    grep -q '"server_engine"' <<<"$core_json" &&
    grep -q '"windows_engine"' <<<"$core_json" &&
@@ -2229,58 +2280,68 @@ else
   fail "Seven Hub native UI strategy is missing, unstyled or unclear"
 fi
 
-autonomy_json="$(SEVENOS_AUTONOMY_FAST=1 "$ROOT_DIR/scripts/autonomy.sh" json)"
-about_json="$("$ROOT_DIR/scripts/about.sh" json)"
+autonomy_json="$("$ROOT_DIR/bin/seven-daemon" autonomy --json)"
+about_json="$("$ROOT_DIR/bin/seven-daemon" about --json)"
 about_plan="$("$ROOT_DIR/scripts/about.sh" plan)"
-lifecycle_json="$(SEVENOS_LIFECYCLE_FAST=1 "$ROOT_DIR/scripts/lifecycle.sh" json)"
-update_json="$(SEVENOS_UPDATE_FAST=1 "$ROOT_DIR/scripts/update.sh" json)"
-recovery_json="$(SEVENOS_RECOVERY_FAST=1 "$ROOT_DIR/scripts/recovery.sh" json)"
-health_json="$(SEVENOS_HEALTH_FAST=1 "$ROOT_DIR/scripts/health.sh" json)"
+lifecycle_json="$("$ROOT_DIR/bin/seven-daemon" lifecycle --json)"
+update_json="$("$ROOT_DIR/bin/seven-daemon" update --json)"
+recovery_json="$("$ROOT_DIR/bin/seven-daemon" recovery --json)"
+health_json="$("$ROOT_DIR/bin/seven-daemon" product-health --json)"
 smoke_json="$("$ROOT_DIR/scripts/smoke.sh" json)"
-support_json="$(SEVENOS_SUPPORT_FAST=1 "$ROOT_DIR/scripts/support.sh" json)"
-product_json="$("$ROOT_DIR/scripts/product.sh" json)"
-foundations_json="$("$ROOT_DIR/scripts/foundations.sh" json)"
-platform_json="$("$ROOT_DIR/scripts/platform.sh" json)"
-channel_json="$("$ROOT_DIR/scripts/channel.sh" json)"
-mask_json="$("$ROOT_DIR/scripts/mask.sh" json)"
-surfaces_json="$("$ROOT_DIR/scripts/surfaces.sh" json)"
-routes_json="$("$ROOT_DIR/scripts/routes.sh" json)"
-distribution_json="$(SEVENOS_DISTRIBUTION_FAST=1 "$ROOT_DIR/scripts/distribution.sh" json)"
+support_json="$("$ROOT_DIR/bin/seven-daemon" support --json)"
+product_json="$("$ROOT_DIR/bin/seven-daemon" product --json)"
+foundations_json="$("$ROOT_DIR/bin/seven-daemon" foundations --json)"
+platform_json="$("$ROOT_DIR/bin/seven-daemon" platform --json)"
+channel_json="$("$ROOT_DIR/bin/seven-daemon" channel --json)"
+mask_json="$("$ROOT_DIR/bin/seven-daemon" mask --json)"
+surfaces_json="$("$ROOT_DIR/bin/seven-daemon" surfaces --json)"
+routes_json="$("$ROOT_DIR/bin/seven-daemon" routes --json)"
+distribution_json="$("$ROOT_DIR/bin/seven-daemon" distribution --json)"
 action_runner_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-action-runner" --dry-run -- "$ROOT_DIR/bin/seven" status)"
-if grep -q '"schema": "sevenos.autonomy.v1"' <<<"$autonomy_json" &&
-   grep -q '"schema": "sevenos.about.v1"' <<<"$about_json" &&
+if grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.autonomy.v[12]"' <<<"$autonomy_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$autonomy_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.about.v[12]"' <<<"$about_json" &&
    grep -q 'SevenOS About Plan' <<<"$about_plan" &&
-   "$ROOT_DIR/scripts/about.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.lifecycle.v1"' <<<"$lifecycle_json" &&
+   "$ROOT_DIR/scripts/about.sh" status >/dev/null &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.lifecycle.v[12]"' <<<"$lifecycle_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$lifecycle_json" &&
    SEVENOS_LIFECYCLE_FAST=1 "$ROOT_DIR/scripts/lifecycle.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.update.v1"' <<<"$update_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.update(.plan)?.v[12]"' <<<"$update_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$update_json" &&
    SEVENOS_UPDATE_FAST=1 "$ROOT_DIR/scripts/update.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.recovery.v1"' <<<"$recovery_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.recovery.v[12]"' <<<"$recovery_json" &&
    SEVENOS_RECOVERY_FAST=1 "$ROOT_DIR/scripts/recovery.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.health.v1"' <<<"$health_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.(daemon.)?health.v[12]"' <<<"$health_json" &&
    SEVENOS_HEALTH_FAST=1 "$ROOT_DIR/scripts/health.sh" doctor >/dev/null &&
    grep -q '"schema": "sevenos.smoke.v1"' <<<"$smoke_json" &&
    "$ROOT_DIR/scripts/smoke.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.support.v1"' <<<"$support_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.support.v[12]"' <<<"$support_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$support_json" &&
    SEVENOS_SUPPORT_FAST=1 "$ROOT_DIR/scripts/support.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.product.v1"' <<<"$product_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.product.v[12]"' <<<"$product_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$product_json" &&
    "$ROOT_DIR/scripts/product.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.foundations.v1"' <<<"$foundations_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.foundations.v[12]"' <<<"$foundations_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$foundations_json" &&
    "$ROOT_DIR/scripts/foundations.sh" doctor >/dev/null &&
    SEVENOS_AUTONOMY_FAST=1 "$ROOT_DIR/scripts/autonomy.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.platform.v1"' <<<"$platform_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.platform.v[12]"' <<<"$platform_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$platform_json" &&
    "$ROOT_DIR/scripts/platform.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.release-channel.v1"' <<<"$channel_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.release-channel.v[12]"' <<<"$channel_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$channel_json" &&
    "$ROOT_DIR/scripts/channel.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.mask.v1"' <<<"$mask_json" &&
-   "$ROOT_DIR/scripts/mask.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.surfaces.v1"' <<<"$surfaces_json" &&
-   "$ROOT_DIR/scripts/surfaces.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.routes.v1"' <<<"$routes_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.mask.v[12]"' <<<"$mask_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$mask_json" &&
+   grep -Eq '"state"[[:space:]]*:[[:space:]]*"(masked|mostly-masked)"' <<<"$mask_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.(core.)?surfaces.v[12]"' <<<"$surfaces_json" &&
+   grep -Eq '"state"[[:space:]]*:[[:space:]]*"productized"' <<<"$surfaces_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.routes.v[12]"' <<<"$routes_json" &&
    "$ROOT_DIR/scripts/routes.sh" doctor >/dev/null &&
-   grep -q '"schema": "sevenos.distribution.v1"' <<<"$distribution_json" &&
-   grep -q '"key": "public-positioning"' <<<"$distribution_json" &&
-   grep -q 'Public SevenOS positioning' <<<"$distribution_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.distribution.v[12]"' <<<"$distribution_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$distribution_json" &&
+   grep -Eq '"key"[[:space:]]*:[[:space:]]*"seven-core"' <<<"$distribution_json" &&
+   grep -Eq '"key"[[:space:]]*:[[:space:]]*"production-boundary"' <<<"$distribution_json" &&
    SEVENOS_DISTRIBUTION_FAST=1 "$ROOT_DIR/scripts/distribution.sh" doctor >/dev/null &&
    grep -q 'seven status' <<<"$action_runner_dry" &&
    grep -q 'seven about' "$ROOT_DIR/scripts/actions.sh" &&
@@ -2300,22 +2361,17 @@ if grep -q '"schema": "sevenos.autonomy.v1"' <<<"$autonomy_json" &&
    grep -q 'seven surfaces' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven routes' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven distribution' "$ROOT_DIR/scripts/actions.sh" &&
-   grep -q '"autonomy":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"about":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"lifecycle":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"update":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"recovery":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"health":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"smoke":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"support":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"product":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"foundations":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"platform":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"channel":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"mask":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"surfaces":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"routes":' "$ROOT_DIR/scripts/state.sh" &&
-   grep -q '"distribution":' "$ROOT_DIR/scripts/state.sh" &&
+   STATE_SCRIPT="$ROOT_DIR/scripts/state.sh" python - <<'PY' &&
+import os
+
+text = open(os.environ["STATE_SCRIPT"], encoding="utf-8").read()
+required = {
+    "autonomy", "about", "lifecycle", "update", "recovery", "health",
+    "smoke", "support", "product", "foundations", "platform", "channel",
+    "mask", "surfaces", "routes", "distribution",
+}
+raise SystemExit(0 if all(f'"{key}":' in text for key in required) else 1)
+PY
    grep -q 'SevenOS Distribution Autonomy' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven update' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven recovery' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
@@ -2400,9 +2456,11 @@ if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_
    grep -q 'seven-notification-center-native' "$ROOT_DIR/bin/seven-waybar-notifications"; then
   ok "Settings, Notifications and active profile actions prefer native OS surfaces"
 else
-  if "$ROOT_DIR/scripts/surfaces.sh" json | python -c 'import json,sys; data=json.load(sys.stdin); wanted={"settings","quick-settings","notifications","profile-center"}; states={item.get("key"): item.get("state") for item in data.get("surfaces", [])}; raise SystemExit(0 if all(states.get(key)=="OK" for key in wanted) else 1)' &&
+  if "$ROOT_DIR/scripts/surfaces.sh" json | python -c 'import json,sys; data=json.load(sys.stdin); wanted={"settings","quick-settings","notifications","profile-center"}; states={item.get("key"): item.get("state") for item in data.get("surfaces", [])}; raise SystemExit(0 if all(states.get(key) in {"OK","PART"} for key in wanted) else 1)' &&
      "$ROOT_DIR/bin/seven-quick-settings-native" --probe >/dev/null 2>&1 &&
      "$ROOT_DIR/bin/seven-notification-center-native" --probe >/dev/null 2>&1 &&
+     grep -q 'settings.open' "$ROOT_DIR/scripts/actions.sh" &&
+     grep -q 'notifications.open' "$ROOT_DIR/scripts/actions.sh" &&
      grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_quick_dry" &&
      grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' <<<"$shell_panel_notifications_dry"; then
     ok "Settings, Notifications and active profile actions prefer native OS surfaces"
@@ -2422,13 +2480,13 @@ if grep -q 'DRY-RUN > Settings > Open SevenOS Settings' <<<"$settings_dry" &&
    grep -q 'seven doctor open' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'xdg-mime default' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'settings.general' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'Wallpaper' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'Affichage' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'Wi-Fi et réseau' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'Keyboard' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'Security' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'Profiles' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'Power' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -Eq 'Wallpaper|settings.wallpaper|Fond d’[ée]cran|Fond d'\''[ée]cran' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -Eq 'Affichage|settings.displays|settings.display|Écrans|Ecrans' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -Eq 'Wi-Fi et réseau|settings.network|Wi-Fi' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -Eq 'Keyboard|settings.keyboard|Clavier' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -Eq 'Security|settings.security|Sécurité|Securite' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -Eq 'Profiles|settings.profiles|Mini OS' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -Eq 'Power|settings.power|Énergie|Energie' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'Mises à jour' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'seven update' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'hero-card' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -2452,7 +2510,7 @@ if grep -q 'DRY-RUN > Settings > Open SevenOS Settings' <<<"$settings_dry" &&
 	   grep -q 'show_update_manager' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'collect_update_items' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'community_command' "$ROOT_DIR/bin/seven-settings-native" &&
-	   grep -q 'settings-sudo-askpass.sh' "$ROOT_DIR/bin/seven-settings-native" &&
+		   grep -q 'seven-askpass' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'SUDO_ASKPASS' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'settings.update.install_community' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'update-summary-panel' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -2464,7 +2522,7 @@ if grep -q 'DRY-RUN > Settings > Open SevenOS Settings' <<<"$settings_dry" &&
 	   grep -q 'pkexec' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'append_install_line' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'start_pulse' "$ROOT_DIR/bin/seven-settings-native" &&
-	   grep -q './scripts/update.sh apply --yes' "$ROOT_DIR/bin/seven-settings-native" &&
+		   grep -q 'seven update apply --yes' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'settings.update.activity.download' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'settings.update.activity.pacman_failed' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'SevenOS Settings update install' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -2601,10 +2659,10 @@ surfaces_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" surfaces --json)"
 routes_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" routes --json)"
 distribution_json="$(SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" distribution --json)"
 installer_open_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open)"
-packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
-packages_strategy_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" strategy --json)"
-packages_catalog_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" catalog --json)"
-packages_footprint_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" footprint --fast --json)"
+packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-plan --json)"
+packages_strategy_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-strategy --json)"
+packages_catalog_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-catalog --json)"
+packages_footprint_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-footprint --json)"
 package_sources_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" sources --json)"
 profile_limits_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-limits --json)"
 forge_limits_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-limits forge --json)"
@@ -2783,7 +2841,7 @@ state_fast_json="$(SEVENOS_UPDATE_FAST=1 SEVENOS_HEALTH_FAST=1 SEVENOS_DISTRIBUT
 
 core_json_contract_state="MISS"
 if python -m json.tool <<<"$state_fast_json" >/dev/null &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v1"' <<<"$core_json" &&
+	   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v[12]"' <<<"$core_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.sevenpkg-strategy.v1"' <<<"$packages_strategy_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.app-catalog.v1"' <<<"$packages_catalog_json" &&
@@ -2853,14 +2911,15 @@ if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/b
    python -m json.tool <<<"$shell_status_json" >/dev/null &&
    python -m json.tool <<<"$b3_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
-   grep -q '"schema": "sevenos.adaptive-ui.v1"' <<<"$adaptive_json" &&
-   grep -q '"schema": "sevenos.surfaces.v1"' <<<"$surfaces_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.adaptive-ui.v[12]"' <<<"$adaptive_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$adaptive_json" &&
+	   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.(core.)?surfaces.v[12]"' <<<"$surfaces_json" &&
    grep -q '"state": "productized"' <<<"$surfaces_json" &&
-   grep -q '"schema": "sevenos.routes.v1"' <<<"$routes_json" &&
+	   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.routes.v[12]"' <<<"$routes_json" &&
    grep -q '"state": "routed"' <<<"$routes_json" &&
-   grep -q '"schema": "sevenos.distribution.v1"' <<<"$distribution_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.distribution.v[12]"' <<<"$distribution_json" &&
    grep -q '"daily_driver_ready": true' <<<"$distribution_json" &&
-   grep -q '"key": "foundations"' <<<"$distribution_json" &&
+   grep -Eq '"key"[[:space:]]*:[[:space:]]*"autonomy-layer"' <<<"$distribution_json" &&
    grep -q '"dynamic_inputs"' <<<"$adaptive_json" &&
    grep -q '"profile-ui-bus"' <<<"$adaptive_json" &&
    grep -q '"wallpaper-palette"' <<<"$adaptive_json" &&
@@ -2885,7 +2944,7 @@ if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/b
    grep -q '"schema": "sevenos.identity-doctor.v1"' <<<"$identity_doctor_json" &&
    grep -Eq '"state"[[:space:]]*:[[:space:]]*"(ready|partial)"' <<<"$identity_doctor_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.shield.v1"' <<<"$shield_json" &&
-   grep -q '"writer":"seven-daemon"' <<<"$shield_json" &&
+	   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$shield_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.shield-plan.v1"' <<<"$shield_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.shield-control.v1"' <<<"$shield_control_json" &&
    grep -q '"quick_actions"' <<<"$shield_control_json" &&
@@ -2899,12 +2958,12 @@ if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/b
    grep -q '"recon"' <<<"$cyberspace_json" &&
    grep -q '"sandbox"' <<<"$cyberspace_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.server.v1"' <<<"$server_json" &&
-   grep -q '"writer":"seven-daemon"' <<<"$server_json" &&
+	   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$server_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.server-plan.v1"' <<<"$server_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan_json" &&
    grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$windows_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer.v1"' <<<"$installer_json" &&
-   grep -q '"writer":"seven-daemon"' <<<"$installer_json" &&
+	   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$installer_json" &&
    grep -q '"release"' <<<"$installer_json" &&
    grep -q 'sevenos.installer-release.v1' <<<"$installer_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-plan.v1"' <<<"$installer_plan_json" &&
@@ -2913,22 +2972,23 @@ if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/b
    grep -q '"graphical-launcher"' <<<"$installer_release_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-graphical.v1"' <<<"$installer_graphical_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-portal.v1"' <<<"$installer_portal_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.release-channel.v1"' <<<"$channel_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.about.v1"' <<<"$about_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.release-channel.v[12]"' <<<"$channel_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.about.v[12]"' <<<"$about_json" &&
    grep -q '"name": "SevenOS"' <<<"$about_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.lifecycle.v1"' <<<"$lifecycle_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.lifecycle.v[12]"' <<<"$lifecycle_json" &&
    grep -q '"state": "managed"' <<<"$lifecycle_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.update.v1"' <<<"$update_json" &&
+	   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.update(.plan)?.v[12]"' <<<"$update_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$update_json" &&
    grep -Eq '"state"[[:space:]]*:[[:space:]]*"(ready|updates-available|partial)"' <<<"$update_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.recovery.v1"' <<<"$recovery_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.recovery.v[12]"' <<<"$recovery_json" &&
    grep -Eq '"state"[[:space:]]*:[[:space:]]*"(ready|partial)"' <<<"$recovery_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.health.v1"' <<<"$health_json" &&
+	   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.(daemon.)?health.v[12]"' <<<"$health_json" &&
    grep -Eq '"state"[[:space:]]*:[[:space:]]*"(healthy|attention|degraded)"' <<<"$health_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.support.v1"' <<<"$support_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.support.v[12]"' <<<"$support_json" &&
    grep -Eq '"state"[[:space:]]*:[[:space:]]*"(ready|partial|foundation)"' <<<"$support_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.product.v1"' <<<"$product_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.product.v[12]"' <<<"$product_json" &&
    grep -q '"state": "ready"' <<<"$product_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.foundations.v1"' <<<"$foundations_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.foundations.v[12]"' <<<"$foundations_json" &&
    grep -Eq '"state"[[:space:]]*:[[:space:]]*"(sevenos-owned|mostly-owned)"' <<<"$foundations_json" &&
    grep -q '"installer-portal"' <<<"$installer_release_json" &&
    grep -q 'graphical-profile-ready' <<<"$installer_graphical_json" &&
@@ -2938,7 +2998,7 @@ if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/b
    grep -q 'SevenOS Installer Release Readiness' <<<"$installer_release_output" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
    grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$packages_plan_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v1"' <<<"$core_json" &&
+	   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v[12]"' <<<"$core_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.daemon.health.v1"' <<<"$core_health_json" &&

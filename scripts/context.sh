@@ -53,6 +53,11 @@ hypr_clients_json() {
 }
 
 json_payload() {
+  if [[ "$ACTION" != "emit" && -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" context "$ACTION" --json
+    return
+  fi
+
   local waybar_context_file shell_recommendation_file
   waybar_context_file="$(mktemp)"
   shell_recommendation_file="$(mktemp)"

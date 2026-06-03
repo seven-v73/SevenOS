@@ -126,7 +126,33 @@ wait_for_hyprland() {
 open_sevenos_portal() {
   if command -v seven-installer >/dev/null 2>&1; then
     printf '[sevenos-live-ready] opening SevenOS installer portal\n' >&2
-    seven-installer gui >/dev/null 2>&1 &
+    seven-installer gui >>"$log_file" 2>&1 &
+    printf '%s' "$!"
+    return 0
+  fi
+  return 1
+}
+
+open_calamares_direct() {
+  if command -v seven-installer >/dev/null 2>&1; then
+    printf '[sevenos-live-ready] opening Calamares fallback directly\n' >&2
+    SEVENOS_LIVE_SESSION=1 seven-installer open >>"$calamares_log_file" 2>&1 &
+    printf '%s' "$!"
+    return 0
+  fi
+  if command -v calamares >/dev/null 2>&1; then
+    printf '[sevenos-live-ready] opening raw Calamares fallback\n' >&2
+    calamares -d >>"$calamares_log_file" 2>&1 &
+    printf '%s' "$!"
+    return 0
+  fi
+  return 1
+}
+
+open_network_choice() {
+  if command -v seven-installer >/dev/null 2>&1; then
+    printf '[sevenos-live-ready] opening network choice\n' >&2
+    seven-installer network >>"$log_file" 2>&1 &
     printf '%s' "$!"
     return 0
   fi
@@ -193,19 +219,21 @@ confirm_installer_window() {
   local pid="$1"
   local label="${2:-installer}"
   local _i
-  for _i in $(seq 1 12); do
+  for _i in $(seq 1 90); do
     if installer_window_visible; then
       arrange_installer_window
       touch "$ready_marker"
       write_state "ready" "installer" "$label is interactive." "$pid" 100
       return 0
     fi
-    if [[ "$_i" -gt 3 ]] && ! process_alive "$pid"; then
+    if [[ "$_i" -gt 12 ]] && ! process_alive "$pid"; then
       write_state "closed" "installer" "$label closed before it became interactive. See $calamares_log_file." "$pid" 100
       return 1
     fi
-    write_state "opening" "installer" "Confirming the installer window is interactive." "$pid" "$((88 + _i))" "SevenOS is checking that the installer window stays open."
-    sleep 0.35
+    progress=$((82 + (_i / 6)))
+    [[ "$progress" -gt 98 ]] && progress=98
+    write_state "opening" "installer" "Waiting for the graphical installer to become interactive." "$pid" "$progress" "SevenOS is letting the installer stabilize on this machine."
+    sleep 0.5
   done
   write_state "closed" "installer" "$label did not expose a window in time. See $calamares_log_file." "$pid" 100
   return 1
@@ -259,6 +287,23 @@ confirm_installer_window() {
     live_notify \
       "$(live_text "Connexion recommandée" "Connection recommended")" \
       "$(live_text "Choisis un réseau Wi‑Fi avant l’installation, ou continue hors ligne depuis le portail." "Choose Wi-Fi before installing, or continue offline from the portal.")"
+    open_network_choice >/dev/null 2>&1 || true
+    for _ in $(seq 1 30); do
+      network_connected && break
+      sleep 0.5
+    done
+    if ! network_connected; then
+      write_state "attention" "installer" "Opening SevenOS installer portal so Wi-Fi, offline install, disks and logs stay available." "" 86 "Use Wi-Fi first, or choose Install offline from the SevenOS portal."
+      live_notify \
+        "$(live_text "Portail SevenOS" "SevenOS Portal")" \
+        "$(live_text "Le portail reste ouvert pour choisir le Wi‑Fi ou continuer hors ligne." "The portal stays open to choose Wi-Fi or continue offline.")"
+      portal_pid=""
+      if portal_pid="$(open_sevenos_portal)"; then
+        confirm_installer_window "$portal_pid" "SevenOS installer portal" && exit 0
+      fi
+      write_state "closed" "installer" "SevenOS installer portal closed before it became interactive." "$portal_pid" 100
+      exit 1
+    fi
   fi
 
   if [[ -x "$SEVENOS_ROOT/scripts/theme-session.sh" ]]; then
@@ -271,14 +316,24 @@ confirm_installer_window() {
     seven-welcome --notify >/dev/null 2>&1 || true
   fi
 
-  write_state "opening" "installer" "Opening SevenOS portal before Calamares so Wi-Fi and disk checks are visible." "" 94
+  write_state "opening" "installer" "Opening Calamares directly for a stable graphical installation." "" 94
   live_notify \
     "$(live_text "Installation SevenOS" "SevenOS Installation")" \
-    "$(live_text "Ouverture du portail SevenOS avec Wi‑Fi, disques et installation." "Opening the SevenOS portal with Wi-Fi, disks and installation.")"
+    "$(live_text "Ouverture de l’installateur graphique SevenOS." "Opening the SevenOS graphical installer.")"
   installer_pid=""
-  if installer_pid="$(open_sevenos_portal)"; then
-    if confirm_installer_window "$installer_pid" "SevenOS installer portal"; then
+  if installer_pid="$(open_calamares_direct)"; then
+    if confirm_installer_window "$installer_pid" "Calamares installer"; then
       exit 0
+    fi
+    write_state "opening" "installer" "Calamares did not stabilize; trying the SevenOS portal fallback." "" 96 "SevenOS is opening its installer portal because the direct installer did not stay visible."
+    live_notify \
+      "$(live_text "Relance installateur" "Installer fallback")" \
+      "$(live_text "L’installateur direct n’est pas resté visible. SevenOS ouvre le portail de secours." "The direct installer did not stay visible. SevenOS is opening the rescue portal.")"
+    fallback_pid=""
+    if fallback_pid="$(open_sevenos_portal)"; then
+      if confirm_installer_window "$fallback_pid" "SevenOS installer portal"; then
+        exit 0
+      fi
     fi
     live_notify \
       "$(live_text "Installateur fermé" "Installer closed")" \

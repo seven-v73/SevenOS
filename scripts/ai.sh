@@ -78,7 +78,7 @@ payload_json() {
   command_json '{}' "$ROOT_DIR/scripts/installer-stack.sh" status --json > "$tmp_dir/installer.json"
   command_json '{"state":"unknown"}' "$ROOT_DIR/bin/seven" installer release --json > "$tmp_dir/installer-release.json"
   command_json '{"summary":{},"next":[]}' "$ROOT_DIR/profiles/profile-manager.sh" plan --json > "$tmp_dir/profiles.json"
-  command_json '{"summary":{},"next":[]}' "$ROOT_DIR/bin/sevenpkg" plan --json > "$tmp_dir/packages.json"
+  command_json '{"summary":{},"next":[]}' "$ROOT_DIR/bin/seven-daemon" packages-plan --json > "$tmp_dir/packages.json"
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/store.sh" json > "$tmp_dir/store.json"
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/box.sh" json > "$tmp_dir/box.json"
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/cloud.sh" json > "$tmp_dir/cloud.json"
@@ -157,7 +157,7 @@ for item in (packages.get("next") or [])[:2]:
     add(
         f"package.{item.get('key', 'unknown')}",
         item.get("title") or "Complete software layer",
-        item.get("command") or "sevenpkg plan",
+        item.get("command") or "seven core packages-plan",
         item.get("reason") or "A software layer still needs installation work.",
         item.get("impact", "packages"),
         item.get("severity", "medium"),

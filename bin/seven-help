@@ -856,6 +856,9 @@ seven-files reader ~/Documents/book.pdf
 ./install.sh windows-compat --yes
 seven-files windows ~/Downloads/setup.exe
 seven windows run ~/Downloads/setup.exe
+seven windows apps
+seven windows launchers
+seven run tor
 seven-wincompat status --json
 seven-wincompat plan ~/Downloads/setup.msi --json
 ```
@@ -2373,6 +2376,9 @@ seven-files reader ~/Documents/book.pdf
 ./install.sh windows-compat --yes
 seven-files windows ~/Downloads/setup.exe
 seven windows run ~/Downloads/setup.exe
+seven windows apps
+seven windows launchers
+seven run tor
 seven-wincompat status --json
 seven-wincompat plan ~/Downloads/setup.msi --json
 ```

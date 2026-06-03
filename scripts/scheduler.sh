@@ -56,6 +56,11 @@ context_payload() {
 }
 
 json_payload() {
+  if [[ "$ACTION" != "apply" && -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" scheduler "$ACTION" --json
+    return
+  fi
+
   SEVENOS_ROOT="$ROOT_DIR" ACTIVE_PROFILE="$(active_profile)" CONTEXT_PAYLOAD="$(context_payload)" python - <<'PY'
 import json
 import os

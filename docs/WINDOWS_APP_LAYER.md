@@ -43,6 +43,8 @@ seven-files windows /path/to/setup.exe
 seven-wincompat status --json
 seven-wincompat plan /path/to/setup.msi --json
 seven windows apps
+seven windows launchers
+seven run tor
 ```
 
 Seven Files is the normal user-facing launcher for local Windows files. A
@@ -59,6 +61,19 @@ layer keeps a small local recent list under
 diagnose an app without hunting for commands.
 It also shows the decision path so the user can see why SevenOS selected
 Bottles, Wine or Lutris.
+
+Installed Windows applications are discoverable too. `seven-wincompat apps`
+scans Wine, Bottles and Lutris prefixes for real user-facing executables while
+filtering internal Wine components. `seven-wincompat launchers` creates normal
+SevenOS desktop launchers in `~/.local/share/applications`, so an app installed
+inside Bottles, such as Tor Browser, appears in Launchpad and can also be
+started with a natural command like:
+
+```bash
+seven windows apps
+seven windows launchers
+seven run tor
+```
 
 ## Contract
 

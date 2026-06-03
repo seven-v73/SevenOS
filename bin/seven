@@ -72,8 +72,8 @@ def run_script_with_dry_env(relative_path, *extra):
         sys.exit(exc.returncode)
 
 
-def capture_json(command, fallback):
-    result = subprocess.run(command, cwd=ROOT_DIR, text=True, capture_output=True, check=False)
+def capture_json(command, fallback, env=None, cwd=None):
+    result = subprocess.run(command, cwd=cwd or ROOT_DIR, text=True, capture_output=True, check=False, env=env)
     if result.returncode != 0:
         return fallback
     try:
@@ -84,7 +84,7 @@ def capture_json(command, fallback):
 
 def primary_payload():
     daily = capture_json(
-        [str(ROOT_DIR / "scripts" / "daily-driver.sh"), "status", "--json"],
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "daily", "--json"],
         {"decision": "unknown", "summary": {}, "blockers": [], "warnings": [], "actions": []},
     )
     shield = capture_json(
@@ -92,7 +92,7 @@ def primary_payload():
         {"percent": 0, "posture": "unknown", "recommendations": []},
     )
     profiles = capture_json(
-        [str(ROOT_DIR / "profiles" / "profile-manager.sh"), "plan", "--json"],
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "profile-plan", "--json"],
         {"summary": {}, "next": []},
     )
     atlas = capture_json(
@@ -196,6 +196,62 @@ def print_primary_human(payload):
         print("Next actions: none")
 
 
+def print_readiness_human(payload):
+    print("SevenOS Readiness")
+    print("=================")
+    print(f"State: {payload.get('state', 'unknown')}")
+    print(f"Score: {payload.get('percent', payload.get('score', 0))}%")
+    print(f"Source: {payload.get('writer', 'unknown')}")
+    print()
+    categories = payload.get("categories", [])
+    if isinstance(categories, dict):
+        categories = list(categories.values())
+    if categories:
+        print("Categories:")
+        for item in categories:
+            if not isinstance(item, dict):
+                continue
+            title = item.get("title", item.get("key", "Gate"))
+            actual = item.get("actual", item.get("score", 0))
+            if "percent" in item:
+                actual = item.get("percent", actual)
+            target = item.get("target", "-")
+            state = item.get("state", "unknown")
+            metric = f"{actual}%" if target in (None, "-", "") else f"{actual}/{target}"
+            print(f"- {title}: {metric} ({state})")
+    recommendations = payload.get("recommendations", [])
+    if recommendations:
+        print()
+        print("Next actions:")
+        for item in recommendations[:6]:
+            title = item.get("title") or str(item.get("category", "Improve")).replace("-", " ").title()
+            print(f"- {title}: {item.get('command', 'seven core readiness')}")
+
+
+def print_daily_human(payload):
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    print("SevenOS Daily Gate")
+    print("==================")
+    print(f"Decision: {payload.get('decision', 'unknown')}")
+    print(f"Readiness: {summary.get('readiness', 0)}%")
+    print(f"Source: {payload.get('writer', 'unknown')}")
+    blockers = payload.get("blockers", []) or []
+    warnings = payload.get("warnings", []) or []
+    if blockers:
+        print()
+        print("Blockers:")
+        for item in blockers[:6]:
+            print(f"- {item.get('title', item.get('key', 'Gate'))}: {item.get('command', 'seven core daily')}")
+    if warnings:
+        print()
+        print("Warnings:")
+        for item in warnings[:6]:
+            print(f"- {item.get('title', item.get('key', 'Gate'))}: {item.get('command', 'seven core daily')}")
+    if not blockers and not warnings:
+        print()
+        print("No active blocker reported by the native gate.")
+
+
 def handle_profile(args):
     if args.name == "activate" and args.extra:
         extra = [args.extra[0], *args.extra[1:]]
@@ -275,17 +331,64 @@ def handle_baobab(args):
 
 
 def handle_autonomy(args):
-    extra = [args.action]
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/autonomy.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "autonomy", "--json"],
+        {"schema": "sevenos.autonomy.v2", "level": "unknown", "score": 0, "checks": []},
+    )
     if args.json:
-        extra.append("--json")
-    run_script(args, "scripts/autonomy.sh", *extra)
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    print("SevenOS Distribution Autonomy")
+    print("=============================")
+    print(f"Level: {payload.get('level', 'unknown')}")
+    print(f"Score: {payload.get('score', 0)}%")
+    print(f"Checks: {summary.get('ok', 0)}/{summary.get('checks', 0)} OK, {summary.get('partial', 0)} partial")
+    print(f"Arch visible: {str(summary.get('arch_visible', True)).lower()}")
+    for item in (payload.get("issues") or payload.get("checks") or [])[:8]:
+        if isinstance(item, dict):
+            print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+            print(f"  {item.get('detail', '')}")
+    return
 
 
 def handle_platform(args):
-    extra = [args.action]
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/platform.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "platform", "--json"],
+        {"schema": "sevenos.platform.v2", "state": "unknown", "score": 0, "layers": []},
+    )
     if args.json:
-        extra.append("--json")
-    run_script(args, "scripts/platform.sh", *extra)
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    print("SevenOS Platform")
+    print("================")
+    print(f"State: {payload.get('state', 'unknown')}")
+    print(f"Score: {payload.get('score', 0)}%")
+    print(f"Layers: {summary.get('ok', 0)}/{summary.get('layers', 0)} OK, {summary.get('partial', 0)} partial")
+    print(f"Rule:  {payload.get('public_rule', 'SevenOS names first.')}")
+    for item in (payload.get("layers") or [])[:10]:
+        if isinstance(item, dict):
+            print(f"- {item.get('state', 'unknown')}: {item.get('public_name', item.get('key', 'Layer'))}")
+            print(f"  Surface: {item.get('user_surface', '')}")
+            print(f"  Backend: {item.get('backend', '')}")
+    return
 
 
 def handle_differentiators(args):
@@ -303,6 +406,33 @@ def handle_universes(args):
 
 
 def handle_mask(args):
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/mask.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "mask", "--json"],
+        {"schema": "sevenos.mask.v2", "state": "unknown", "score": 0, "checks": []},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    print("SevenOS Mask")
+    print("============")
+    print(f"State: {payload.get('state', 'unknown')}")
+    print(f"Score: {payload.get('score', 0)}%")
+    print(f"Checks: {summary.get('ok', 0)}/{summary.get('checks', 0)} OK, {summary.get('partial', 0)} partial")
+    print(f"Rule:  {payload.get('rule', 'SevenOS names first.')}")
+    for item in (payload.get("issues") or payload.get("checks") or [])[:8]:
+        if isinstance(item, dict):
+            print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+            print(f"  {item.get('detail', '')}")
+    return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -310,6 +440,25 @@ def handle_mask(args):
 
 
 def handle_surfaces(args):
+    if args.action in {"status", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "surfaces", "--json"],
+            {"schema": "sevenos.core.surfaces.v1", "state": "unknown", "surfaces": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+            print("SevenOS Surfaces")
+            print("================")
+            print(f"State: {payload.get('state', 'unknown')}")
+            print(f"Score: {payload.get('score', 0)}%")
+            print(f"Source: {payload.get('writer', 'unknown')}")
+            print(f"Surfaces: {summary.get('ok', 0)}/{summary.get('total', 0)} OK")
+            for item in (payload.get("surfaces") or [])[:12]:
+                if isinstance(item, dict):
+                    print(f"- {item.get('title', item.get('key', 'Surface'))}: {item.get('state', 'unknown')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -317,6 +466,35 @@ def handle_surfaces(args):
 
 
 def handle_routes(args):
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/routes.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "routes", "--json"],
+        {"schema": "sevenos.routes.v2", "state": "unknown", "score": 0, "routes": []},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    print("SevenOS User Routes")
+    print("===================")
+    print(f"State: {payload.get('state', 'unknown')}")
+    print(f"Score: {payload.get('score', 0)}%")
+    print(f"Routes: {summary.get('ok', 0)}/{summary.get('routes', 0)} OK, {summary.get('partial', 0)} partial")
+    for item in (payload.get("routes") or [])[:14]:
+        if isinstance(item, dict):
+            print(f"- {item.get('state', 'unknown')}: {item.get('label', item.get('intent', 'route'))}")
+            print(f"  {item.get('command', '')}")
+    return
+
+
+def handle_routes_full(args):
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -324,6 +502,36 @@ def handle_routes(args):
 
 
 def handle_distribution(args):
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/distribution.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "distribution", "--json"],
+        {"schema": "sevenos.distribution.v2", "state": "unknown", "score": 0, "checks": [], "issues": []},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenOS Distribution")
+    print("====================")
+    print(f"State: {payload.get('state', 'unknown')}")
+    print(f"Score: {payload.get('score', 0)}%")
+    print(f"Daily driver: {str(payload.get('daily_driver_ready', False)).lower()}")
+    print(f"Public release: {str(payload.get('public_release_ready', False)).lower()}")
+    for item in (payload.get("checks") or [])[:12]:
+        if isinstance(item, dict):
+            print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+            if item.get("detail"):
+                print(f"  {item.get('detail')}")
+    return
+
+
+def handle_distribution_full(args):
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -331,6 +539,44 @@ def handle_distribution(args):
 
 
 def handle_production(args):
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/production-readiness.sh", *extra)
+        return
+    if args.action == "validate":
+        extra = ["record"]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/release-validation.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "production", "--json"],
+        {"schema": "sevenos.production-readiness.v2", "state": "unknown", "score": 0, "checks": [], "issues": []},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenOS Production Readiness")
+    print("============================")
+    print(f"State: {payload.get('state', 'unknown')}")
+    print(f"Score: {payload.get('score', 0)}%")
+    print(f"Public beta: {str(payload.get('public_beta_ready', False)).lower()}")
+    print(f"Large scale: {str(payload.get('large_scale_ready', False)).lower()}")
+    for item in (payload.get("checks") or [])[:10]:
+        if isinstance(item, dict):
+            print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+            if item.get("detail"):
+                print(f"  {item.get('detail')}")
+            if item.get("command"):
+                print(f"  {item.get('command')}")
+    return
+
+
+def handle_production_full(args):
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -338,6 +584,30 @@ def handle_production(args):
 
 
 def handle_about(args):
+    if args.action in {"status", "doctor", "plan", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "about", "--json"],
+            {"schema": "sevenos.about.v2", "state": "unknown", "about_ready": False},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        profile = payload.get("active_mini_os", {}) if isinstance(payload.get("active_mini_os"), dict) else {}
+        release = payload.get("release", {}) if isinstance(payload.get("release"), dict) else {}
+        print("About SevenOS")
+        print("=============")
+        print(f"Name: {payload.get('pretty_name', 'SevenOS')}")
+        print(f"Edition: {payload.get('edition', 'SevenOS')}")
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(f"Mini OS: {profile.get('title', 'Unknown')} ({profile.get('short_label', '')})")
+        print(f"Channel: {release.get('channel', 'unknown')} / {release.get('state', 'unknown')}")
+        print(f"Daily driver: {str(payload.get('daily_driver_ready', False)).lower()}")
+        print(f"Public release: {str(payload.get('public_release_ready', False)).lower()}")
+        for item in (payload.get("issues") or [])[:6]:
+            if isinstance(item, dict):
+                print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+                print(f"  {item.get('detail', '')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -345,6 +615,24 @@ def handle_about(args):
 
 
 def handle_lifecycle(args):
+    if args.action in {"status", "doctor", "plan", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "lifecycle", "--json"],
+            {"schema": "sevenos.lifecycle.v2", "state": "unknown", "score": 0, "checks": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        print("SevenOS Lifecycle")
+        print("=================")
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(f"Score: {payload.get('score', 0)}%")
+        print(f"Source: {payload.get('writer', 'unknown')}")
+        for item in (payload.get("checks") or [])[:10]:
+            if isinstance(item, dict):
+                print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+                print(f"  {item.get('detail', '')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -352,6 +640,26 @@ def handle_lifecycle(args):
 
 
 def handle_product(args):
+    if args.action in {"status", "doctor", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "product", "--json"],
+            {"schema": "sevenos.product.v2", "state": "unknown", "score": 0, "checks": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        print("SevenOS Product")
+        print("===============")
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(f"Score: {payload.get('score', 0)}%")
+        print(f"Daily driver: {str(payload.get('daily_driver_ready', False)).lower()}")
+        print(f"Public release: {str(payload.get('public_release_ready', False)).lower()}")
+        shell = payload.get("public_shell", {}) if isinstance(payload.get("public_shell"), dict) else {}
+        if shell:
+            print("Signals:")
+            for key, value in shell.items():
+                print(f"- {key}: {value}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -359,6 +667,46 @@ def handle_product(args):
 
 
 def handle_update(args):
+    if args.action in {"status", "check", "doctor", "json"} and not args.yes:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "update", "--json"],
+            {"schema": "sevenos.update.v2", "state": "unknown", "checks": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            print("SevenOS Update")
+            print("==============")
+            print(f"State: {payload.get('state', 'unknown')}")
+            print(f"Source: {payload.get('writer', 'unknown')}")
+            print(f"Score: {payload.get('score', 0)}%")
+            checks = payload.get("checks", []) or []
+            if checks:
+                print()
+                print("Checks:")
+                for item in checks[:8]:
+                    if not isinstance(item, dict):
+                        continue
+                    print(f"- {item.get('title', item.get('key', 'Check'))}: {item.get('state', 'unknown')}")
+        if args.action == "doctor" and int(payload.get("score", 0) or 0) < 75:
+            raise SystemExit(1)
+        return
+    if args.action == "plan" and not args.yes:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "update-plan", "--json"],
+            {"schema": "sevenos.update-plan.v1", "state": "unknown", "next": []},
+        )
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print("SevenOS Update Plan")
+            print("===================")
+            print(f"State: {payload.get('state', 'unknown')}")
+            print(f"Source: {payload.get('writer', 'unknown')}")
+            for item in (payload.get("next") or payload.get("actions") or [])[:8]:
+                if isinstance(item, dict):
+                    print(f"- {item.get('title', item.get('key', 'Action'))}: {item.get('command', 'seven update')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -368,6 +716,34 @@ def handle_update(args):
 
 
 def handle_recovery(args):
+    if args.action in {"status", "plan", "doctor", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "recovery", "--json"],
+            {"schema": "sevenos.recovery.v2", "state": "unknown", "score": 0, "checks": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        if args.action == "plan":
+            print("SevenOS Recovery Plan")
+            print("=====================")
+            for item in payload.get("routes", []) or []:
+                if isinstance(item, dict):
+                    print(f"- {item.get('intent', 'Recovery')}: {item.get('command', 'seven recovery')}")
+            return
+        print("SevenOS Recovery")
+        print("================")
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(f"Score: {payload.get('score', 0)}%")
+        print(f"Backups: {payload.get('backup_count', 0)} set(s)")
+        print(f"Source: {payload.get('writer', 'unknown')}")
+        for item in (payload.get("checks") or [])[:8]:
+            if isinstance(item, dict):
+                print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'check'))}")
+                print(f"  {item.get('detail', '')}")
+        if args.action == "doctor" and payload.get("state") not in {"ready", "partial"}:
+            raise SystemExit(1)
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -375,6 +751,25 @@ def handle_recovery(args):
 
 
 def handle_health(args):
+    if args.action in {"status", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "product-health", "--json"],
+            {"schema": "sevenos.health.v2", "state": "unknown", "score": 0, "checks": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            print("SevenOS Health")
+            print("==============")
+            print(f"State: {payload.get('state', 'unknown')}")
+            print(f"Score: {payload.get('score', 0)}%")
+            print(f"Daily ready: {str(payload.get('daily_ready', False)).lower()}")
+            print(f"Source: {payload.get('writer', 'unknown')}")
+            for item in (payload.get("checks") or [])[:8]:
+                if isinstance(item, dict):
+                    print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'check'))}")
+                    print(f"  {item.get('detail', '')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -382,6 +777,25 @@ def handle_health(args):
 
 
 def handle_smoke(args):
+    if args.action in {"status", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "smoke", "--json"],
+            {"schema": "sevenos.smoke.v1", "state": "unknown", "checks": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+            print("SevenOS Smoke Gate")
+            print("==================")
+            print(f"State: {payload.get('state', 'unknown')}")
+            print(f"Score: {payload.get('score', 0)}%")
+            print(f"Source: {payload.get('writer', 'unknown')}")
+            print(f"Checks: {summary.get('ok', 0)} OK, {summary.get('partial', 0)} partial, {summary.get('blocked', 0)} blocked")
+            for item in (payload.get("issues") or [])[:8]:
+                if isinstance(item, dict):
+                    print(f"- {item.get('title', item.get('key', 'Issue'))}: {item.get('state', 'unknown')} -> {item.get('command', 'seven smoke doctor')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -389,6 +803,25 @@ def handle_smoke(args):
 
 
 def handle_support(args):
+    if args.action in {"status", "doctor", "plan", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "support", "--json"],
+            {"schema": "sevenos.support.v2", "state": "unknown", "score": 0, "checks": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        print("SevenOS Support")
+        print("===============")
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(f"Score: {payload.get('score', 0)}%")
+        print(f"Privacy: {payload.get('privacy', 'local-first')}")
+        print(f"Root: {payload.get('support_root', '-')}")
+        for item in (payload.get("checks") or [])[:8]:
+            if isinstance(item, dict):
+                print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+                print(f"  {item.get('detail', '')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -396,6 +829,25 @@ def handle_support(args):
 
 
 def handle_foundations(args):
+    if args.action in {"status", "doctor", "plan", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "foundations", "--json"],
+            {"schema": "sevenos.foundations.v2", "state": "unknown", "score": 0, "layers": []},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+        print("SevenOS Foundations")
+        print("===================")
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(f"Score: {payload.get('score', 0)}%")
+        print(f"Layers: {summary.get('ok', 0)}/{summary.get('checks', 0)} OK")
+        for item in (payload.get("layers") or [])[:10]:
+            if isinstance(item, dict):
+                print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Layer'))}")
+                print(f"  {item.get('detail', '')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -403,6 +855,26 @@ def handle_foundations(args):
 
 
 def handle_channel(args):
+    if args.action in {"status", "doctor", "plan", "json"}:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "channel", "--json"],
+            {"schema": "sevenos.release-channel.v2", "state": "unknown", "channel": "dev"},
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        print("SevenOS Release Channel")
+        print("=======================")
+        print(f"Channel: {payload.get('channel', 'dev')}")
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(f"Risk: {payload.get('risk', 'active-development')}")
+        print(f"Dirty paths: {payload.get('dirty_count', 0)}")
+        print(f"Public release: {str(payload.get('public_release_ready', False)).lower()}")
+        for item in (payload.get("checks") or [])[:8]:
+            if isinstance(item, dict):
+                print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+                print(f"  {item.get('detail', '')}")
+        return
     extra = [args.action]
     if args.channel:
         extra.append(args.channel)
@@ -514,7 +986,20 @@ def handle_run(args):
     if suffix in {".exe", ".msi", ".msp", ".bat", ".cmd", ".com", ".scr", ".lnk"}:
         run_script(args, "bin/seven-wincompat", "run", target, *args.extra)
         return
-    print("seven: app-name resolution is not enabled here yet. For Windows installers use: seven files windows <file> or seven windows run <file>.", file=sys.stderr)
+
+    apps = capture_json([str(ROOT_DIR / "bin/seven-wincompat"), "apps", "--json"], {"apps": []})
+    wanted = "".join(ch for ch in target.lower() if ch.isalnum())
+    for app in apps.get("apps", []):
+        names = {
+            "".join(ch for ch in str(app.get("name", "")).lower() if ch.isalnum()),
+            "".join(ch for ch in str(app.get("id", "")).lower() if ch.isalnum()),
+            "".join(ch for ch in str(app.get("desktop_id", "")).removesuffix(".desktop").lower() if ch.isalnum()),
+        }
+        if wanted in names or any(wanted and wanted in name for name in names):
+            run_script(args, "bin/seven-wincompat", "run", str(app.get("file", "")), "--engine", str(app.get("engine", "auto")), *args.extra)
+            return
+
+    print("seven: app-name not found. Try: seven windows apps, seven windows launchers, or seven windows run <file>.", file=sys.stderr)
     sys.exit(2)
 
 
@@ -525,9 +1010,21 @@ def handle_windows(args):
     extra = [item for item in extra if item != "--json"]
     if extra and extra[0] == "--":
         extra = extra[1:]
-    if action in {"status", "catalog", "apps", "guide"}:
+    if action in {"status", "catalog", "guide"}:
         payload = ["status"]
-        if wants_json or action in {"catalog", "apps"}:
+        if wants_json or action == "catalog":
+            payload.append("--json")
+        run_script(args, "bin/seven-wincompat", *payload)
+        return
+    if action in {"apps", "list"}:
+        payload = ["apps"]
+        if wants_json:
+            payload.append("--json")
+        run_script(args, "bin/seven-wincompat", *payload)
+        return
+    if action in {"launchers", "refresh-launchers"}:
+        payload = ["launchers"]
+        if wants_json:
             payload.append("--json")
         run_script(args, "bin/seven-wincompat", *payload)
         return
@@ -575,8 +1072,54 @@ def handle_server(args):
 
 
 def handle_installer(args):
-    extra = [args.action, *args.extra]
-    if args.json:
+    extra_args = [item for item in args.extra if item != "--json"]
+    wants_json = args.json or "--json" in args.extra
+    if args.action in {"status", "doctor"} and not extra_args:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "installer", "--json"],
+            {"schema": "sevenos.installer.v1", "state": "unknown", "checks": []},
+        )
+        if wants_json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print("SevenOS Installer")
+            print("=================")
+            print(f"Mode: {payload.get('mode', payload.get('state', 'unknown'))}")
+            print(f"Source: {payload.get('writer', 'unknown')}")
+            for item in (payload.get("checks") or [])[:8]:
+                if isinstance(item, dict):
+                    print(f"- {item.get('title', item.get('key', 'Check'))}: {item.get('state', 'unknown')}")
+        return
+    if args.action == "plan" and not extra_args:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "installer-plan", "--json"],
+            {"schema": "sevenos.installer-plan.v1", "state": "unknown", "next": []},
+        )
+        if wants_json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print("SevenOS Installer Plan")
+            print("======================")
+            print(f"Source: {payload.get('writer', 'unknown')}")
+            for item in (payload.get("next") or payload.get("actions") or [])[:8]:
+                if isinstance(item, dict):
+                    print(f"- {item.get('title', item.get('key', 'Action'))}: {item.get('command', 'seven installer')}")
+        return
+    if args.action in {"flow", "live-flow"} and not extra_args:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "installer-flow", "--json"],
+            {"schema": "sevenos.installer-flow.v1", "state": "unknown"},
+        )
+        if wants_json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print("SevenOS Installer Flow")
+            print("======================")
+            print(f"State: {payload.get('state', 'unknown')}")
+            print(f"Source: {payload.get('writer', 'unknown')}")
+        return
+    extra = [args.action, *extra_args]
+    if wants_json:
         extra.append("--json")
     if args.action in {"iso-runtime", "calamares-iso"} and is_dry_run(args):
         if "--dry-run" not in extra:
@@ -731,11 +1274,28 @@ def handle_shell(args):
 
 
 def handle_core(args):
-    extra = [args.action]
+    extra = [args.action, *getattr(args, "extra", [])]
     if getattr(args, "keep", None) is not None:
         extra.extend(["--keep", str(args.keep)])
     if args.json:
         extra.append("--json")
+    native_actions = {
+        "health", "profiles", "profiles-status", "profile-gaps", "profiles-gaps",
+        "profile-plan", "profiles-plan", "profile-health", "profiles-health",
+        "packages", "package-status", "packages-plan", "package-plan",
+        "packages-strategy", "package-strategy", "packages-catalog", "package-catalog",
+        "packages-footprint", "package-footprint", "surfaces", "installer-flow",
+        "update", "update-plan", "doctor-task", "experience", "readiness",
+        "public-readiness", "production", "beta", "production-readiness",
+        "distribution", "distro", "distribution-readiness", "routes", "user-routes",
+        "channel", "release-channel", "foundations", "foundation", "lifecycle", "product", "support",
+        "daily", "daily-driver", "smoke", "smoke-gate",
+        "actions", "action-plan", "action-run", "phase-gate", "phase",
+    }
+    if args.action in native_actions:
+        command = [str(ROOT_DIR / "bin" / "seven-daemon"), *extra]
+        run(command, args)
+        return
     run_script(args, "scripts/core.sh", *extra)
 
 
@@ -963,6 +1523,46 @@ def handle_public_studio(args):
 
 
 def handle_adaptive(args):
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra = ["json"]
+        run_script(args, "scripts/adaptive-ui.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "adaptive", "--json"],
+        {"schema": "sevenos.adaptive-ui.v2", "state": "unknown", "percent": 0, "checks": []},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    if args.action == "plan":
+        print("SevenOS Adaptive UI Plan")
+        print("========================")
+        items = payload.get("next", []) if isinstance(payload.get("next"), list) else []
+        if not items:
+            print("No open adaptive UI actions.")
+        for item in items:
+            if isinstance(item, dict):
+                print(f"- {item.get('title', item.get('key', 'Adaptive action'))}")
+                print(f"  {item.get('reason', '')}")
+                print(f"  command: {item.get('command', 'seven adaptive')}")
+        return
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    profile = payload.get("active_profile", {}) if isinstance(payload.get("active_profile"), dict) else {}
+    print("SevenOS Adaptive UI")
+    print("===================")
+    print(f"State:   {payload.get('state', 'unknown')}")
+    print(f"Score:   {payload.get('percent', payload.get('score', 0))}%")
+    print(f"Profile: {profile.get('title', 'unknown')} ({profile.get('key', 'unknown')})")
+    print(f"Checks:  {summary.get('ok', 0)}/{summary.get('checks', len(payload.get('checks', [])))} OK")
+    for item in (payload.get("checks") or [])[:10]:
+        if isinstance(item, dict):
+            print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+            print(f"  {item.get('detail', '')}")
+    return
     extra = [args.action]
     if args.json:
         extra = ["json"]
@@ -970,6 +1570,14 @@ def handle_adaptive(args):
 
 
 def handle_dynamic(args):
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra = ["json"]
+        run_script(args, "scripts/adaptive-ui.sh", *extra)
+        return
+    handle_adaptive(args)
+    return
     extra = [args.action]
     if args.json:
         extra = ["json"]
@@ -997,6 +1605,37 @@ def handle_session(args):
 
 
 def handle_control(args):
+    if args.action == "plan" and not args.apply:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "control", "--json"],
+            {"schema": "sevenos.control.v1", "overall": 0, "actions": [], "summary": {}},
+        )
+        actions = payload.get("actions", []) or []
+        if args.safe_only:
+            actions = [
+                item for item in actions
+                if isinstance(item, dict) and item.get("impact") == "safe"
+            ]
+        if args.limit is not None:
+            actions = actions[:max(args.limit, 0)]
+        payload["actions"] = actions
+        if args.json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+        print("SevenOS Control Plane")
+        print("=====================")
+        print(f"Overall: {payload.get('overall', 0)}%")
+        print(f"Source: {payload.get('writer', 'unknown')}")
+        print(f"Actions: {len(actions)} visible / {summary.get('total', len(actions))} total")
+        for item in actions:
+            if not isinstance(item, dict):
+                continue
+            print(f"- {item.get('severity', 'medium')}: {item.get('title', 'Action')}")
+            print(f"  {item.get('command', 'seven control plan')}")
+        if not actions:
+            print("No priority control action in the current filter.")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -1012,6 +1651,33 @@ def handle_control(args):
 
 
 def handle_events(args):
+    if args.action in {"list", "summary-json"}:
+        command = [str(ROOT_DIR / "bin" / "seven-daemon")]
+        if args.action == "summary-json":
+            command.append("summary")
+        else:
+            command.append("events")
+        if args.limit is not None:
+            command.extend(["--limit", str(args.limit)])
+        command.append("--json")
+        payload = capture_json(
+            command,
+            {"schema": "sevenos.events.v1", "events": [], "count": 0, "total": 0},
+        )
+        if args.json or args.action == "summary-json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        print("SevenOS Events")
+        print("==============")
+        print(f"Events: {payload.get('count', 0)} shown / {payload.get('total', 0)} total")
+        print(f"Source: {payload.get('writer', 'unknown')}")
+        for item in (payload.get("events") or [])[-10:]:
+            if not isinstance(item, dict):
+                continue
+            source = item.get("source", item.get("event", "event"))
+            message = item.get("message", item.get("action", ""))
+            print(f"- {source}: {message}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -1021,16 +1687,34 @@ def handle_events(args):
 
 
 def handle_insights(args):
-    extra = []
-    if args.json:
-        extra.append("--json")
+    command = [str(ROOT_DIR / "bin" / "seven-daemon"), "insights"]
     if args.limit is not None:
-        extra.extend(["--limit", str(args.limit)])
-    run_script(args, "scripts/insights.sh", *extra)
+        command.extend(["--limit", str(args.limit)])
+    command.append("--json")
+    payload = capture_json(
+        command,
+        {"schema": "sevenos.insights.v1", "insights": [], "state": "unknown"},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenOS Insights")
+    print("================")
+    print(f"State: {payload.get('state', 'ready')}")
+    print(f"Source: {payload.get('writer', 'unknown')}")
+    for item in (payload.get("insights") or payload.get("items") or [])[: args.limit or 8]:
+        if not isinstance(item, dict):
+            continue
+        print(f"- {item.get('severity', item.get('state', 'info'))}: {item.get('title', item.get('key', 'Insight'))}")
+        detail = item.get("detail") or item.get("reason") or item.get("message")
+        if detail:
+            print(f"  {detail}")
 
 
 def handle_phase_gate(args):
     extra = ["--json"] if args.json else []
+    if getattr(args, "full", False):
+        extra.append("--full")
     run_script(args, "scripts/phase-gate.sh", *extra)
 
 
@@ -1050,6 +1734,16 @@ def handle_b3(args):
 
 
 def handle_daily(args):
+    if args.action in ("status", "plan") and not args.apply and not args.yes:
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "daily", "--json"],
+            {"schema": "sevenos.daily-driver.v1", "decision": "unknown", "summary": {}, "blockers": [], "warnings": []},
+        )
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print_daily_human(payload)
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -1058,6 +1752,23 @@ def handle_daily(args):
     if args.yes:
         extra.append("--yes")
     run_script(args, "scripts/daily-driver.sh", *extra)
+
+
+def handle_readiness(args):
+    if args.record:
+        extra = ["--record"]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/readiness.sh", *extra)
+        return
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "readiness", "--json"],
+        {"schema": "sevenos.readiness.v1", "state": "unknown", "percent": 0, "categories": [], "recommendations": []},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print_readiness_human(payload)
 
 
 def handle_primary(args):
@@ -1166,13 +1877,83 @@ def handle_release(args):
     if args.action in {"open", "ui"}:
         run_script(args, "bin/seven-release-review-native")
         return
+    if args.action in {"status", "doctor", "json", "plan"}:
+        env = os.environ.copy()
+        current = Path.cwd()
+        if Path(current, ".git").is_dir() and Path(current, "install.sh").is_file():
+            env.setdefault("SEVENOS_SOURCE_ROOT", str(current))
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "release", "--json"],
+            {"schema": "sevenos.release.v2", "state": "unknown", "score": 0, "issues": []},
+            env=env,
+        )
+        if args.json or args.action == "json":
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        print("SevenOS Release")
+        print("===============")
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(f"Score: {payload.get('score', 0)}%")
+        print(f"Daily driver: {str(payload.get('daily_driver_ready', False)).lower()}")
+        print(f"Public release: {str(payload.get('public_release_ready', False)).lower()}")
+        worktree = payload.get("worktree") if isinstance(payload.get("worktree"), dict) else {}
+        print(f"Dirty paths: {worktree.get('dirty_count', 0)}")
+        if args.action in {"doctor", "plan"}:
+            for item in (payload.get("issues") or payload.get("next") or [])[:8]:
+                if isinstance(item, dict):
+                    print(f"- {item.get('state', 'unknown')}: {item.get('title', item.get('key', 'Check'))}")
+                    print(f"  {item.get('detail', '')}")
+                    print(f"  {item.get('command', '')}")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
     run_script(args, "scripts/release.sh", *extra)
 
 
+def print_public_readiness_human(payload):
+    lang = (os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG") or "").lower()
+    fr = lang.startswith("fr")
+    print("SevenOS Public Readiness")
+    print("========================")
+    print(f"State: {payload.get('state', 'unknown')}")
+    summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    print(
+        "Summary: "
+        f"ready={summary.get('ready', 0)} "
+        f"todo={summary.get('todo', 0)} "
+        f"score={payload.get('score', 0)}%"
+    )
+    for item in payload.get("decisions", []) if isinstance(payload.get("decisions"), list) else []:
+        title = item.get("title_fr" if fr else "title_en") or item.get("key", "decision")
+        detail = item.get("detail_fr" if fr else "detail_en") or ""
+        print(f"- {item.get('state', 'unknown')}: {title}")
+        if detail:
+            print(f"  {detail}")
+        if item.get("command"):
+            print(f"  {item.get('command')}")
+
+
 def handle_public_readiness(args):
+    if getattr(args, "full", False):
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/readiness-decisions.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "public-readiness", "--json"],
+        {"schema": "sevenos.public-readiness.v1", "state": "unknown", "summary": {}, "decisions": [], "next": []},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print_public_readiness_human(payload)
+
+
+def handle_public_readiness_full(args):
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -1180,8 +1961,61 @@ def handle_public_readiness(args):
 
 
 def handle_actions(args):
-    extra = [args.action, *args.extra]
-    if args.json:
+    action = args.action
+    extra = list(getattr(args, "extra", []) or [])
+    json_requested = bool(getattr(args, "json", False) or "--json" in extra or "json" in extra)
+    extra = [item for item in extra if item not in ("--json", "json")]
+    if getattr(args, "native", False) or action in ("native", "system"):
+        payload = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "actions", "--json"],
+            {"schema": "sevenos.core.actions.v1", "state": "unknown", "count": 0, "actions": []},
+        )
+        if json_requested:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        print("SevenOS native actions")
+        print(f"State: {payload.get('state', 'unknown')} · {payload.get('count', 0)} actions · writer={payload.get('writer', 'unknown')}")
+        for item in (payload.get("actions") or [])[:24]:
+            print(f"- {item.get('id', 'action')}: {item.get('title', '')}")
+            print(f"  {item.get('command', '')}")
+        return
+    if action == "status":
+        native = capture_json(
+            [str(ROOT_DIR / "bin" / "seven-daemon"), "actions", "--json"],
+            {"schema": "sevenos.core.actions.v1", "state": "unknown", "count": 0, "actions": []},
+        )
+        broad = capture_json(
+            [str(ROOT_DIR / "scripts" / "actions.sh"), "--json"],
+            {"schema": "sevenos.actions.v1", "state": "unknown", "count": 0, "actions": []},
+        )
+        if json_requested:
+            print(json.dumps({
+                "schema": "sevenos.actions.status.v1",
+                "state": "ready" if native.get("state") == "ready" and broad.get("schema") == "sevenos.actions.v1" else "attention",
+                "native": {
+                    "schema": native.get("schema"),
+                    "state": native.get("state"),
+                    "count": native.get("count", 0),
+                    "writer": native.get("writer"),
+                },
+                "catalog": {
+                    "schema": broad.get("schema"),
+                    "count": broad.get("count", 0),
+                    "writer": broad.get("writer", "scripts/actions.sh"),
+                    "system_registry": broad.get("system_registry", {}),
+                },
+                "preferred_route": "seven actions native --json",
+                "compat_route": "seven actions --json",
+            }, indent=2, ensure_ascii=False))
+            return
+        registry = broad.get("system_registry", {}) or {}
+        print("SevenOS actions")
+        print(f"Native registry: {native.get('state', 'unknown')} · {native.get('count', 0)} actions · writer={native.get('writer', 'unknown')}")
+        print(f"User catalog: {broad.get('count', 0)} actions · native link={registry.get('state', 'unknown')} · writer={broad.get('writer', 'scripts/actions.sh')}")
+        print("Use: seven actions native --json for system surfaces, seven actions --json for the broad launcher catalog.")
+        return
+    extra = [action, *extra]
+    if json_requested:
         extra = ["--json"]
     run_script(args, "scripts/actions.sh", *extra)
 
@@ -1218,6 +2052,66 @@ def handle_launchpad(args):
 
 
 def handle_tools(args):
+    extra_args = list(getattr(args, "extra", []) or [])
+    if "--json" in extra_args:
+        args.json = True
+        extra_args = [item for item in extra_args if item != "--json"]
+    if "--full" in extra_args:
+        args.full = True
+        extra_args = [item for item in extra_args if item != "--full"]
+    if getattr(args, "full", False):
+        extra = [args.action, *extra_args]
+        if args.json and "--json" not in extra:
+            extra.append("--json")
+        run_script(args, "scripts/tools.sh", *extra)
+        return
+    if args.action in {"open", "gui"}:
+        extra = [args.action, *extra_args]
+        if args.json and "--json" not in extra:
+            extra.append("--json")
+        run_script(args, "scripts/tools.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    command = [str(ROOT_DIR / "bin" / "seven-daemon"), "tools", "--json"]
+    if args.action == "detail" and extra_args:
+        command = [str(ROOT_DIR / "bin" / "seven-daemon"), "tools", "detail", extra_args[0], "--json"]
+    payload = capture_json(
+        command,
+        {"schema": "sevenos.tools.v2", "state": "unknown", "score": 0, "tools": []},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    if args.action == "detail":
+        tool = payload.get("tool", {}) if isinstance(payload.get("tool"), dict) else {}
+        print("SevenOS Tool")
+        print("============")
+        print(f"Name: {tool.get('name', extra_args[0] if extra_args else 'unknown')}")
+        print(f"State: {payload.get('state', tool.get('state', 'unknown'))}")
+        print(f"Role: {tool.get('role', '-')}")
+        print(f"Open: {' '.join(str(part) for part in tool.get('open', []))}")
+        blockers = tool.get("blockers", []) or []
+        if blockers:
+            print("Blockers:")
+            for blocker in blockers:
+                print(f"- {blocker}")
+        return
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    print("SevenOS Tools")
+    print("=============")
+    print(f"State: {payload.get('state', 'unknown')}")
+    print(f"Score: {payload.get('score', 0)}%")
+    print(f"Source: {payload.get('writer', 'unknown')}")
+    print(f"Tools: {summary.get('ok', 0)}/{summary.get('tools', 0)} OK, {summary.get('partial', 0)} partial")
+    for item in (payload.get("tools") or [])[:12]:
+        if isinstance(item, dict):
+            print(f"- {item.get('state', 'unknown')}: {item.get('name', item.get('key', 'Tool'))}")
+            print(f"  {item.get('intent', '')}")
+    return
+
+
+def handle_tools_full(args):
     extra = [args.action, *args.extra]
     if args.json and "--json" not in extra:
         extra.append("--json")
@@ -1225,6 +2119,43 @@ def handle_tools(args):
 
 
 def handle_ux(args):
+    if args.action == "full":
+        extra = []
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/ux-check.sh", *extra)
+        return
+    if args.action == "json":
+        args.json = True
+    payload = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-daemon"), "ux-check", "--json"],
+        {"schema": "sevenos.ux-check.v1", "state": "unknown", "failures": 1, "summary": {}},
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    print("SevenOS UX Gate")
+    print("===============")
+    print(f"State: {payload.get('state', 'unknown')}")
+    print(f"Mode: {payload.get('mode', 'fast')}")
+    print(f"Source: {payload.get('writer', 'unknown')}")
+    print(f"Files: {summary.get('files', 0) - summary.get('missing', 0)}/{summary.get('files', 0)} OK")
+    print(f"Tools score: {summary.get('tools_score', 0)}%")
+    failures = [
+        item for item in (payload.get("checks") or [])
+        if isinstance(item, dict) and item.get("state") != "OK"
+    ]
+    if failures:
+        print("Attention:")
+        for item in failures[:8]:
+            print(f"- {item.get('key', 'check')}: {item.get('path', '')}")
+    else:
+        print("No missing UX contract file detected by the native fast gate.")
+    return
+
+
+def handle_ux_full(args):
     extra = []
     if args.action in {"fast", "status", "json"}:
         extra.append("--fast")
@@ -1305,7 +2236,8 @@ def main():
     shell_parser.add_argument("--json", action="store_true", help="print machine-readable shell status or plan")
     shell_parser.add_argument("extra", nargs=argparse.REMAINDER)
     core_parser = subparsers.add_parser("core", help="inspect Seven Core and SevenBus foundation")
-    core_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "bus", "schema", "snapshot", "health", "profiles", "observe", "compact-bus", "bus-compact", "compact-events", "install-service", "install-observer", "start", "start-observer", "stop", "stop-observer", "logs", "observer-logs"))
+    core_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "bus", "schema", "snapshot", "health", "profiles", "profiles-status", "profile-gaps", "profiles-gaps", "profile-plan", "profiles-plan", "profile-health", "profiles-health", "packages", "package-status", "packages-plan", "package-plan", "packages-strategy", "package-strategy", "packages-catalog", "package-catalog", "packages-footprint", "package-footprint", "surfaces", "installer-flow", "update", "update-plan", "doctor-task", "experience", "readiness", "public-readiness", "production", "beta", "production-readiness", "distribution", "distro", "distribution-readiness", "routes", "user-routes", "channel", "release-channel", "foundations", "foundation", "lifecycle", "product", "support", "daily", "daily-driver", "smoke", "smoke-gate", "actions", "action-plan", "action-run", "observe", "compact-bus", "bus-compact", "compact-events", "install-service", "install-observer", "start", "start-observer", "stop", "stop-observer", "logs", "observer-logs"))
+    core_parser.add_argument("extra", nargs=argparse.REMAINDER)
     core_parser.add_argument("--json", action="store_true", help="print machine-readable core status, health, plan or bus schema")
     core_parser.add_argument("--keep", type=int, help="events to keep when compacting SevenBus")
     scheduler_parser = subparsers.add_parser("scheduler", help="inspect SevenOS process and thread orchestration")
@@ -1370,9 +2302,11 @@ def main():
     adaptive_parser = subparsers.add_parser("adaptive", help="inspect SevenOS adaptive profile-aware UI")
     adaptive_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
     adaptive_parser.add_argument("--json", action="store_true", help="print machine-readable adaptive UI contract")
+    adaptive_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     dynamic_parser = subparsers.add_parser("dynamic", help="inspect SevenOS dynamic profile/theme/surface adaptation")
     dynamic_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
     dynamic_parser.add_argument("--json", action="store_true", help="print machine-readable dynamic adaptation contract")
+    dynamic_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     identity_parser = subparsers.add_parser("identity", help="show SevenOS visual identity language")
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
@@ -1515,6 +2449,7 @@ def main():
     language_parser.add_argument("--live", action="store_true", help="restart visible SevenOS surfaces after a language change")
     phase_gate_parser = subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
     phase_gate_parser.add_argument("--json", action="store_true", help="print machine-readable phase decision")
+    phase_gate_parser.add_argument("--full", action="store_true", help="run the long developer audit instead of the native runtime summary")
     b3_parser = subparsers.add_parser("b3", help="orchestrate B2 to B3 consolidation")
     b3_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "apply", "doctor"))
     b3_parser.add_argument("--json", action="store_true", help="print machine-readable B3 consolidation plan")
@@ -1541,10 +2476,12 @@ def main():
     actions_parser = subparsers.add_parser("actions", help="show or run SevenOS registered UI/system actions")
     actions_parser.add_argument("action", nargs="?", default="list")
     actions_parser.add_argument("--json", action="store_true", help="print machine-readable action registry")
+    actions_parser.add_argument("--native", action="store_true", help="use the daemon-owned system action registry")
     actions_parser.add_argument("extra", nargs=argparse.REMAINDER)
     tools_parser = subparsers.add_parser("tools", help="inspect native SevenOS user tools")
     tools_parser.add_argument("action", nargs="?", default="status", choices=("open", "gui", "status", "doctor", "plan", "detail", "json"))
     tools_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS tools contract")
+    tools_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     tools_parser.add_argument("extra", nargs=argparse.REMAINDER)
     ux_parser = subparsers.add_parser("ux", help="run bounded SevenOS UX coherence checks")
     ux_parser.add_argument("action", nargs="?", default="fast", choices=("fast", "status", "doctor", "full", "json"))
@@ -1586,6 +2523,7 @@ def main():
     public_readiness_parser = subparsers.add_parser("public-readiness", help="explain daily vs public release readiness decisions")
     public_readiness_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     public_readiness_parser.add_argument("--json", action="store_true", help="print machine-readable readiness decisions")
+    public_readiness_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     channel_parser = subparsers.add_parser("channel", help="inspect or set the SevenOS release channel")
     channel_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "set", "json"))
     channel_parser.add_argument("channel", nargs="?", choices=("dev", "testing", "stable"), help="channel to set when action is 'set'")
@@ -1593,9 +2531,11 @@ def main():
     autonomy_parser = subparsers.add_parser("autonomy", help="check whether SevenOS is masked as an autonomous OS layer")
     autonomy_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     autonomy_parser.add_argument("--json", action="store_true", help="print machine-readable autonomy contract")
+    autonomy_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     platform_parser = subparsers.add_parser("platform", help="show SevenOS public platform layers and hidden backends")
     platform_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json"))
     platform_parser.add_argument("--json", action="store_true", help="print machine-readable platform facade")
+    platform_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     differentiators_parser = subparsers.add_parser("differentiators", help="show how SevenOS differentiates itself from a plain Arch install")
     differentiators_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     differentiators_parser.add_argument("--json", action="store_true", help="print machine-readable differentiator contract")
@@ -1605,24 +2545,30 @@ def main():
     mask_parser = subparsers.add_parser("mask", help="check whether public SevenOS surfaces hide backend details")
     mask_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     mask_parser.add_argument("--json", action="store_true", help="print machine-readable public masking contract")
+    mask_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     surfaces_parser = subparsers.add_parser("surfaces", help="inspect SevenOS public native surfaces")
     surfaces_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     surfaces_parser.add_argument("--json", action="store_true", help="print machine-readable public surface contract")
     routes_parser = subparsers.add_parser("routes", help="inspect SevenOS user-intent routes")
     routes_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     routes_parser.add_argument("--json", action="store_true", help="print machine-readable user route contract")
+    routes_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     distribution_parser = subparsers.add_parser("distribution", help="inspect SevenOS top-level distribution readiness")
     distribution_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     distribution_parser.add_argument("--json", action="store_true", help="print machine-readable distribution contract")
+    distribution_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     distro_parser = subparsers.add_parser("distro", help="alias for SevenOS distribution readiness")
     distro_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     distro_parser.add_argument("--json", action="store_true", help="print machine-readable distribution contract")
+    distro_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     production_parser = subparsers.add_parser("production", help="inspect SevenOS public beta and large-scale readiness")
-    production_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    production_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json", "validate"))
     production_parser.add_argument("--json", action="store_true", help="print machine-readable production readiness contract")
+    production_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     beta_parser = subparsers.add_parser("beta", help="alias for SevenOS public beta readiness")
-    beta_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    beta_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json", "validate"))
     beta_parser.add_argument("--json", action="store_true", help="print machine-readable public beta readiness contract")
+    beta_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     about_parser = subparsers.add_parser("about", help="show public SevenOS identity and edition")
     about_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
     about_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS about contract")
@@ -1917,12 +2863,7 @@ def main():
     elif args.command == "post-install":
         install_target("post-install", args)
     elif args.command == "readiness":
-        extra = []
-        if args.json:
-            extra.append("--json")
-        if args.record:
-            extra.append("--record")
-        run_script(args, "scripts/readiness.sh", *extra)
+        handle_readiness(args)
     elif args.command == "improve":
         extra = [args.criterion]
         if args.apply:

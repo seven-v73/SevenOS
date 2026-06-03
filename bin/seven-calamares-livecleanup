@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+LOG_FILE="${SEVENOS_INSTALL_LOG:-/var/log/sevenos-install.log}"
+LIVE_USER="${SEVENOS_LIVE_USER:-seven}"
+TARGET_ROOT="${SEVENOS_TARGET_ROOT:-}"
+
+target_path() {
+  local path="$1"
+  if [[ -n "$TARGET_ROOT" ]]; then
+    printf '%s/%s' "${TARGET_ROOT%/}" "${path#/}"
+  else
+    printf '%s' "$path"
+  fi
+}
+
+log() {
+  install -d "$(dirname "$LOG_FILE")" 2>/dev/null || true
+  printf '[SevenOS live cleanup] %s\n' "$*" | tee -a "$LOG_FILE" >/dev/null
+}
+
+remove_user_line() {
+  local file="$1"
+  local name="$2"
+  [[ -f "$file" ]] || return 0
+  cp -a "$file" "$file.sevenos-live.bak" 2>/dev/null || true
+  awk -F: -v user="$name" 'BEGIN { OFS = FS } $1 != user { print }' "$file" >"$file.tmp"
+  cat "$file.tmp" >"$file"
+  rm -f "$file.tmp"
+}
+
+remove_group_member() {
+  local file="$1"
+  local name="$2"
+  [[ -f "$file" ]] || return 0
+  cp -a "$file" "$file.sevenos-live.bak" 2>/dev/null || true
+  awk -F: -v user="$name" '
+    BEGIN { OFS = FS }
+    $1 == user { next }
+    {
+      n = split($4, members, ",")
+      out = ""
+      for (i = 1; i <= n; i++) {
+        if (members[i] != "" && members[i] != user) {
+          out = out (out ? "," : "") members[i]
+        }
+      }
+      $4 = out
+      print
+    }
+  ' "$file" >"$file.tmp"
+  cat "$file.tmp" >"$file"
+  rm -f "$file.tmp"
+}
+
+main() {
+  log "Preparing installed system by removing live user metadata for '$LIVE_USER'"
+
+  remove_user_line "$(target_path /etc/passwd)" "$LIVE_USER"
+  remove_user_line "$(target_path /etc/shadow)" "$LIVE_USER"
+  remove_user_line "$(target_path /etc/subuid)" "$LIVE_USER"
+  remove_user_line "$(target_path /etc/subgid)" "$LIVE_USER"
+  remove_group_member "$(target_path /etc/group)" "$LIVE_USER"
+  remove_group_member "$(target_path /etc/gshadow)" "$LIVE_USER"
+
+  rm -rf "$(target_path "/home/$LIVE_USER")" 2>/dev/null || true
+  rm -f "$(target_path /etc/systemd/system/sevenos-live-session.service)"
+  rm -f "$(target_path /etc/systemd/system/getty@tty1.service.d/20-sevenos-live-autologin.conf)"
+  rm -f "$(target_path /etc/sddm.conf.d/20-sevenos-live.conf)"
+  rm -f "$(target_path /usr/share/wayland-sessions/sevenos-live.desktop)"
+
+  log "Live user metadata cleanup completed without touching running live processes"
+}
+
+main "$@"

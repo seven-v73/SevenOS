@@ -71,6 +71,22 @@ seven-daemon cyberspace-plan --json
 seven-daemon events --json
 seven-daemon summary --json
 seven-daemon compact-bus --keep 5000 --json
+seven-daemon actions --json
+seven-daemon surfaces --json
+seven-daemon installer-flow --json
+seven-daemon update --json
+seven-daemon update-plan --json
+seven-daemon doctor-task --json
+seven-daemon experience --json
+seven-daemon profiles-status --json
+seven-daemon profile-gaps --json
+seven-daemon profile-plan --json
+seven-daemon profile-health --json
+seven-daemon packages-strategy --json
+seven-daemon packages-catalog --json
+seven-daemon packages-footprint --json
+seven-daemon action-plan core.health --json
+seven-daemon action-run core.health --json
 seven-daemon emit --source core --type event --message "SevenBus event"
 seven-daemon serve
 seven core install-service
@@ -102,11 +118,58 @@ command. It archives the current JSONL journal and rewrites the active journal
 with the most recent valid events. This keeps the current JSONL transport usable
 until typed local IPC replaces it.
 
+`seven-daemon actions --json` is the first native action contract. It exposes
+stable SevenOS intentions such as health, profile status, installer readiness,
+software planning, Server/Deploy planning and Windows compatibility planning.
+The goal is to let Settings, Hub, Doctor and Store ask the daemon what can be
+done, instead of each surface knowing a different script list.
+
+`seven-daemon surfaces --json` is the fast native surface contract. It checks
+that the essential SevenOS graphical entrypoints exist for Settings, Doctor,
+Store, Installer, Files, Reader, Terminal, Widgets, Notes, Hub, Home and
+Actions. The deeper `seven surfaces doctor` gate still owns legacy-screen,
+profile-awareness and visual consistency checks, but the daemon now gives UI
+surfaces a cheap runtime signal.
+
+`seven-daemon action-plan <id> --json` returns the policy and command metadata
+for one action. `seven-daemon action-run <id> --json` only executes read-only
+actions for now. State-changing actions are visible but blocked behind
+`confirmation-required` until the policy service owns authorization and
+rollback. This is the migration rule: Rust owns contracts and safe state first;
+scripts remain adapters until each workflow has a native service.
+
 `seven-daemon cyberspace --json` and `seven-daemon cyberspace-plan --json`
 turn Shield CyberSpace into a daemon-readable contract. The Bash surface still
 handles human commands and Hyprland dispatch, while Rust owns the context map,
 scope state and remediation plan that Hub, Server and future `seven-cyberd`
 will consume.
+
+`seven-daemon profiles-status --json`, `seven-daemon profile-gaps --json`,
+`seven-daemon profile-plan --json` and `seven-daemon profile-health --json`
+are the native Mini OS profile contracts. They keep the seven identities
+visible to Settings, Hub, Store and state snapshots without shelling through
+the older profile scripts for every refresh. The scripts still exist as human
+commands and compatibility adapters, but runtime surfaces should prefer these
+daemon contracts.
+
+`seven-waybar-profile` follows this rule too: the desktop profile indicator
+reads `seven-daemon profiles-status --json` first and only falls back to
+`seven profile status --json` when the daemon is unavailable. Fast shell
+surfaces should use this pattern so the desktop feels like a running system,
+not a collection of commands being relaunched on every paint.
+
+Seven Settings follows the same native-first path for software overview:
+the graphical "software status" panel reads `seven-daemon packages --json`
+first and only falls back to `sevenpkg status --json` when Core is unavailable.
+Package installation remains a SevenPkg workflow; package readiness and UI
+summary state are daemon-owned.
+
+The same split now covers the SevenPkg public model. `seven-daemon
+packages-strategy --json`, `seven-daemon packages-catalog --json` and
+`seven-daemon packages-footprint --json` expose the package strategy, app
+catalog and rootfs footprint as native state contracts. `sevenpkg` remains the
+transaction engine for installs, removals, helpers and profile package
+maintenance; Seven Core owns fast read models for UI and release gates.
 
 The current service is a user service:
 
@@ -128,6 +191,24 @@ seven core bus --json
 seven core snapshot --json
 seven core health --json
 seven core compact-bus --keep 5000 --json
+seven core actions --json
+seven core surfaces --json
+seven core installer-flow --json
+seven core update --json
+seven core update-plan --json
+seven core doctor-task --json
+seven core experience --json
+seven core profiles-status --json
+seven core profile-gaps --json
+seven core profile-plan --json
+seven core profile-health --json
+seven core packages-strategy --json
+seven core packages-catalog --json
+seven core packages-footprint --json
+seven core action-plan core.health --json
+seven core action-run core.health --json
+seven-daemon actions --json
+seven-daemon action-plan core.health --json
 seven core install-service
 seven core start
 ```

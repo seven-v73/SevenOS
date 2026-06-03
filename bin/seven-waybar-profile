@@ -29,16 +29,20 @@ resolve_root() {
 ROOT_DIR="$(resolve_root || true)"
 export SEVENOS_ROOT="${ROOT_DIR:-${SEVENOS_ROOT:-}}"
 
-if command -v seven >/dev/null 2>&1; then
-  seven_command=(seven)
+if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+  profile_command=("$ROOT_DIR/bin/seven-daemon" profiles-status --json)
+elif command -v seven-daemon >/dev/null 2>&1; then
+  profile_command=(seven-daemon profiles-status --json)
+elif command -v seven >/dev/null 2>&1; then
+  profile_command=(seven profile status --json)
 elif [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven" ]]; then
-  seven_command=("$ROOT_DIR/bin/seven")
+  profile_command=("$ROOT_DIR/bin/seven" profile status --json)
 else
   printf 'Profile MISS\n'
   exit 0
 fi
 
-profile_json="$(SEVENOS_DRY_RUN=0 "${seven_command[@]}" profile status --json 2>/dev/null || true)"
+profile_json="$(SEVENOS_DRY_RUN=0 "${profile_command[@]}" 2>/dev/null || true)"
 if [[ -z "$profile_json" ]]; then
   if [[ "${1:-}" == "json" ]]; then
     printf '{"text":"󰐃","tooltip":"SevenOS profiles are unavailable. Click opens profile center.","class":"miss"}\n'

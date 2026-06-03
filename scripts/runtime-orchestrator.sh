@@ -97,6 +97,11 @@ scheduler_payload() {
 }
 
 json_payload() {
+  if [[ "$ACTION" != "activate" && -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" runtime "$ACTION" "${ITEMS[@]}" --json
+    return
+  fi
+
   SEVENOS_ROOT="$ROOT_DIR" \
   ACTION="$ACTION" \
   ACTIVE_PROFILE="$(active_profile)" \

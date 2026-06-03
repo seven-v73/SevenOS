@@ -62,7 +62,9 @@ def run_json(command, fallback=None, timeout=20):
         return fallback
 
 
-profile_health = run_json([str(root / "bin/seven"), "profile", "health", "--json"], {"profiles": [], "summary": {}})
+profile_health = run_json([str(root / "bin/seven-daemon"), "profile-health", "--json"], {"profiles": [], "summary": {}})
+if not profile_health.get("profiles"):
+    profile_health = run_json([str(root / "bin/seven"), "profile", "health", "--json"], {"profiles": [], "summary": {}})
 bridge = run_json([str(root / "bin/seven"), "bridge", "graph", "--json"], {"nodes": [], "edges": []})
 if os.environ.get("SEVENOS_UNIVERSES_FROM_EXPERIENCE") == "1":
     missions = {"missions": {"items": [], "bridge_state": "embedded"}}
@@ -242,7 +244,7 @@ print("SevenOS Universe Plan")
 print("=====================")
 for item in data.get("universes", []):
     if not item.get("ready"):
-        print(f"- {item.get('title')}: {item.get('commands', ['seven profile health'])[0]}")
+        print(f"- {item.get('title')}: {item.get('commands', ['seven core profile-health'])[0]}")
 if all(item.get("ready") for item in data.get("universes", [])) and data.get("core", {}).get("ready"):
     print("All universes are ready. Use `seven missions` to orchestrate them.")
 PY

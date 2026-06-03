@@ -282,6 +282,13 @@ def last_action_text(data: dict) -> str:
 
 
 def current_profile() -> str:
+    native = run([str(ROOT / "bin" / "seven-daemon"), "experience", "--json"], timeout=0.6)
+    try:
+        profile = json.loads(native or "{}").get("profile", {}).get("key")
+        if profile:
+            return str(profile)
+    except json.JSONDecodeError:
+        pass
     text = run([str(ROOT / "profiles/profile-manager.sh"), "current", "--json"], timeout=1.0)
     try:
         return str(json.loads(text or "{}").get("key") or "equinox")

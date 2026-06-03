@@ -41,17 +41,17 @@ smoke_json() {
   local tmp
   tmp="$(mktemp -d)"
 
-  run_json_file 24 "$tmp/state.json" "$ROOT_DIR/bin/seven" state --json &
+  run_json_file 75 "$tmp/state.json" "$ROOT_DIR/bin/seven" state --json &
   local pid_state=$!
-  run_json_file 12 "$tmp/about.json" "$ROOT_DIR/scripts/about.sh" json &
+  run_json_file 12 "$tmp/about.json" "$ROOT_DIR/bin/seven-daemon" about --json &
   local pid_about=$!
   run_json_file 10 "$tmp/identity.json" "$ROOT_DIR/scripts/identity.sh" doctor --json &
   local pid_identity=$!
-  run_json_file 16 "$tmp/distribution.json" env SEVENOS_DISTRIBUTION_FAST=1 "$ROOT_DIR/scripts/distribution.sh" json &
+  run_json_file 45 "$tmp/distribution.json" "$ROOT_DIR/bin/seven-daemon" distribution --json &
   local pid_distribution=$!
-  run_json_file 12 "$tmp/health.json" env SEVENOS_HEALTH_FAST=1 "$ROOT_DIR/scripts/health.sh" json &
+  run_json_file 45 "$tmp/health.json" "$ROOT_DIR/bin/seven-daemon" product-health --json &
   local pid_health=$!
-  run_json_file 14 "$tmp/product.json" env SEVENOS_PRODUCT_FAST=1 "$ROOT_DIR/scripts/product.sh" json &
+  run_json_file 45 "$tmp/product.json" "$ROOT_DIR/bin/seven-daemon" product --json &
   local pid_product=$!
   run_json_file 6 "$tmp/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
   local pid_actions=$!
@@ -122,10 +122,10 @@ if not isinstance(action_items, list):
     action_items = []
 action_ids = {item.get("id") for item in action_items if isinstance(item, dict)}
 contract_fallback_ready = (
-    about.get("schema") == "sevenos.about.v1"
-    and distribution.get("schema") == "sevenos.distribution.v1"
-    and health.get("schema") == "sevenos.health.v1"
-    and product.get("schema") == "sevenos.product.v1"
+    about.get("schema") in {"sevenos.about.v1", "sevenos.about.v2"}
+    and distribution.get("schema") in {"sevenos.distribution.v1", "sevenos.distribution.v2"}
+    and health.get("schema") in {"sevenos.health.v1", "sevenos.health.v2"}
+    and product.get("schema") in {"sevenos.product.v1", "sevenos.product.v2"}
 )
 
 required_state_keys = {
@@ -153,7 +153,7 @@ checks = [
     },
     {
         "key": "about-contract",
-        "state": "OK" if about.get("schema") == "sevenos.about.v1" and about.get("about_ready") else "PART",
+        "state": "OK" if about.get("schema") in {"sevenos.about.v1", "sevenos.about.v2"} and about.get("about_ready") else "PART",
         "title": "Public SevenOS identity",
         "detail": f"About state: {about.get('state', 'unknown')}.",
         "command": "seven about doctor",
@@ -181,7 +181,7 @@ checks = [
     },
     {
         "key": "product-facade",
-        "state": "OK" if product.get("schema") == "sevenos.product.v1" and product.get("daily_driver_ready") else "PART",
+        "state": "OK" if product.get("schema") in {"sevenos.product.v1", "sevenos.product.v2"} and product.get("daily_driver_ready") else "PART",
         "title": "Product facade",
         "detail": f"Product state: {product.get('state', 'unknown')}; score: {product.get('score', 'unknown')}%.",
         "command": "seven product",

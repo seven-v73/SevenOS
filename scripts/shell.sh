@@ -119,18 +119,29 @@ json_string() {
 }
 
 core_health_json() {
+  local output=""
   if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
     if command -v timeout >/dev/null 2>&1; then
-      timeout "${SEVENOS_SHELL_HEALTH_TIMEOUT:-4s}" "$ROOT_DIR/bin/seven-daemon" health --json 2>/dev/null || printf '{"schema":"sevenos.daemon.health.v1","state":"PART","name":"seven-daemon","timeout":true,"checks":[]}'
+      output="$(timeout "${SEVENOS_SHELL_HEALTH_TIMEOUT:-4s}" "$ROOT_DIR/bin/seven-daemon" health --json 2>/dev/null || true)"
     else
-      "$ROOT_DIR/bin/seven-daemon" health --json 2>/dev/null || printf 'null'
+      output="$("$ROOT_DIR/bin/seven-daemon" health --json 2>/dev/null || true)"
+    fi
+    if printf '%s' "$output" | python -c 'import json,sys; json.load(sys.stdin)' >/dev/null 2>&1; then
+      printf '%s\n' "$output"
+    else
+      printf '{"schema":"sevenos.daemon.health.v1","state":"PART","name":"seven-daemon","timeout":true,"checks":[]}\n'
     fi
   else
-    printf 'null'
+    printf 'null\n'
   fi
 }
 
 status_json_uncached() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" shell-status --json
+    return
+  fi
+
   local runtime health
   runtime="$(runtime_state)"
   health="$(core_health_json)"

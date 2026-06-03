@@ -10,9 +10,9 @@ SevenOS graphical installer launcher
 Usage:
   seven-installer [open|gui|status|portal|guide|live-status|live-notify|live-reset|live-retry] [--json]
 
-The live ISO opens the SevenOS portal first so Wi-Fi, disks and readiness are
-visible before any destructive disk step. The explicit open action launches
-Calamares once and focuses an existing installer window on repeated clicks.
+The live ISO opens Calamares directly for the stable install path, offers Wi-Fi
+when the machine is offline, and keeps the SevenOS portal as a graphical
+fallback. Repeated clicks focus the existing installer instead of duplicating it.
 EOF
 }
 

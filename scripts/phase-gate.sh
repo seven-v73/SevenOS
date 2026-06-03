@@ -7,6 +7,7 @@ source "$ROOT_DIR/scripts/lib.sh"
 failures=0
 warnings=0
 JSON_OUTPUT=0
+FULL_AUDIT=0
 
 section() {
   printf '\n== %s ==\n' "$1"
@@ -44,7 +45,29 @@ run_advisory() {
 }
 
 readiness_summary() {
-  "$ROOT_DIR/scripts/readiness.sh" | sed -n '/== Category Scores ==/,$p'
+  "$ROOT_DIR/bin/seven-daemon" readiness --json | python -c '
+import json
+import sys
+
+data = json.load(sys.stdin)
+print(f"State: {data.get('state', 'unknown')}")
+print(f"Score: {data.get('percent', data.get('score', 0))}%")
+print(f"Source: {data.get('writer', 'unknown')}")
+print()
+print("Categories:")
+categories = data.get("categories", {})
+if isinstance(categories, dict):
+    iterator = categories.items()
+else:
+    iterator = [(item.get("key", "gate"), item) for item in categories if isinstance(item, dict)]
+for key, item in iterator:
+    if not isinstance(item, dict):
+        continue
+    title = item.get("title") or key or "Gate"
+    actual = item.get("percent", item.get("actual", item.get("score", 0)))
+    state = item.get("state", "unknown")
+    print(f"- {title}: {actual}% ({state})")
+'
 }
 
 git_summary() {
@@ -87,15 +110,15 @@ def command_json(command, fallback):
         return fallback
 
 
-readiness = command_json([os.path.join(ROOT, "scripts/readiness.sh"), "--json"], {"percent": 0})
-experience = command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"], {"percent": 0})
+readiness = command_json([os.path.join(ROOT, "bin/seven-daemon"), "readiness", "--json"], {"percent": 0})
+experience = command_json([os.path.join(ROOT, "bin/seven-daemon"), "experience", "--json"], {"percent": 0})
 control = command_json([os.path.join(ROOT, "scripts/control-plane.sh"), "--json"], {"overall": 0, "summary": {}, "actions": []})
 shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"], {"percent": 0, "posture": "unknown"})
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}})
 atlas = command_json([os.path.join(ROOT, "bin/seven"), "atlas", "status", "--json"], {"state": "unknown", "missing_required": []})
 installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
-profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"summary": {"total": 0}, "next": []})
-packages = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"summary": {"total": 0}, "next": []})
+profiles = command_json([os.path.join(ROOT, "bin/seven-daemon"), "profile-plan", "--json"], {"summary": {"total": 0}, "next": []})
+packages = command_json([os.path.join(ROOT, "bin/seven-daemon"), "packages-plan", "--json"], {"summary": {"total": 0}, "next": []})
 identity = command_json([os.path.join(ROOT, "scripts/identity.sh"), "current", "--json"], {"pack": {"key": "unknown"}})
 stack = command_json([os.path.join(ROOT, "scripts/stack.sh"), "--json"], {"summary": {"checks_ok": 0, "checks_total": 1}})
 core = command_json([os.path.join(ROOT, "scripts/core.sh"), "status", "--json"], {"state": "MISS", "components": []})
@@ -142,7 +165,7 @@ stack_total = stack_summary.get("checks_total", 1)
 core_state = core.get("state", "MISS")
 
 gates = [
-    gate("readiness", "OS readiness", readiness.get("percent", 0), 85, "seven readiness", "block", "Minimum product readiness before B3."),
+    gate("readiness", "OS readiness", readiness.get("percent", 0), 85, "seven core readiness", "block", "Minimum product readiness before B3."),
     gate("experience", "User experience", experience.get("percent", 0), 85, "seven experience", "block", "Shell, Hub, actions and onboarding must feel coherent."),
     gate("control", "Control plane", control.get("overall", 0), 65, "seven control", "block", "Seven Hub needs a useful prioritized decision contract."),
     gate("shield", "Trust posture", shield.get("percent", 0), 70, "seven shield plan", "block", "Security must be visible and default-safe before a higher phase."),
@@ -183,7 +206,7 @@ gates = [
         "actual": profile_total,
         "target": 0,
         "band": "open" if profile_total else "strong",
-        "command": "seven profile plan",
+        "command": "seven core profile-plan",
         "detail": "Profiles must keep moving from decorative modes to complete workspaces.",
     },
     {
@@ -193,7 +216,7 @@ gates = [
         "actual": package_blocking,
         "target": 0,
         "band": "open" if package_blocking else "strong",
-        "command": "sevenpkg plan",
+        "command": "seven core packages-plan",
         "detail": "SevenPkg must explain critical and high-priority app delivery gaps. Medium bundles stay optional.",
     },
     {
@@ -248,9 +271,61 @@ print(json.dumps({
 PY
 }
 
+native_human_gate() {
+  local tmp
+  tmp="$(mktemp)"
+  trap 'rm -f "$tmp"' RETURN
+  "$ROOT_DIR/bin/seven-daemon" phase-gate --json > "$tmp"
+  python - "$tmp" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    data = json.load(handle)
+summary = data.get("summary") or {}
+gates = data.get("gates") or []
+decision = data.get("decision", "unknown")
+
+print("SevenOS Phase Gate")
+print("==================")
+print("Mode: native runtime")
+print(f"Decision: {decision}")
+print(f"Phase: {data.get('phase', 'unknown')} -> {data.get('next_phase', 'unknown')}")
+print(f"Checks: {summary.get('pass', 0)} pass, {summary.get('warn', 0)} warn, {summary.get('block', 0)} block / {summary.get('total', len(gates))}")
+print()
+
+print("Gates")
+for item in gates:
+    state = item.get("state", "UNKNOWN")
+    title = item.get("title", item.get("key", "Gate"))
+    actual = item.get("actual", "?")
+    target = item.get("target", "?")
+    detail = item.get("detail", "")
+    command = item.get("command", "")
+    marker = "OK" if state == "PASS" else "WARN" if state == "WARN" else "BLOCK"
+    print(f"[{marker}] {title}: {actual} / {target}")
+    if detail:
+        print(f"      {detail}")
+    if command and state != "PASS":
+        print(f"      Next: {command}")
+
+next_commands = data.get("next_commands") or []
+if next_commands:
+    print()
+    print("Next useful commands")
+    for command in next_commands:
+        print(f"  {command}")
+
+print()
+print("Deep audit")
+print("  seven phase-gate --full")
+PY
+}
+
 for arg in "$@"; do
   case "$arg" in
     --json|json) JSON_OUTPUT=1 ;;
+    --full|full) FULL_AUDIT=1 ;;
     -h|--help|help)
       cat <<'EOF'
 SevenOS Phase Gate
@@ -258,10 +333,12 @@ SevenOS Phase Gate
 Usage:
   seven phase-gate
   seven phase-gate --json
-  ./scripts/phase-gate.sh [--json]
+  seven phase-gate --full
+  ./scripts/phase-gate.sh [--json|--full]
 
-The human gate runs full repository checks. The JSON gate is a fast product
-readiness contract for Seven Hub, Seven Server and release planning.
+By default the gate reads the daemon-owned SevenOS phase contract, so it is
+fast enough for Settings, Helper, Doctor and daily use. Use --full for the
+older long developer audit before a release freeze.
 EOF
       exit 0
       ;;
@@ -274,8 +351,14 @@ if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   exit 0
 fi
 
+if [[ "$FULL_AUDIT" -ne 1 ]]; then
+  native_human_gate
+  exit 0
+fi
+
 printf 'SevenOS Phase Gate\n'
 printf '==================\n'
+printf 'Mode: full developer audit\n'
 printf 'Purpose: decide whether the current foundation is ready for the next phase.\n'
 
 section "Required Checks"
@@ -284,7 +367,7 @@ run_required "UX coherence checks" "$ROOT_DIR/scripts/ux-check.sh"
 run_required "Architecture foundation doctor" "$ROOT_DIR/scripts/architecture.sh" doctor
 run_required "Installer stack doctor" "$ROOT_DIR/scripts/installer-stack.sh" doctor
 run_required "Seven Hub GUI scaffold doctor" "$ROOT_DIR/seven-hub/gui-stack.sh" doctor
-run_required "Readiness JSON export" "$ROOT_DIR/scripts/readiness.sh" --json
+run_required "Readiness JSON export" "$ROOT_DIR/bin/seven-daemon" readiness --json
 run_required "Ecosystem foundation doctor" "$ROOT_DIR/scripts/ecosystem.sh" doctor
 run_required "Deployment planner dry-run" env SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" plan "$ROOT_DIR"
 

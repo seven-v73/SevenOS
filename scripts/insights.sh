@@ -201,7 +201,7 @@ if package_actions:
         "high" if (packages_plan.get("summary") or {}).get("critical", 0) else "medium",
         "Complete software layer",
         f"{package_actions} software actions are open across SevenPkg, Flatpak and profile app delivery.",
-        next_package.get("command", "sevenpkg plan"),
+        next_package.get("command", "seven core packages-plan"),
         "apps",
         "packages",
     )

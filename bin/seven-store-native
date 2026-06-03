@@ -466,7 +466,9 @@ class SevenStore(Gtk.Application):
 
     def profiles_payload(self) -> list[dict]:
         if self._profiles_cache is None:
-            payload = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
+            payload = run_json([str(ROOT / "bin/seven-daemon"), "profiles-status", "--json"], [])
+            if not isinstance(payload, list):
+                payload = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
             self._profiles_cache = payload if isinstance(payload, list) else []
         return self._profiles_cache
 
@@ -1136,7 +1138,7 @@ class SevenStore(Gtk.Application):
         self.section("Safe actions")
         for card in (
             self.action_card("Preview system updates", "Show package and Flatpak update candidates without applying changes.", ["PREVIEW"], "software-update-available", "checkupdates 2>/dev/null || true; printf '\\nFlatpak updates:\\n'; flatpak remote-ls --updates 2>/dev/null || true"),
-            self.action_card("SevenOS package status", "Inspect installed/missing SevenOS package groups.", ["LOCAL"], "preferences-system", "sevenpkg status"),
+            self.action_card("SevenOS package status", "Inspect installed/missing SevenOS package groups.", ["LOCAL"], "preferences-system", "seven core packages"),
             self.action_card("Flatpak status", "Inspect sandboxed app source state.", ["SANDBOXED"], "security-high", "seven flatpak status || flatpak list"),
             self.action_card("Store doctor", "Run store readiness checks before broad updates.", ["DOCTOR"], "system-search", "seven store doctor"),
         ):
@@ -1212,7 +1214,7 @@ class SevenStore(Gtk.Application):
         for card in (
             self.action_card("Sandboxed apps", "List Flatpak apps. Use Flatseal when installed for detailed permission editing.", ["FLATPAK", "SANDBOXED"], "security-high", "flatpak list --app; printf '\\nTip: install Flatseal for visual permission control.\\n'"),
             self.action_card("Local launchers", "Show desktop apps visible to SevenStore and Launchpad.", ["LOCAL"], "emblem-default", "seven store library"),
-            self.action_card("System packages", "Inspect SevenOS package groups that may affect the whole OS.", ["SYSTEM", "ADMIN"], "preferences-system", "sevenpkg status"),
+            self.action_card("System packages", "Inspect SevenOS package groups that may affect the whole OS.", ["SYSTEM", "ADMIN"], "preferences-system", "seven core packages"),
         ):
             self.content.pack_start(card, False, False, 0)
         if sandboxed:

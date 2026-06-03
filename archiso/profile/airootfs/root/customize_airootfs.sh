@@ -60,6 +60,7 @@ install -Dm755 /opt/SevenOS/bin/seven-country /usr/local/bin/seven-country
 install -Dm755 /opt/SevenOS/bin/seven-installer /usr/local/bin/seven-installer
 install -Dm755 /opt/SevenOS/bin/seven-installer-native /usr/local/bin/seven-installer-native
 install -Dm755 /opt/SevenOS/bin/seven-calamares-finalize /usr/local/bin/seven-calamares-finalize
+install -Dm755 /opt/SevenOS/bin/seven-calamares-livecleanup /usr/local/bin/seven-calamares-livecleanup
 install -Dm755 /opt/SevenOS/bin/seven-power /usr/local/bin/seven-power
 install -Dm755 /opt/SevenOS/bin/seven-wifi /usr/local/bin/seven-wifi
 install -Dm755 /opt/SevenOS/bin/seven-welcome /usr/local/bin/seven-welcome

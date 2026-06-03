@@ -57,6 +57,17 @@ preflight_graphical_profile() {
     fi
   }
 
+  reject_repo() {
+    local label="$1"
+    local path="$2"
+    local pattern="$3"
+    if [[ -s "$ROOT_DIR/$path" ]] && grep -Eq -- "$pattern" "$ROOT_DIR/$path"; then
+      log_error "SevenOS ISO graphical preflight failed: $label"
+      log_info "Rejected pattern in $path: $pattern"
+      failures=$((failures + 1))
+    fi
+  }
+
   check_repo() {
     local label="$1"
     local path="$2"
@@ -75,18 +86,28 @@ preflight_graphical_profile() {
     "efiboot/loader/entries/01-sevenos-live.conf" "systemd.show_status=false"
   check_profile "UEFI boot must suppress noisy kernel errors in the normal route" \
     "efiboot/loader/entries/01-sevenos-live.conf" "loglevel=0"
+  check_profile "UEFI boot must not wait for systemd gpt-auto-root" \
+    "efiboot/loader/entries/01-sevenos-live.conf" "systemd.gpt_auto=0"
   check_profile "BIOS boot must be quiet and branded" \
     "syslinux/archiso_sys-linux.cfg" "quiet splash"
   check_profile "BIOS boot must suppress noisy kernel errors in the normal route" \
     "syslinux/archiso_sys-linux.cfg" "loglevel=0"
+  check_profile "BIOS boot must not wait for systemd gpt-auto-root" \
+    "syslinux/archiso_sys-linux.cfg" "systemd.gpt_auto=0"
   check_profile "SevenOS live service must start the graphical session directly" \
     "airootfs/etc/systemd/system/sevenos-live-session.service" "ExecStart=/usr/local/bin/sevenos-live-session"
   check_profile "SevenOS live session must use the live Hyprland fallback profile" \
     "airootfs/usr/local/bin/sevenos-live-session" "live-hyprland.conf"
+  check_profile "SevenOS live session must start the branded graphical desktop first" \
+    "airootfs/usr/local/bin/sevenos-live-session" "starting SevenOS graphical live desktop"
+  reject_profile "SevenOS live session must not use the old fragile installer kiosk" \
+    "airootfs/usr/local/bin/sevenos-live-session" "cage -s -- seven-installer open"
   check_profile "SevenOS live profile must relaunch the installer if no window appears" \
     "airootfs/usr/local/bin/sevenos-live-guard" "open_rescue_terminal"
   check_profile "SevenOS live service must run as the live user" \
     "airootfs/etc/systemd/system/sevenos-live-session.service" "User=seven"
+  check_profile "SevenOS live service must own tty1 strongly enough to replace boot text" \
+    "airootfs/etc/systemd/system/sevenos-live-session.service" "StandardInput=tty-force"
   check_profile "SevenOS live service must keep logs in the journal instead of the console" \
     "airootfs/etc/systemd/system/sevenos-live-session.service" "StandardOutput=journal"
   check_profile "Live build must enable the SevenOS live service" \
@@ -99,12 +120,14 @@ preflight_graphical_profile() {
     "syslinux/archiso_sys-linux.cfg" "Safe ^Graphics"
   check_profile "Wayland session file must stay available for installed display managers" \
     "airootfs/usr/share/wayland-sessions/sevenos-live.desktop" "sevenos-live-session"
-  check_profile "Live session must open the graphical installer portal" \
-    "airootfs/usr/local/bin/sevenos-live-ready" "seven-installer gui"
-  check_profile "Live session must open the SevenOS portal before Calamares" \
-    "airootfs/usr/local/bin/sevenos-live-ready" "Opening SevenOS portal before Calamares"
+  check_profile "Live session must open Calamares directly for a stable install path" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "Opening Calamares directly for a stable graphical installation"
+  check_profile "Live session must keep a SevenOS portal fallback if Calamares exits early" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "Calamares did not stabilize; trying the SevenOS portal fallback"
   check_profile "Live session must offer a network choice before installation when offline" \
     "airootfs/usr/local/bin/sevenos-live-ready" "Network is not connected; opening SevenOS network choice before installation."
+  check_profile "Live session must keep the portal open when Wi-Fi is not connected" \
+    "airootfs/usr/local/bin/sevenos-live-ready" "Opening SevenOS installer portal so Wi-Fi, offline install, disks and logs stay available."
   check_profile "Live readiness must confirm real installer windows, not only process ids" \
     "airootfs/usr/local/bin/sevenos-live-ready" "installer_window_visible"
   check_repo "Live installer launcher must focus an existing installer instead of duplicating windows" \
@@ -129,8 +152,8 @@ preflight_graphical_profile() {
     "airootfs/usr/share/applications/seven-installer.desktop" "Desktop Action Disks"
   check_profile "Live installer desktop entry must expose installation logs" \
     "airootfs/usr/share/applications/seven-installer.desktop" "Desktop Action Logs"
-  check_repo "Live installer smoke test must verify the portal-first route" \
-    "scripts/live-installer-smoke.sh" "SevenOS installer portal is interactive"
+  check_repo "Live installer smoke test must verify the direct Calamares route" \
+    "scripts/live-installer-smoke.sh" "Calamares installer is interactive"
   check_profile "Live guard must count installer windows explicitly without launching a duplicate installer" \
     "airootfs/usr/local/bin/sevenos-live-guard" "installer_window_count"
   check_profile "Live session must show a SevenOS background before installer windows appear" \
@@ -145,6 +168,8 @@ preflight_graphical_profile() {
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/unpackfs.conf"
   check_profile "Live build must install Calamares live cleanup configuration" \
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/shellprocess-livecleanup.conf"
+  check_profile "Live build must install the safe Calamares live cleanup helper" \
+    "airootfs/root/customize_airootfs.sh" "seven-calamares-livecleanup"
   check_profile "Live build must install Calamares user password policy" \
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/users.conf"
   check_profile "Live build must install Calamares SevenOS branding" \
@@ -163,6 +188,12 @@ preflight_graphical_profile() {
     "airootfs/etc/sevenos/live-hyprland.conf" '^[[:space:]]*windowrule'
   reject_profile "Live Hyprland config must not include custom style keys" \
     "airootfs/etc/sevenos/live-hyprland.conf" '^[[:space:]]*style[[:space:]]*='
+  reject_repo "Calamares live cleanup must not kill the live installer session" \
+    "installer/calamares/modules/shellprocess-livecleanup.conf" 'pkill[[:space:]].*-u[[:space:]]+seven'
+  reject_repo "Calamares display manager setup must be handled by SevenOS finalizer" \
+    "installer/calamares/settings.conf" '^[[:space:]]*-[[:space:]]*displaymanager[[:space:]]*$'
+  reject_repo "Calamares network setup must be handled by SevenOS finalizer" \
+    "installer/calamares/settings.conf" '^[[:space:]]*-[[:space:]]*networkcfg[[:space:]]*$'
 
   check_repo "Calamares must use the standard shellprocess module" \
     "installer/calamares/settings.conf" "- shellprocess"
@@ -176,8 +207,14 @@ preflight_graphical_profile() {
     "installer/calamares/modules/unpackfs.conf" "sourcefs: \"file\""
   check_repo "Calamares shellprocess must finalize SevenOS through the guarded wrapper" \
     "installer/calamares/modules/shellprocess.conf" "/opt/SevenOS/bin/seven-calamares-finalize"
-  check_repo "Calamares live cleanup must remove the live user before users module" \
-    "installer/calamares/modules/shellprocess-livecleanup.conf" "userdel -r seven"
+  check_repo "Calamares finalizer must run through Bash to avoid executable-bit failures" \
+    "installer/calamares/modules/shellprocess.conf" "/bin/bash -lc"
+  check_repo "Calamares live cleanup must not kill running live-session processes" \
+    "installer/calamares/modules/shellprocess-livecleanup.conf" "seven-calamares-livecleanup"
+  check_repo "Calamares live cleanup must run through Bash to avoid executable-bit failures" \
+    "installer/calamares/modules/shellprocess-livecleanup.conf" "/bin/bash -lc"
+  check_repo "Calamares live cleanup helper must remove live metadata offline" \
+    "bin/seven-calamares-livecleanup" "without touching running live processes"
   check_repo "Calamares users must accept any non-empty password" \
     "installer/calamares/modules/users.conf" "minLength: 1"
   check_repo "Calamares users must allow weak passwords by default" \
@@ -186,6 +223,14 @@ preflight_graphical_profile() {
     "bin/seven-calamares-finalize" "/var/log/sevenos-install.log"
   check_repo "Calamares finalizer must remove live ISO services from installed systems" \
     "bin/seven-calamares-finalize" "Clean live ISO residue"
+  check_repo "Calamares finalizer must configure NetworkManager safely" \
+    "bin/seven-calamares-finalize" "Configure network stack"
+  check_repo "Calamares finalizer must configure SevenOS display login safely" \
+    "bin/seven-calamares-finalize" "Configure display stack"
+  check_repo "Calamares finalizer must stay offline-first after unpackfs" \
+    "bin/seven-calamares-finalize" "skipping network package installs during Calamares finalization"
+  reject_repo "Calamares finalizer must not reinstall the base system over the network" \
+    "bin/seven-calamares-finalize" 'install\\.sh"[[:space:]]+base|install\\.sh[[:space:]]+base'
   check_repo "Calamares branding must define the SevenOS product name" \
     "installer/calamares/branding/sevenos/branding.desc" "productName: SevenOS"
   check_repo "Calamares branding must define a sidebar contract" \
@@ -252,6 +297,19 @@ delete_old_isos() {
     return 0
   fi
   run_cmd sudo find "$OUT_DIR" -maxdepth 1 -type f -name '*.iso' -delete
+}
+
+restore_output_ownership() {
+  is_dry_run && return 0
+  local user_name group_name
+  user_name="${SUDO_USER:-${USER:-}}"
+  if [[ -z "$user_name" || "$user_name" == "root" ]]; then
+    user_name="$(id -un)"
+  fi
+  group_name="$(id -gn "$user_name" 2>/dev/null || printf '%s' "$user_name")"
+  if [[ -n "$user_name" && "$user_name" != "root" ]]; then
+    run_cmd sudo chown -R "$user_name:$group_name" "$OUT_DIR"
+  fi
 }
 
 for arg in "$@"; do
@@ -345,6 +403,7 @@ run_cmd rsync -a \
 
 log_info "Building ISO with mkarchiso..."
 run_cmd sudo mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" "$PROFILE_BUILD"
+restore_output_ownership
 
 if ! is_dry_run && ! find "$OUT_DIR" -maxdepth 1 -type f -name '*.iso' -print -quit | grep -q .; then
   log_error "mkarchiso completed, but no ISO file was produced in: $OUT_DIR"

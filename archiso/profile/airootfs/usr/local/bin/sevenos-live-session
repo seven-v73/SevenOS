@@ -3,11 +3,13 @@ set -Eeuo pipefail
 
 export SEVENOS_ROOT="${SEVENOS_ROOT:-/opt/SevenOS}"
 export SEVENOS_LIVE_SESSION=1
-export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-Hyprland}"
-export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-SevenOS}"
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-SevenOS}"
+export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-SevenOS-Installer}"
 export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
 export TERMINAL="${TERMINAL:-seven-terminal}"
 export SEVENOS_TERMINAL="${SEVENOS_TERMINAL:-seven-terminal}"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
+export GDK_BACKEND="${GDK_BACKEND:-wayland,x11}"
 
 read_language_value() {
   local key="$1"
@@ -67,7 +69,10 @@ if command -v dbus-update-activation-environment >/dev/null 2>&1; then
     LANG LANGUAGE LC_MESSAGES TERMINAL SEVENOS_TERMINAL >/dev/null 2>&1 || true
 fi
 
-printf '[sevenos-live-session] starting Hyprland\n' >>"$log_file"
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_DESKTOP=SevenOS
+
+printf '[sevenos-live-session] starting SevenOS graphical live desktop\n' >>"$log_file"
 if command -v Hyprland >/dev/null 2>&1; then
   if [[ -r /etc/sevenos/live-hyprland.conf ]]; then
     Hyprland -c /etc/sevenos/live-hyprland.conf >>"$log_file" 2>&1 && exit 0

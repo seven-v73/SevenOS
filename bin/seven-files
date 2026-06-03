@@ -529,6 +529,36 @@ checks.append({
     "detail": "selection controls keep a stable bottom band",
 })
 checks.append({
+    "key": "stable-window-size",
+    "ok": "STABLE_WINDOW_SIZE = DEFAULT_WINDOW_SIZE" in native_text and '"restore": False' in native_text,
+    "detail": "saved sessions restore tabs without forcing a large window",
+})
+checks.append({
+    "key": "no-preview-autogrow",
+    "ok": "Inspector available in a wider window" in native_text and "window.resize(max(COMFORT_WINDOW_SIZE" not in native_text,
+    "detail": "preview inspector no longer auto-expands the window",
+})
+checks.append({
+    "key": "deferred-first-render",
+    "ok": "STARTUP_RENDER_DELAY_MS" in native_text and "initial_render" in native_text and "GLib.timeout_add(STARTUP_RENDER_DELAY_MS" in native_text,
+    "detail": "window appears before the first directory render",
+})
+checks.append({
+    "key": "render-time-budget",
+    "ok": "RENDER_TIME_BUDGET_MS" in native_text and "render_time_budget" in native_text and "time.monotonic()" in native_text,
+    "detail": "large folders render in short UI-safe chunks",
+})
+checks.append({
+    "key": "deferred-thumbnails",
+    "ok": "PREVIEW_THUMBNAIL_DEFER_MS" in native_text and "thumbnail_defer_state" in native_text and "load_tile_thumbnail" in native_text,
+    "detail": "image, PDF and video thumbnails are loaded after the grid is responsive",
+})
+checks.append({
+    "key": "bounded-preview-count",
+    "ok": "truncated_count" in native_text and "with os.scandir(target)" in native_text and "1000" in native_text,
+    "detail": "folder inspector avoids unbounded directory counts",
+})
+checks.append({
     "key": "large-folder-soft-limit",
     "ok": "SCAN_SOFT_LIMIT" in native_text and "os.scandir" in native_text,
     "detail": "large folders use a bounded first scan",
@@ -537,6 +567,56 @@ checks.append({
     "key": "drive-error-feedback",
     "ok": "drive_error_state" in native_text and "show_drive_error_details" in native_text,
     "detail": "drive failures keep visible details in the drive panel",
+})
+checks.append({
+    "key": "disk-image-mount",
+    "ok": "DISK_IMAGE_SUFFIXES" in native_text and "mount_disk_image" in native_text and "loop-setup" in native_text and "Mount Disk Image" in native_text,
+    "detail": "ISO/IMG files can be mounted and opened from Seven Files",
+})
+checks.append({
+    "key": "usb-writer-bridge",
+    "ok": "open_usb_writer_for_image" in native_text and "seven-usb-writer" in native_text and "Write to USB" in native_text,
+    "detail": "ISO/IMG files can be sent to the native SevenOS USB Writer",
+})
+checks.append({
+    "key": "disk-image-sheet",
+    "ok": "show_disk_image_sheet" in native_text and "usb_writer_status" in native_text and "Copy SHA256" in native_text and "Prepare Disk Image" in native_text,
+    "detail": "ISO/IMG files expose a native preparation sheet with hash, mount and USB actions",
+})
+checks.append({
+    "key": "disk-image-checksum",
+    "ok": "checksum_sidecar_for" in native_text and "verify_disk_image_checksum" in native_text and "Verify Checksum" in native_text and "Checksum mismatch" in native_text,
+    "detail": "ISO/IMG files can verify SHA256 sidecars before mounting or writing",
+})
+checks.append({
+    "key": "disk-image-preview",
+    "ok": "System image detected" in native_text and "Prepare, verify, mount or write this image" in native_text and "is_disk_image_file(target)" in native_text,
+    "detail": "ISO/IMG files get a focused system preview instead of generic file actions",
+})
+checks.append({
+    "key": "system-access-state",
+    "ok": "access_state" in native_text and "is_system_path" in native_text and "files-system-chip" in native_text,
+    "detail": "system, read-only and writable locations are surfaced in the path context",
+})
+checks.append({
+    "key": "access-banner",
+    "ok": "update_access_banner" in native_text and "files-access-banner" in native_text and "Read-only" in native_text and "System location" in native_text,
+    "detail": "special locations expose a compact access banner instead of failing silently",
+})
+checks.append({
+    "key": "permission-recovery",
+    "ok": "show_system_permission_dialog" in native_text and "ensure_writable_for_action" in native_text and "Folder Access Status" in native_text and "sudo chmod u+w" not in native_text,
+    "detail": "permission failures become guided recovery actions instead of silent errors",
+})
+checks.append({
+    "key": "system-navigation",
+    "ok": '"trash://"' in native_text and '"seven://drive-panel"' in native_text and 'Path("/")' in native_text and "System Terminal Here" in native_text,
+    "detail": "sidebar and context menus expose trash, system root and drive management",
+})
+checks.append({
+    "key": "safe-admin-guidance",
+    "ok": "Copy Safe Command" in native_text and "cd {shlex.quote(str(workdir))} && sudo -v" in native_text,
+    "detail": "admin guidance prepares authorization without changing system permissions",
 })
 
 prefs_state = "missing"

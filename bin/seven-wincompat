@@ -38,6 +38,8 @@ Usage:
   seven-wincompat status [--json]
   seven-wincompat requirements [--json]
   seven-wincompat integrate [--json]
+  seven-wincompat apps [--json]
+  seven-wincompat launchers [--json]
   seven-wincompat plan FILE [--json]
   seven-wincompat run FILE [--engine auto|wine|bottles|lutris] [--dry-run]
   seven-wincompat pin FILE [--name NAME] [--engine auto|wine|bottles|lutris]
@@ -341,10 +343,190 @@ StartupNotify=true
 EOF
 }
 
+installed_apps_json() {
+  python - "$HOME" <<'PY'
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+
+home = Path(sys.argv[1])
+
+roots = []
+roots.append(("wine", "default", home / ".wine" / "drive_c"))
+roots.append(("wine", "sevenos-default", home / ".local/share/sevenos/windows/prefixes/default/drive_c"))
+bottles_root = home / ".var/app/com.usebottles.bottles/data/bottles/bottles"
+if bottles_root.exists():
+    for bottle in sorted(bottles_root.iterdir()):
+        drive = bottle / "drive_c"
+        if drive.exists():
+            roots.append(("bottles", bottle.name, drive))
+native_bottles_root = home / ".local/share/bottles/bottles"
+if native_bottles_root.exists():
+    for bottle in sorted(native_bottles_root.iterdir()):
+        drive = bottle / "drive_c"
+        if drive.exists():
+            roots.append(("bottles", bottle.name, drive))
+lutris_root = home / ".local/share/lutris"
+if lutris_root.exists():
+    for drive in lutris_root.glob("**/drive_c"):
+        roots.append(("lutris", drive.parent.name or "lutris", drive))
+
+skip_parts = {
+    "windows", "system32", "syswow64", "winsxs", "mono", "temp", "tmp",
+    "appdata", "programdata", "common files", "internet explorer",
+    "windows defender", "microsoft shared", "templates", "runners",
+    "pluggabletransports", "windows media player", "windows nt",
+}
+skip_names = {
+    "unins000.exe", "uninstall.exe", "setup.exe", "installer.exe", "update.exe",
+    "updater.exe", "crashreporter.exe", "plugin-container.exe", "nmhproxy.exe",
+    "tor.exe", "wineboot.exe", "winecfg.exe", "notepad.exe", "regedit.exe",
+    "cmd.exe", "explorer.exe",
+}
+
+def looks_hidden_system(path: Path) -> bool:
+    lowered = [part.lower() for part in path.parts]
+    joined = "/".join(lowered)
+    if any(part in {"templates", "runners", "pluggabletransports", "windows media player", "windows nt"} for part in lowered):
+        return True
+    if "/desktop/" not in joined and "/program files/" not in joined and "/program files (x86)/" not in joined:
+        return True
+    if "/program files/common files/" in joined or "/program files (x86)/common files/" in joined:
+        return True
+    if "/program files/internet explorer/" in joined or "/program files (x86)/internet explorer/" in joined:
+        return True
+    if any(part in skip_parts for part in lowered):
+        # Desktop shortcuts and installed app folders under user Desktop are useful.
+        if "/desktop/" not in joined and "/program files/" not in joined and "/program files (x86)/" not in joined:
+            return True
+    name = path.name.lower()
+    if name in skip_names:
+        return True
+    if name in {"integratedoffice.exe", "officeclicktorun.exe", "officec2rclient.exe"}:
+        return True
+    if "tor browser" in lowered and name != "firefox.exe":
+        return True
+    if name.startswith(("vc_redist", "vcredist", "dxsetup", "dotnetfx")):
+        return True
+    if name.endswith(("crashpad_handler.exe", "maintenanceservice.exe")):
+        return True
+    return False
+
+def app_name(path: Path) -> str:
+    parts = list(path.parts)
+    lowered = [p.lower() for p in parts]
+    if "tor browser" in lowered and path.name.lower() == "firefox.exe":
+        return "Tor Browser"
+    for marker in ("Program Files", "Program Files (x86)", "Desktop"):
+        if marker in parts:
+            idx = parts.index(marker)
+            if idx + 1 < len(parts):
+                candidate = parts[idx + 1]
+                if candidate and candidate.lower() not in {"browser", "bin"}:
+                    return candidate
+    return path.stem.replace("_", " ").replace("-", " ").strip().title() or path.stem
+
+apps = []
+seen = set()
+for engine, scope, root in roots:
+    if not root.exists():
+        continue
+    for exe in root.rglob("*.exe"):
+        try:
+            if looks_hidden_system(exe):
+                continue
+            real = str(exe.resolve())
+        except Exception:
+            real = str(exe)
+        key = real.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        name = app_name(exe)
+        app_id = hashlib.sha256(real.encode("utf-8")).hexdigest()[:16]
+        apps.append({
+            "id": f"seven-wincompat-{app_id}",
+            "name": name,
+            "engine": engine,
+            "scope": scope,
+            "file": real,
+            "desktop_id": f"seven-wincompat-{app_id}.desktop",
+        })
+
+apps.sort(key=lambda item: (item["name"].lower(), item["engine"], item["scope"]))
+print(json.dumps({
+    "schema": "sevenos.wincompat.apps.v1",
+    "state": "ready",
+    "count": len(apps),
+    "apps": apps,
+}, ensure_ascii=False, indent=2))
+PY
+}
+
+write_app_launchers() {
+  local payload
+  payload="$(installed_apps_json)"
+  python - "$payload" "${XDG_DATA_HOME:-$HOME/.local/share}/applications" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+payload = json.loads(sys.argv[1])
+app_dir = Path(sys.argv[2])
+app_dir.mkdir(parents=True, exist_ok=True)
+
+def escape_desktop(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("\n", " ").replace('"', '\\"')
+
+written = []
+for app in payload.get("apps", []):
+    file_path = app.get("file", "")
+    if not file_path:
+        continue
+    engine = app.get("engine") or "auto"
+    name = escape_desktop(app.get("name") or Path(file_path).stem)
+    desktop_id = app.get("desktop_id") or f"{app.get('id', 'seven-wincompat-app')}.desktop"
+    target = app_dir / desktop_id
+    quoted_file = '"' + escape_desktop(file_path) + '"'
+    content = f"""[Desktop Entry]
+Type=Application
+Name={name}
+Comment=Windows app managed by SevenOS
+Comment[fr]=Application Windows gérée par SevenOS
+Exec=seven-wincompat run --engine {engine} {quoted_file}
+Icon=applications-system
+Terminal=false
+Categories=Utility;X-Wine;
+StartupNotify=true
+X-SevenOS-WindowsApp=true
+X-SevenOS-WindowsEngine={engine}
+X-SevenOS-WindowsScope={escape_desktop(app.get("scope", ""))}
+X-SevenOS-WindowsFile={escape_desktop(file_path)}
+"""
+    target.write_text(content, encoding="utf-8")
+    target.chmod(0o644)
+    written.append(str(target))
+
+print(json.dumps({
+    "schema": "sevenos.wincompat.launchers.v1",
+    "state": "ready",
+    "written": len(written),
+    "desktop_files": written,
+}, ensure_ascii=False, indent=2))
+PY
+  if have update-desktop-database; then
+    update-desktop-database "${XDG_DATA_HOME:-$HOME/.local/share}/applications" >/dev/null 2>&1 || true
+  fi
+}
+
 integrate_desktop() {
   local target
   target="$(desktop_file_path)"
   write_desktop_entry "$target"
+  write_app_launchers >/dev/null 2>&1 || true
   if have xdg-mime; then
     local mime
     for mime in "${WINDOWS_MIME_TYPES[@]}"; do
@@ -784,6 +966,22 @@ case "$ACTION" in
     else
       printf 'SevenOS Windows Apps integration: ready\n'
       printf 'Desktop entry: %s\n' "$(desktop_file_path)"
+    fi
+    ;;
+  apps)
+    if [[ " $* " == *" --json "* ]]; then
+      installed_apps_json
+    else
+      installed_apps_json | python -c 'import json,sys; data=json.load(sys.stdin); print("SevenOS Windows apps: {}".format(data.get("count", 0))); [print("- {name} · {engine}/{scope} · {file}".format(**app)) for app in data.get("apps", [])]'
+    fi
+    ;;
+  launchers|refresh-launchers)
+    clear_status_cache
+    payload="$(write_app_launchers)"
+    if [[ " $* " == *" --json "* ]]; then
+      printf '%s\n' "$payload"
+    else
+      printf '%s\n' "$payload" | python -c 'import json,sys; data=json.load(sys.stdin); print("SevenOS Windows launchers: {} created/refreshed".format(data.get("written", 0))); [print("- "+path) for path in data.get("desktop_files", [])]'
     fi
     ;;
   doctor|check)

@@ -22,6 +22,77 @@ Checks the native user-facing tools without opening their windows.
 EOF
 }
 
+daemon_tools_json() {
+  local action="${1:-status}"
+  local target="${2:-}"
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    if [[ "$action" == "detail" ]]; then
+      "$ROOT_DIR/bin/seven-daemon" tools detail "$target" --json
+    else
+      "$ROOT_DIR/bin/seven-daemon" tools --json
+    fi
+    return
+  fi
+  return 1
+}
+
+daemon_tools_human() {
+  local action="${1:-status}"
+  local target="${2:-}"
+  local tmp
+  tmp="$(mktemp)"
+  daemon_tools_json "$action" "$target" > "$tmp" || {
+    rm -f "$tmp"
+    return 1
+  }
+  python3 - "$tmp" "$action" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    data = json.load(handle)
+action = sys.argv[2]
+
+if action == "detail":
+    tool = data.get("tool") or {}
+    print(f"{tool.get('name', 'SevenOS tool')} · {data.get('state', tool.get('state', 'unknown'))}")
+    print(f"role: {tool.get('role', 'unknown')}")
+    print(f"category: {tool.get('category', 'unknown')}")
+    print(f"intent: {tool.get('intent', '')}")
+    print(f"recommendation: {tool.get('recommendation', '')}")
+    print(f"native: {tool.get('native', '')} · {'ready' if tool.get('native_ready') else 'missing'}")
+    desktop = tool.get("desktop") or "not required"
+    print(f"desktop: {desktop} · {'ready' if tool.get('desktop_ready') else 'missing'}")
+    print(f"action: {tool.get('action', '')} · {'ready' if tool.get('action_ready') else 'missing'}")
+    blockers = tool.get("blockers") or []
+    if blockers:
+        print(f"blockers: {', '.join(blockers)}")
+    raise SystemExit(0 if data.get("state") == "OK" else 1)
+
+summary = data.get("summary") or {}
+categories = data.get("categories") or {}
+print(f"SevenOS Tools · {data.get('state', 'unknown')} · {data.get('score', 0)}%")
+print(f"{summary.get('ok', 0)}/{summary.get('tools', 0)} tools ready")
+for key, values in categories.items():
+    print(f"  {key}: {values.get('ok', 0)}/{values.get('tools', 0)} ready")
+for row in data.get("tools") or []:
+    state = row.get("state", "MISS")
+    marker = "OK" if state == "OK" else state
+    print(f"- {marker:4} {row.get('name', row.get('key', 'Tool'))}: {row.get('role', '')}")
+    print(f"       {row.get('intent', '')}")
+    blockers = row.get("blockers") or []
+    if blockers:
+        print(f"       blockers: {', '.join(blockers)}")
+if action == "plan":
+    print()
+    for step in data.get("plan") or []:
+        print(f"- {step}")
+PY
+  local status=$?
+  rm -f "$tmp"
+  return "$status"
+}
+
 open_tool() {
   local key="${1:-}"
   case "$key" in
@@ -386,11 +457,17 @@ main() {
         target="$arg"
         break
       done
-      python_status "$action" "$wants_json" "$target"
+      if [[ "$wants_json" == "1" ]] && daemon_tools_json detail "$target"; then
+        return
+      fi
+      daemon_tools_human detail "$target" || python_status "$action" "$wants_json" "$target"
       ;;
     status|doctor|plan|json)
       [[ "$action" == "json" ]] && wants_json=1
-      python_status "$action" "$wants_json"
+      if [[ "$wants_json" == "1" ]] && daemon_tools_json status; then
+        return
+      fi
+      daemon_tools_human "$action" || python_status "$action" "$wants_json"
       ;;
     -h|--help|help)
       usage

@@ -41,6 +41,100 @@ done
 [[ "$ACTION" == "check" ]] && ACTION="doctor"
 [[ "$ACTION" == "install" ]] && ACTION="apply"
 
+native_update_json() {
+  [[ "${SEVENOS_UPDATE_NATIVE:-1}" == "0" ]] && return 1
+  [[ -x "$ROOT_DIR/bin/seven-daemon" ]] || return 1
+  "$ROOT_DIR/bin/seven-daemon" update --json
+}
+
+native_update_plan_json() {
+  [[ "${SEVENOS_UPDATE_NATIVE:-1}" == "0" ]] && return 1
+  [[ -x "$ROOT_DIR/bin/seven-daemon" ]] || return 1
+  "$ROOT_DIR/bin/seven-daemon" update-plan --json
+}
+
+native_update_print_human() {
+  UPDATE_JSON="$1" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["UPDATE_JSON"])
+repo = data.get("repository") or {}
+rollback = data.get("rollback") or {}
+pending = "yes" if data.get("repo_pending") else "unknown" if repo.get("behind") is None else "no"
+print("SevenOS Update")
+print("==============")
+print(f"State:    {data.get('state')}")
+print(f"Score:    {data.get('score')}%")
+print(f"Runtime:  {data.get('runtime', 'adapter')}")
+print(f"SevenOS:  {repo.get('commit') or 'unknown'} on {repo.get('branch') or 'unknown'} · repo update: {pending}")
+print(f"Root:     {data.get('root')}")
+print(f"Rollback: {'available' if rollback.get('available') else 'created on apply'} · {rollback.get('command', 'seven update rollback')}")
+print()
+for item in data.get("sources", []):
+    print(f"{item.get('state','MISS'):<5} {item.get('public_name')} · {item.get('backend')}")
+    print(f"      route: {item.get('command')}")
+print()
+if data.get("issues"):
+    print("Attention:")
+    for item in data.get("issues", []):
+        print(f"- {item.get('title', item.get('key'))}: {item.get('command')}")
+else:
+    print("Attention: none")
+print()
+print("Next:")
+print("  seven update plan")
+print("  seven update install --yes")
+print("  seven update rollback")
+PY
+}
+
+native_update_print_plan() {
+  UPDATE_JSON="$1" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["UPDATE_JSON"])
+print("SevenOS Update Plan")
+print("===================")
+for item in data.get("steps", data.get("plan", [])):
+    marker = "!" if item.get("requires_confirmation") else "-"
+    print(f"{marker} {item.get('title')}: {item.get('command')}")
+PY
+}
+
+if [[ "$ACTION" != "apply" && "$ACTION" != "rollback" ]]; then
+  case "$ACTION" in
+    status|json|doctor)
+      if native_payload="$(native_update_json 2>/dev/null)"; then
+        if [[ "$JSON_OUTPUT" -eq 1 || "$ACTION" == "json" ]]; then
+          printf '%s\n' "$native_payload"
+        else
+          native_update_print_human "$native_payload"
+        fi
+        if [[ "$ACTION" == "doctor" ]]; then
+          UPDATE_JSON="$native_payload" python - <<'PY'
+import json, os, sys
+data = json.loads(os.environ["UPDATE_JSON"])
+sys.exit(0 if data.get("score", 0) >= 75 else 1)
+PY
+        fi
+        exit 0
+      fi
+      ;;
+    plan)
+      if native_payload="$(native_update_plan_json 2>/dev/null)"; then
+        if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+          printf '%s\n' "$native_payload"
+        else
+          native_update_print_plan "$native_payload"
+        fi
+        exit 0
+      fi
+      ;;
+  esac
+fi
+
 git_run() {
   if [[ -w "$ROOT_DIR/.git" || -w "$ROOT_DIR" ]]; then
     run_cmd git -C "$ROOT_DIR" "$@"

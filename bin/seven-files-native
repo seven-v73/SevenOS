@@ -77,6 +77,7 @@ TEXT_SUFFIXES = {
 DOCUMENT_SUFFIXES = {".pdf", ".docx", ".odt", ".rtf"}
 READER_SUFFIXES = {".pdf", ".epub", ".md", ".markdown", ".txt", ".cbz"}
 WINDOWS_APP_SUFFIXES = {".exe", ".msi", ".msp", ".bat", ".cmd", ".com", ".scr", ".lnk"}
+DISK_IMAGE_SUFFIXES = {".iso", ".img"}
 PREVIEW_SUFFIXES = IMAGE_SUFFIXES | VIDEO_SUFFIXES | AUDIO_SUFFIXES | TEXT_SUFFIXES | DOCUMENT_SUFFIXES | READER_SUFFIXES
 CLIPBOARD_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos" / "files-clipboard.json"
 TAG_CACHE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/files-tags.json"
@@ -99,12 +100,16 @@ SCAN_SOFT_LIMIT = 5200
 DEFAULT_WINDOW_SIZE = (700, 500)
 COMFORT_WINDOW_SIZE = (980, 620)
 MIN_WINDOW_SIZE = (620, 440)
+STABLE_WINDOW_SIZE = DEFAULT_WINDOW_SIZE
+STARTUP_RENDER_DELAY_MS = 70
+PREVIEW_THUMBNAIL_DEFER_MS = 160
 INDEX_LIMIT = 5000
 OPERATION_CANCELLED = "__sevenos_cancelled__"
 URI_LIST_TARGET = "text/uri-list"
 SPRING_OPEN_DELAY_MS = 650
 HOVER_PREVIEW_DELAY_MS = 120
-RENDER_CHUNK_SIZE = 96
+RENDER_CHUNK_SIZE = 48
+RENDER_TIME_BUDGET_MS = 9
 CLICK_FEEDBACK_MS = 160
 STATUS_FLASH_MS = 520
 
@@ -132,6 +137,10 @@ def is_previewable(path: Path) -> bool:
 
 def is_windows_app_file(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in WINDOWS_APP_SUFFIXES
+
+
+def is_disk_image_file(path: Path) -> bool:
+    return path.is_file() and path.suffix.lower() in DISK_IMAGE_SUFFIXES
 
 
 def display_user_name(username: str | None = None) -> str:
@@ -441,6 +450,31 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       border: 1px solid alpha(@files_border, 0.48);
       font-size: 10px;
       font-weight: 500;
+    }}
+    .files-system-chip {{
+      color: @files_text;
+      background: alpha({accent}, 0.18);
+      border-color: alpha({accent}, 0.55);
+    }}
+    .files-access-banner {{
+      min-height: 42px;
+      padding: 7px 10px;
+      border-bottom: 1px solid alpha(@files_border, 0.45);
+      background:
+        linear-gradient(90deg, alpha({accent}, 0.13), alpha(@files_panel, 0.28));
+    }}
+    .files-access-banner.warning {{
+      background:
+        linear-gradient(90deg, alpha(#f9e2af, 0.18), alpha(@files_panel, 0.28));
+    }}
+    .files-access-title {{
+      color: @files_text;
+      font-size: 12px;
+      font-weight: 600;
+    }}
+    .files-access-subtitle {{
+      color: alpha(@files_muted, 0.92);
+      font-size: 10px;
     }}
     .files-tab {{
       min-height: 24px;
@@ -970,6 +1004,38 @@ def file_hash(path: Path, algorithm: str = "sha256", limit: int | None = None) -
     return digest.hexdigest()
 
 
+def checksum_sidecar_for(path: Path) -> tuple[Path | None, str]:
+    candidates = [
+        path.with_name(path.name + ".sha256"),
+        path.with_name(path.name + ".sha256sum"),
+        path.with_suffix(path.suffix + ".sha256"),
+        path.with_suffix(path.suffix + ".sha256sum"),
+        path.parent / "SHA256SUMS",
+        path.parent / "sha256sums",
+        path.parent / "CHECKSUMS",
+    ]
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate in seen or not candidate.is_file():
+            continue
+        seen.add(candidate)
+        try:
+            for line in candidate.read_text(encoding="utf-8", errors="ignore").splitlines():
+                text = line.strip()
+                if not text or text.startswith("#"):
+                    continue
+                parts = text.replace("*", " ").split()
+                digest = next((part.lower() for part in parts if len(part) == 64 and all(char in "0123456789abcdefABCDEF" for char in part)), "")
+                if not digest:
+                    continue
+                names = [part.strip().lstrip("*") for part in parts if part.lower() != digest]
+                if not names or path.name in names or any(Path(name).name == path.name for name in names):
+                    return candidate, digest
+        except OSError:
+            continue
+    return None, ""
+
+
 ARCHIVE_FORMATS = {
     "zip": ".zip",
     "tar.gz": ".tar.gz",
@@ -1109,16 +1175,16 @@ def run_files(start_path: str) -> int:
 
     def screen_window_size() -> tuple[int, int]:
         return (
-            min(DEFAULT_WINDOW_SIZE[0], max(MIN_WINDOW_SIZE[0], min(workarea_width - 40, int(workarea_width * 0.70)))),
-            min(DEFAULT_WINDOW_SIZE[1], max(MIN_WINDOW_SIZE[1], min(workarea_height - 56, int(workarea_height * 0.68)))),
+            min(STABLE_WINDOW_SIZE[0], max(MIN_WINDOW_SIZE[0], workarea_width - 40)),
+            min(STABLE_WINDOW_SIZE[1], max(MIN_WINDOW_SIZE[1], workarea_height - 56)),
         )
 
     def compact_window_size(width: int | None = None, height: int | None = None) -> tuple[int, int]:
         target_width, target_height = screen_window_size()
         requested_width = target_width if width is None else int(width)
         requested_height = target_height if height is None else int(height)
-        max_width = min(DEFAULT_WINDOW_SIZE[0], max(MIN_WINDOW_SIZE[0], workarea_width - 40))
-        max_height = min(DEFAULT_WINDOW_SIZE[1], max(MIN_WINDOW_SIZE[1], workarea_height - 56))
+        max_width = min(STABLE_WINDOW_SIZE[0], max(MIN_WINDOW_SIZE[0], workarea_width - 40))
+        max_height = min(STABLE_WINDOW_SIZE[1], max(MIN_WINDOW_SIZE[1], workarea_height - 56))
         return (
             min(max(MIN_WINDOW_SIZE[0], requested_width), max_width),
             min(max(MIN_WINDOW_SIZE[1], requested_height), max_height),
@@ -1842,7 +1908,9 @@ def run_files(start_path: str) -> int:
         drive_rows.clear()
         for label, icon, target, tooltip, device, mounted_path, ejectable in [
             (Path.home().name, "user-home", Path.home(), "", "", str(Path.home()), False),
-            ("SevenOS", "drive-harddisk", Path("/"), "", "", "/", False),
+            (t("Système", "System"), "drive-harddisk", Path("/"), t("Racine du système SevenOS.", "SevenOS system root."), "", "/", False),
+            (t("Corbeille", "Trash"), "user-trash", "trash://", t("Fichiers supprimés restaurables.", "Deleted files that can be restored."), "", "", False),
+            (t("Disques", "Drives"), "drive-harddisk-symbolic", "seven://drive-panel", t("Monter, ouvrir ou éjecter les volumes.", "Mount, open or eject volumes."), "", "", False),
             *[(network_label(uri), "network-server", uri, uri, "", "", False) for uri in network_places()],
             (t("Connecter un serveur", "Connect to Server"), "network-server", "seven://connect-server", "", "", "", False),
         ]:
@@ -2052,6 +2120,30 @@ def run_files(start_path: str) -> int:
     context_chips.set_no_show_all(True)
     context_strip.pack_end(context_chips, False, False, 0)
     main.pack_start(context_strip, False, False, 0)
+
+    access_banner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    access_banner.get_style_context().add_class("files-access-banner")
+    access_banner.set_no_show_all(True)
+    access_banner.hide()
+    access_icon = Gtk.Image.new_from_icon_name("dialog-information-symbolic", Gtk.IconSize.BUTTON)
+    access_banner.pack_start(access_icon, False, False, 0)
+    access_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+    access_title = Gtk.Label(label="")
+    access_title.set_xalign(0)
+    access_title.get_style_context().add_class("files-access-title")
+    access_subtitle = Gtk.Label(label="")
+    access_subtitle.set_xalign(0)
+    access_subtitle.set_ellipsize(Pango.EllipsizeMode.END)
+    access_subtitle.get_style_context().add_class("files-access-subtitle")
+    access_text.pack_start(access_title, False, False, 0)
+    access_text.pack_start(access_subtitle, False, False, 0)
+    access_banner.pack_start(access_text, True, True, 0)
+    access_details_button = Gtk.Button(label=t("Détails", "Details"))
+    access_details_button.set_relief(Gtk.ReliefStyle.NONE)
+    access_details_button.get_style_context().add_class("selection-action")
+    access_details_button.connect("clicked", lambda *_: show_access_details(current))
+    access_banner.pack_end(access_details_button, False, False, 0)
+    main.pack_start(access_banner, False, False, 0)
 
     tabbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
     tabbar.get_style_context().add_class("files-tabbar")
@@ -2355,17 +2447,23 @@ def run_files(start_path: str) -> int:
         context_title.set_text(path_label(current) if virtual_location != "recent" else t("Récents", "Recents"))
         context_subtitle.set_text(str(current) if virtual_location != "recent" else t("Documents et dossiers ouverts récemment", "Recently opened files and folders"))
         resource_text = t("Partagé", "Shared") if grouped_resources or active_profile == "equinox" else profile_title(active_profile, profile_ui)
+        access = access_state(current)
         chips = [
             f"{total_entries} {t('éléments', 'items')}",
             current_scope_label(global_query, tag_query),
             view_mode_label(),
             resource_text,
         ]
+        if access.get("state") in {"readonly", "locked", "system", "virtual"}:
+            chips.append(str(access.get("title") or ""))
         for text in chips:
             chip = Gtk.Label(label=text)
             chip.get_style_context().add_class("files-context-chip")
+            if text == access.get("title"):
+                chip.get_style_context().add_class("files-system-chip")
             context_chips.pack_start(chip, False, False, 0)
         context_chips.show_all()
+        update_access_banner()
 
     def switch_tab(index: int) -> bool:
         nonlocal current, virtual_location, history, future, active_tab_index
@@ -2575,6 +2673,196 @@ def run_files(start_path: str) -> int:
             return "SevenOS"
         return path.name or str(path)
 
+    def is_system_path(path: Path) -> bool:
+        try:
+            resolved = path.resolve()
+        except OSError:
+            resolved = path
+        system_roots = (
+            Path("/"),
+            Path("/boot"),
+            Path("/etc"),
+            Path("/usr"),
+            Path("/var"),
+            Path("/opt"),
+            Path("/srv"),
+            Path("/root"),
+        )
+        return any(resolved == root or root in resolved.parents for root in system_roots)
+
+    def access_state(path: Path) -> dict[str, object]:
+        target = path if path.is_dir() else path.parent
+        try:
+            exists = target.exists()
+            writable = os.access(target, os.W_OK)
+            readable = os.access(target, os.R_OK)
+        except OSError:
+            exists = False
+            writable = False
+            readable = False
+        protected = is_system_path(target)
+        if virtual_location == "recent":
+            return {"state": "virtual", "title": t("Vue virtuelle", "Virtual view"), "writable": False, "protected": False}
+        if not exists:
+            return {"state": "missing", "title": t("Indisponible", "Unavailable"), "writable": False, "protected": protected}
+        if not readable:
+            return {"state": "locked", "title": t("Accès limité", "Limited access"), "writable": False, "protected": protected}
+        if not writable:
+            return {"state": "readonly", "title": t("Lecture seule", "Read only"), "writable": False, "protected": protected}
+        if protected:
+            return {"state": "system", "title": t("Système", "System"), "writable": True, "protected": True}
+        return {"state": "ready", "title": t("Modifiable", "Writable"), "writable": True, "protected": False}
+
+    def update_access_banner() -> None:
+        state = access_state(current)
+        state_key = str(state.get("state") or "ready")
+        warning_states = {"readonly", "locked", "missing"}
+        visible_states = warning_states | {"system", "virtual"}
+        ctx = access_banner.get_style_context()
+        if state_key in warning_states:
+            ctx.add_class("warning")
+        else:
+            ctx.remove_class("warning")
+        if virtual_location == "recent":
+            access_icon.set_from_icon_name("document-open-recent-symbolic", Gtk.IconSize.BUTTON)
+            access_title.set_text(t("Vue récente", "Recent view"))
+            access_subtitle.set_text(t("Les éléments récents s’ouvrent depuis leurs emplacements d’origine.", "Recent items open from their original locations."))
+        elif state_key == "system":
+            access_icon.set_from_icon_name("computer-symbolic", Gtk.IconSize.BUTTON)
+            access_title.set_text(t("Emplacement système", "System location"))
+            access_subtitle.set_text(t("Seven Files limite les changements risqués et guide les actions admin.", "Seven Files limits risky changes and guides administrator actions."))
+        elif state_key == "readonly":
+            access_icon.set_from_icon_name("changes-prevent-symbolic", Gtk.IconSize.BUTTON)
+            access_title.set_text(t("Lecture seule", "Read-only"))
+            access_subtitle.set_text(t("Tu peux consulter ce dossier, mais les modifications demandent des droits supplémentaires.", "You can browse this folder, but changes require extra permissions."))
+        elif state_key == "locked":
+            access_icon.set_from_icon_name("dialog-password-symbolic", Gtk.IconSize.BUTTON)
+            access_title.set_text(t("Accès limité", "Limited access"))
+            access_subtitle.set_text(t("Ce dossier n’est pas lisible depuis la session actuelle.", "This folder is not readable from the current session."))
+        elif state_key == "missing":
+            access_icon.set_from_icon_name("dialog-warning-symbolic", Gtk.IconSize.BUTTON)
+            access_title.set_text(t("Emplacement indisponible", "Location unavailable"))
+            access_subtitle.set_text(t("Le dossier n’existe plus ou le volume n’est pas monté.", "The folder no longer exists or the volume is not mounted."))
+        if state_key in visible_states:
+            access_banner.show_all()
+        else:
+            access_banner.hide()
+
+    def permission_issue(exc: BaseException) -> bool:
+        errno_value = getattr(exc, "errno", None)
+        return isinstance(exc, PermissionError) or errno_value in {1, 13, 30}
+
+    def show_system_permission_dialog(action: str, target: Path, error: BaseException) -> None:
+        dialog = Gtk.Dialog(title=t("Action système", "System action"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
+        box = decorate_dialog(
+            dialog,
+            t("Droits requis", "Permission required"),
+            t(
+                "Seven Files protège cet emplacement. Ouvre un terminal ici, confirme les droits admin, puis relance seulement l'action nécessaire.",
+                "Seven Files protects this location. Open a terminal here, confirm admin rights, then run only the needed action.",
+            ),
+            "dialog-password-symbolic",
+        )
+        hint = Gtk.Label(label=f"{action}: {target}\n{error}")
+        hint.set_xalign(0)
+        hint.set_line_wrap(True)
+        hint.get_style_context().add_class("preview-hint")
+        box.pack_start(hint, False, False, 0)
+        workdir = target if target.is_dir() else target.parent
+        command = f"cd {shlex.quote(str(workdir))} && sudo -v"
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        copy_btn = Gtk.Button(label=t("Copier commande sûre", "Copy Safe Command"))
+        copy_btn.get_style_context().add_class("selection-action")
+        copy_btn.connect("clicked", lambda *_: copy_text(command))
+        terminal_btn = Gtk.Button(label=t("Terminal ici", "Terminal Here"))
+        terminal_btn.get_style_context().add_class("selection-action")
+        terminal_btn.connect("clicked", lambda *_: open_terminal_here(target if target.is_dir() else target.parent))
+        actions.pack_start(copy_btn, False, False, 0)
+        actions.pack_start(terminal_btn, False, False, 0)
+        box.pack_start(actions, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+
+    def handle_file_error(action: str, target: Path, error: BaseException) -> None:
+        if permission_issue(error):
+            set_status(t("Action protégée: droits requis", "Protected action: permission required"))
+            show_system_permission_dialog(action, target, error)
+            return
+        set_status(t("{action} impossible: {error}", "{action} failed: {error}", action=action, error=error))
+
+    def ensure_writable_for_action(action: str, target: Path) -> bool:
+        state = access_state(target)
+        if state.get("writable") is True:
+            return True
+        message = t(
+            "Cet emplacement n'est pas modifiable depuis ta session actuelle.",
+            "This location is not writable from your current session.",
+        )
+        handle_file_error(action, target, PermissionError(message))
+        return False
+
+    def show_access_details(path: Path | None = None) -> bool:
+        target = path or current
+        state = access_state(target)
+        dialog = Gtk.Dialog(title=t("État d'accès", "Access Status"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.set_default_size(520, 360)
+        dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
+        box = decorate_dialog(
+            dialog,
+            t("État d'accès", "Access Status"),
+            t("Comprends ce que Seven Files peut faire dans cet emplacement.", "Understand what Seven Files can do in this location."),
+            "dialog-information-symbolic",
+        )
+        for label, value in (
+            (t("Chemin", "Path"), str(target)),
+            (t("État", "State"), str(state.get("title") or "")),
+            (t("Droits", "Permissions"), human_mode(target) if target.exists() else t("Indisponible", "Unavailable")),
+            (t("Propriétaire", "Owner"), human_owner(target) if target.exists() else t("Indisponible", "Unavailable")),
+        ):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.get_style_context().add_class("inspector-card")
+            name = Gtk.Label(label=label)
+            name.set_xalign(0)
+            name.get_style_context().add_class("preview-heading")
+            data = Gtk.Label(label=value)
+            data.set_xalign(1)
+            data.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            data.get_style_context().add_class("preview-value")
+            row.pack_start(name, False, False, 0)
+            row.pack_start(data, True, True, 0)
+            box.pack_start(row, False, False, 0)
+        usage = filesystem_usage(target if target.is_dir() else target.parent)
+        if usage:
+            for label, value in ((t("Disponible", "Available"), usage[0]), ("Volume", usage[1])):
+                row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+                row.get_style_context().add_class("inspector-card")
+                name = Gtk.Label(label=label)
+                name.set_xalign(0)
+                name.get_style_context().add_class("preview-heading")
+                data = Gtk.Label(label=value)
+                data.set_xalign(1)
+                data.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+                data.get_style_context().add_class("preview-value")
+                row.pack_start(name, False, False, 0)
+                row.pack_start(data, True, True, 0)
+                box.pack_start(row, False, False, 0)
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        terminal_btn = Gtk.Button(label=t("Terminal ici", "Terminal Here"))
+        terminal_btn.get_style_context().add_class("selection-action")
+        terminal_btn.connect("clicked", lambda *_: open_terminal_here(target if target.is_dir() else target.parent))
+        copy_btn = Gtk.Button(label=t("Copier chemin", "Copy Path"))
+        copy_btn.get_style_context().add_class("selection-action")
+        copy_btn.connect("clicked", lambda *_: copy_path(target))
+        actions.pack_start(terminal_btn, False, False, 0)
+        actions.pack_start(copy_btn, False, False, 0)
+        box.pack_start(actions, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+        return True
+
     def update_breadcrumbs():
         for child in breadcrumb_box.get_children():
             breadcrumb_box.remove(child)
@@ -2756,14 +3044,12 @@ def run_files(start_path: str) -> int:
 
     def save_session() -> None:
         sync_current_tab()
-        width, height = window.get_size()
-        width, height = clamp_window_size(width, height)
         write_json(
             SESSION_CACHE,
             {
                 "active_tab": active_tab_index,
                 "tabs": [tab_to_json(tab) for tab in tabs],
-                "window": {"width": width, "height": height},
+                "window": {"width": STABLE_WINDOW_SIZE[0], "height": STABLE_WINDOW_SIZE[1], "restore": False},
                 "profile": active_profile,
                 "updated_at": int(time.time()),
             },
@@ -2788,7 +3074,7 @@ def run_files(start_path: str) -> int:
         history = list(active_tab.get("history", []))
         future = list(active_tab.get("future", []))
         window_data = payload.get("window", {})
-        if isinstance(window_data, dict):
+        if isinstance(window_data, dict) and window_data.get("restore") is True:
             width = int(window_data.get("width", DEFAULT_WINDOW_SIZE[0]) or DEFAULT_WINDOW_SIZE[0])
             height = int(window_data.get("height", DEFAULT_WINDOW_SIZE[1]) or DEFAULT_WINDOW_SIZE[1])
             return clamp_window_size(width, height)
@@ -3416,6 +3702,8 @@ def run_files(start_path: str) -> int:
             child.add(box)
             flow.add(child)
 
+        thumbnail_defer_state = {"index": 0}
+
         def add_entry(path: Path) -> None:
             child = Gtk.FlowBoxChild()
             child.set_can_focus(True)
@@ -3448,11 +3736,20 @@ def run_files(start_path: str) -> int:
             box.get_style_context().add_class("file-tile-box")
             image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
             image_size = 44 if view_mode == "grid" else 24
-            thumb = tile_thumbnail(path, image_size)
-            if thumb:
-                image.set_from_pixbuf(thumb)
-            else:
-                image.set_pixel_size(image_size)
+            image.set_pixel_size(image_size)
+
+            def load_tile_thumbnail(expected_path: Path = path, target_image=image, target_size=image_size) -> bool:
+                if getattr(child, "path", None) != expected_path:
+                    return False
+                thumb = tile_thumbnail(expected_path, target_size)
+                if thumb:
+                    target_image.set_from_pixbuf(thumb)
+                return False
+
+            if path.is_file() and (is_image(path) or is_video(path) or path.suffix.lower() == ".pdf"):
+                thumbnail_delay = PREVIEW_THUMBNAIL_DEFER_MS + min(900, thumbnail_defer_state["index"] * 10)
+                thumbnail_defer_state["index"] += 1
+                GLib.timeout_add(thumbnail_delay, load_tile_thumbnail)
             label = Gtk.Label(label=path.name)
             label.set_xalign(0 if view_mode != "grid" else 0.5)
             label.set_width_chars(9 if view_mode == "grid" else 30)
@@ -3523,8 +3820,11 @@ def run_files(start_path: str) -> int:
                 flow.show_all()
                 restore_render_state()
                 return False
+            render_time_budget = time.monotonic() + (RENDER_TIME_BUDGET_MS / 1000)
             for _index in range(min(RENDER_CHUNK_SIZE, len(render_queue))):
                 add_entry(render_queue.pop(0))
+                if time.monotonic() >= render_time_budget:
+                    break
             if not render_queue:
                 add_load_more_state()
             flow.show_all()
@@ -3635,6 +3935,16 @@ def run_files(start_path: str) -> int:
         preview_details.pack_start(grid, False, False, 0)
 
     def preview_context_actions(target: Path):
+        if target.is_file() and is_disk_image_file(target):
+            preview_quick_actions(
+                [
+                    (t("Préparer", "Prepare"), lambda target=target: show_disk_image_sheet(target)),
+                    (t("Vérifier", "Verify"), lambda target=target: verify_disk_image_checksum(target)),
+                    (t("Monter", "Mount"), lambda target=target: mount_disk_image(target)),
+                    (t("USB", "USB"), lambda target=target: open_usb_writer_for_image(target)),
+                ]
+            )
+            return
         if target.is_dir():
             preview_quick_actions(
                 [
@@ -3684,6 +3994,11 @@ def run_files(start_path: str) -> int:
             preview_decision(
                 t("Espace prêt", "Space ready"),
                 t("Ouvre, trie ou dépose des fichiers ici. Les actions restent non destructives tant que tu ne confirmes pas.", "Open, sort or drop files here. Actions stay non-destructive until you confirm."),
+            )
+        elif target.is_file() and is_disk_image_file(target):
+            preview_decision(
+                t("Image système détectée", "System image detected"),
+                t("Seven Files prépare le montage, la vérification et l’écriture USB depuis un flux guidé.", "Seven Files prepares mounting, verification and USB writing from one guided flow."),
             )
         elif is_risky_file(target):
             if is_windows_app_file(target):
@@ -3852,6 +4167,13 @@ def run_files(start_path: str) -> int:
             preview_hint(t("Ouvre ce document dans Seven Reader pour la lecture, le mode livre et l’inspection.", "Open this document in Seven Reader for book, double-page and inspect modes."))
             preview_action(t("Lire dans Seven Reader", "Read in Seven Reader"), lambda target=target: open_in_reader(target))
             preview_action("Quick Look", lambda target=target: open_quicklook_preview(target))
+        elif is_disk_image_file(target):
+            preview_icon.set_from_icon_name("drive-removable-media-symbolic", Gtk.IconSize.DIALOG)
+            preview_icon.set_pixel_size(88)
+            sidecar, _expected = checksum_sidecar_for(target)
+            detail_row(t("Image disque", "Disk Image"), target.suffix.upper().lstrip("."))
+            detail_row(t("Checksum", "Checksum"), sidecar.name if sidecar else t("Non trouvé", "Not found"))
+            preview_hint(t("Prépare, vérifie, monte ou flashe cette image sans passer par le terminal.", "Prepare, verify, mount or write this image without using the terminal."))
         else:
             preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
             preview_icon.set_pixel_size(88)
@@ -3875,11 +4197,17 @@ def run_files(start_path: str) -> int:
             if target.is_file():
                 detail_row(t("Taille", "Size"), format_size(stat.st_size))
             elif target.is_dir():
+                count = 0
+                truncated_count = False
                 try:
-                    count = len(list(target.iterdir()))
+                    with os.scandir(target) as iterator:
+                        for count, _entry in enumerate(iterator, start=1):
+                            if count >= 1000:
+                                truncated_count = True
+                                break
                 except OSError:
                     count = 0
-                detail_row(t("Éléments", "Items"), f"{count}")
+                detail_row(t("Éléments", "Items"), f"{count}+" if truncated_count else f"{count}")
                 usage = filesystem_usage(target)
                 if usage:
                     detail_row(t("Disponible", "Available"), usage[0])
@@ -4192,6 +4520,16 @@ def run_files(start_path: str) -> int:
             reader_button = Gtk.Button(label=tr_text("Read in Seven Reader"))
             reader_button.connect("clicked", lambda *_: open_in_reader(path))
             footer.pack_start(reader_button, False, False, 0)
+        if is_disk_image_file(path):
+            sheet_button = Gtk.Button(label=t("Préparer", "Prepare"))
+            sheet_button.connect("clicked", lambda *_: show_disk_image_sheet(path))
+            footer.pack_start(sheet_button, False, False, 0)
+            mount_button = Gtk.Button(label=t("Monter l’image", "Mount Image"))
+            mount_button.connect("clicked", lambda *_: mount_disk_image(path))
+            footer.pack_start(mount_button, False, False, 0)
+            usb_button = Gtk.Button(label=t("Flasher USB", "Write USB"))
+            usb_button.connect("clicked", lambda *_: open_usb_writer_for_image(path))
+            footer.pack_start(usb_button, False, False, 0)
         if is_image(path):
             wallpaper_button = Gtk.Button(label=tr_text("Set as Wallpaper"))
             wallpaper_button.connect("clicked", lambda *_: set_wallpaper_from_file(path))
@@ -4273,6 +4611,9 @@ def run_files(start_path: str) -> int:
         set_busy_cursor(tr_text("Opening {name}...", name=path.name), 620)
         if is_windows_app_file(path):
             open_windows_compat(path)
+            return
+        if is_disk_image_file(path):
+            mount_disk_image(path)
             return
         if is_risky_file(path) and active_profile in {"shield", "baobab"}:
             status_label.set_text("Risky file detected. Use Safe Open or context menu to continue.")
@@ -4654,6 +4995,8 @@ def run_files(start_path: str) -> int:
 
     def paste_items():
         nonlocal file_clipboard, file_clipboard_cut
+        if not ensure_writable_for_action(t("Coller", "Paste"), current):
+            return
         if not file_clipboard:
             file_clipboard, file_clipboard_cut = read_system_file_clipboard()
             if not file_clipboard:
@@ -4772,6 +5115,8 @@ def run_files(start_path: str) -> int:
         return value
 
     def create_folder():
+        if not ensure_writable_for_action(t("Nouveau dossier", "New Folder"), current):
+            return
         name = ask_name(t("Nouveau dossier", "New Folder"), t("Dossier sans titre", "Untitled Folder"))
         if not name:
             return
@@ -4782,9 +5127,11 @@ def run_files(start_path: str) -> int:
             render()
             focus_path_after_render(destination, t("Dossier créé: {name}", "Folder created: {name}", name=destination.name))
         except OSError as exc:
-            set_status(t("Création du dossier impossible: {error}", "New folder failed: {error}", error=exc))
+            handle_file_error(t("Nouveau dossier", "New Folder"), destination, exc)
 
     def create_file():
+        if not ensure_writable_for_action(t("Nouveau fichier", "New File"), current):
+            return
         name = ask_name(t("Nouveau fichier", "New File"), "Untitled.txt")
         if not name:
             return
@@ -4795,9 +5142,11 @@ def run_files(start_path: str) -> int:
             render()
             focus_path_after_render(destination, t("Fichier créé: {name}", "File created: {name}", name=destination.name))
         except OSError as exc:
-            set_status(t("Création du fichier impossible: {error}", "New file failed: {error}", error=exc))
+            handle_file_error(t("Nouveau fichier", "New File"), destination, exc)
 
     def rename_path(path: Path):
+        if not ensure_writable_for_action(t("Renommer", "Rename"), path.parent):
+            return
         name = ask_name(t("Renommer", "Rename"), path.name)
         if not name or name == path.name:
             return
@@ -4808,7 +5157,7 @@ def run_files(start_path: str) -> int:
             render()
             focus_path_after_render(destination, t("Renommé: {name}", "Renamed: {name}", name=destination.name))
         except OSError as exc:
-            set_status(t("Renommage impossible: {error}", "Rename failed: {error}", error=exc))
+            handle_file_error(t("Renommer", "Rename"), path, exc)
 
     def batch_rename_selected():
         paths = selected_paths()
@@ -4868,6 +5217,8 @@ def run_files(start_path: str) -> int:
             update_preview(path)
 
     def duplicate_path(path: Path):
+        if not ensure_writable_for_action(t("Dupliquer", "Duplicate"), path.parent):
+            return
         destination = unique_destination(path.parent, f"{path.stem} copy{path.suffix}" if path.is_file() else f"{path.name} copy")
         try:
             if path.is_dir():
@@ -4878,9 +5229,11 @@ def run_files(start_path: str) -> int:
             render()
             focus_path_after_render(destination, t("Copie créée: {name}", "Copy created: {name}", name=destination.name))
         except OSError as exc:
-            set_status(t("Duplication impossible: {error}", "Duplicate failed: {error}", error=exc))
+            handle_file_error(t("Dupliquer", "Duplicate"), path, exc)
 
     def trash_path(path: Path, render_after: bool = True) -> bool:
+        if render_after and not ensure_writable_for_action(t("Corbeille", "Trash"), path.parent):
+            return False
         if shutil.which("gio"):
             result = subprocess.run(["gio", "trash", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
             if result.returncode == 0:
@@ -4903,7 +5256,7 @@ def run_files(start_path: str) -> int:
             return True
         except OSError as exc:
             if render_after:
-                status_label.set_text(f"Trash failed: {exc}")
+                handle_file_error(t("Corbeille", "Trash"), path, exc)
             return False
 
     def trash_original_path(path: Path) -> Path | None:
@@ -4940,6 +5293,10 @@ def run_files(start_path: str) -> int:
         paths = selected_paths()
         if not paths:
             status_label.set_text("Select an item to move to Trash")
+            return
+        blocked = next((path for path in paths if access_state(path.parent).get("writable") is not True), None)
+        if blocked:
+            ensure_writable_for_action(t("Corbeille", "Trash"), blocked.parent)
             return
 
         def worker(cancelled, report):
@@ -5338,7 +5695,9 @@ def run_files(start_path: str) -> int:
             (t("Actions", "Actions"), t("Ctrl+K recherche toutes les actions. Ctrl+G ouvre les favoris, récents et emplacements réseau.", "Press Ctrl+K to search every file action. Use Ctrl+G for favorites, recents and network places.")),
             (t("Fichiers", "Files"), t("Double-clic ouvre, Espace prévisualise, F2 renomme, Ctrl+Z annule les actions compatibles.", "Double-click opens, Space previews, F2 renames, Ctrl+Z undoes supported actions.")),
             (t("Volumes", "Volumes"), t("Les partitions Windows et disques amovibles apparaissent dans Emplacements. Clic droit pour monter, démonter ou éjecter.", "Windows partitions and removable drives appear in Locations. Right-click a volume to mount, unmount or eject.")),
+            (t("Images ISO", "ISO Images"), t("La fiche Image disque affiche taille, checksum, USB Writer, clés détectées, SHA256, montage et flash USB.", "The Disk Image sheet shows size, checksum, USB Writer, detected drives, SHA256, mount and USB writing actions.")),
             (t("Opérations", "Operations"), t("Copie, déplacement, compression et calcul de taille tournent en arrière-plan avec pause, annulation et progression.", "Copy, move, compress and size calculation run in the background with pause, cancel and progress.")),
+            (t("Système", "System"), t("Les dossiers protégés affichent leur état d'accès. Seven Files guide l'action admin sans modifier les permissions automatiquement.", "Protected folders expose their access state. Seven Files guides admin actions without changing permissions automatically.")),
             (t("Sécurité", "Safety"), t("Les fichiers risqués proposent une ouverture isolée. Permissions et propriétaire sont dans Informations.", "Risky files get Safe Open. Permissions and ownership helpers live in Properties.")),
         ]
         for heading_text, body_text in guide_items:
@@ -5373,9 +5732,11 @@ def run_files(start_path: str) -> int:
         box.pack_start(title, False, False, 0)
         try:
             stat = path.stat()
+            state = access_state(path)
             rows = [
                 (t("Type", "Kind"), t("Dossier", "Folder") if path.is_dir() else (path.suffix.upper().lstrip(".") or t("Fichier", "File"))),
                 (t("Chemin", "Path"), str(path)),
+                (t("État d'accès", "Access Status"), str(state.get("title") or "")),
                 (t("Taille", "Size"), format_size(stat.st_size) if path.is_file() else file_row_meta(path)),
                 (t("Modifié", "Modified"), time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime))),
                 (t("Permissions", "Permissions"), human_mode(path)),
@@ -5407,6 +5768,9 @@ def run_files(start_path: str) -> int:
         permissions_button = Gtk.Button(label=t("Modifier permissions", "Edit Permissions"))
         permissions_button.connect("clicked", lambda *_: set_permissions_dialog(path))
         actions.pack_start(permissions_button, False, False, 0)
+        access_button = Gtk.Button(label=t("État d'accès", "Access Status"))
+        access_button.connect("clicked", lambda *_: show_access_details(path))
+        actions.pack_start(access_button, False, False, 0)
         owner_button = Gtk.Button(label=t("Copier correction propriétaire", "Copy Owner Fix"))
         owner_button.connect("clicked", lambda *_: copy_owner_command(path))
         actions.pack_start(owner_button, False, False, 0)
@@ -5438,6 +5802,11 @@ def run_files(start_path: str) -> int:
             add_menu_item(menu, t("Aperçu", "Preview"), lambda: open_quicklook_preview(target) if target and is_previewable(target) else update_preview(target or current))
             if target and is_windows_app_file(target):
                 add_menu_item(menu, t("Ouvrir via Windows", "Open with Windows compatibility"), lambda: open_windows_compat(target))
+            if target and is_disk_image_file(target):
+                add_menu_item(menu, t("Préparer l’image disque", "Prepare Disk Image"), lambda: show_disk_image_sheet(target))
+                add_menu_item(menu, t("Vérifier checksum", "Verify Checksum"), lambda: verify_disk_image_checksum(target))
+                add_menu_item(menu, t("Monter l’image ISO", "Mount Disk Image"), lambda: mount_disk_image(target))
+                add_menu_item(menu, t("Flasher sur USB", "Write to USB"), lambda: open_usb_writer_for_image(target))
             if target and is_risky_file(target):
                 add_menu_item(menu, t("Ouvrir isolé", "Safe Open"), lambda: safe_open_path(target))
             add_menu_item(menu, t("Informations", "Get Info"), lambda: properties_dialog(target or current))
@@ -5517,6 +5886,7 @@ def run_files(start_path: str) -> int:
         add_menu_item(menu, t("Aller à un emplacement", "Go to Recent Location"), show_go_panel)
         add_menu_item(menu, t("Ouvrir le terminal ici", "Open Terminal Here"), lambda: open_terminal_here(current))
         add_menu_item(menu, t("Copier le chemin actuel", "Copy Current Path"), lambda: copy_path(current))
+        add_menu_item(menu, t("État d'accès du dossier", "Folder Access Status"), lambda: show_access_details(current))
         add_menu_item(menu, t("Aller à un chemin", "Go to Path"), show_location_entry)
         add_menu_item(menu, t("Se connecter à un serveur", "Connect to Server"), connect_to_server)
         menu.append(Gtk.SeparatorMenuItem())
@@ -5550,6 +5920,7 @@ def run_files(start_path: str) -> int:
         if isinstance(target, Path):
             add_menu_item(menu, tr_text("Open in Terminal"), lambda: open_terminal_here(target))
             add_menu_item(menu, tr_text("Copy Path"), lambda: copy_path(target))
+            add_menu_item(menu, t("État d'accès", "Access Status"), lambda: show_access_details(target))
         else:
             add_menu_item(menu, tr_text("Copy Location"), lambda: copy_text(target_text))
             if target_text.startswith(("smb://", "sftp://", "ftp://", "dav://", "davs://")):
@@ -5596,6 +5967,14 @@ def run_files(start_path: str) -> int:
             add_menu_item(menu, "Bottles", lambda: open_windows_compat(path, "bottles"))
             add_menu_item(menu, "Wine", lambda: open_windows_compat(path, "wine"))
             add_menu_item(menu, "Lutris", lambda: open_windows_compat(path, "lutris"))
+        if path.is_file() and is_disk_image_file(path):
+            menu.append(Gtk.SeparatorMenuItem())
+            add_menu_item(menu, t("Préparer l’image disque", "Prepare Disk Image"), lambda: show_disk_image_sheet(path))
+            add_menu_item(menu, t("Vérifier checksum", "Verify Checksum"), lambda: verify_disk_image_checksum(path))
+            add_menu_item(menu, t("Monter l’image ISO", "Mount Disk Image"), lambda: mount_disk_image(path))
+            add_menu_item(menu, t("Flasher sur USB", "Write to USB"), lambda: open_usb_writer_for_image(path))
+            add_menu_item(menu, t("Copier SHA256", "Copy SHA256"), lambda: copy_disk_image_sha256(path))
+            add_menu_item(menu, t("Copier pour flasher USB", "Copy for USB Writer"), lambda: copy_path(path))
         if path.is_file() and is_risky_file(path):
             add_menu_item(menu, t("Ouverture sûre", "Safe Open"), lambda: safe_open_path(path))
         add_menu_item(menu, t("Copier", "Copy"), lambda: copy_items(active_paths))
@@ -5620,6 +5999,9 @@ def run_files(start_path: str) -> int:
         menu.append(Gtk.SeparatorMenuItem())
         add_menu_item(menu, t("Afficher dans le dossier", "Reveal in Folder"), lambda: reveal_in_parent(path))
         add_menu_item(menu, t("Copier le chemin", "Copy Path"), lambda: copy_path(path))
+        add_menu_item(menu, t("État d'accès", "Access Status"), lambda: show_access_details(path))
+        if is_system_path(path):
+            add_menu_item(menu, t("Terminal système ici", "System Terminal Here"), lambda: open_terminal_here(path if path.is_dir() else path.parent))
         add_menu_item(menu, t("Ajouter aux favoris", "Add to Favorites"), lambda: add_favorite_path(path))
         if (path if path.is_dir() else path.parent) in favorite_paths():
             add_menu_item(menu, t("Retirer des favoris", "Remove from Favorites"), lambda: remove_favorite_path(path))
@@ -5721,6 +6103,8 @@ def run_files(start_path: str) -> int:
         spring_open_state["id"] = GLib.timeout_add(SPRING_OPEN_DELAY_MS, spring_open)
 
     def move_or_copy_paths(paths: list[Path], destination_dir: Path, move: bool, label: str):
+        if not ensure_writable_for_action(label, destination_dir):
+            return
         sources = [path for path in paths if path.exists() and path.parent != destination_dir]
         if not sources:
             status_label.set_text("Nothing to move")
@@ -6012,6 +6396,273 @@ def run_files(start_path: str) -> int:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def mount_disk_image(path: Path) -> bool:
+        if not is_disk_image_file(path):
+            return False
+        if not shutil.which("udisksctl"):
+            remember_drive_error(
+                t("Montage ISO indisponible", "ISO mount unavailable"),
+                t("udisksctl manque. Installe udisks2 pour monter les images disque depuis Seven Files.", "udisksctl is missing. Install udisks2 to mount disk images from Seven Files."),
+                str(path),
+            )
+            return True
+        set_status(t("Montage de l’image {name}...", "Mounting image {name}...", name=path.name))
+
+        def worker() -> None:
+            loop_device = ""
+            mountpoint = ""
+            error = ""
+            start_polkit_agent()
+            try:
+                loop = subprocess.run(
+                    ["udisksctl", "loop-setup", "-r", "-f", str(path)],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    timeout=45,
+                )
+                loop_text = ((loop.stdout or "") + "\n" + (loop.stderr or "")).strip()
+                if loop.returncode == 0:
+                    for token in loop_text.replace("\n", " ").split():
+                        cleaned = token.rstrip(".")
+                        if cleaned.startswith("/dev/loop"):
+                            loop_device = cleaned
+                            break
+                else:
+                    error = loop_text
+                if loop_device:
+                    mounted = subprocess.run(
+                        ["udisksctl", "mount", "-b", loop_device],
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                        timeout=45,
+                    )
+                    mount_text = ((mounted.stdout or "") + "\n" + (mounted.stderr or "")).strip()
+                    if mounted.returncode == 0:
+                        for token in mount_text.replace("\n", " ").split():
+                            cleaned = token.rstrip(".")
+                            if cleaned.startswith(("/run/media/", "/media/", "/mnt/")):
+                                mountpoint = cleaned
+                                break
+                    else:
+                        error = mount_text or error
+            except Exception as exc:
+                error = str(exc)
+
+            def finish() -> bool:
+                render_location_rows(True)
+                if mountpoint and Path(mountpoint).exists():
+                    drive_error_state.update({"title": "", "message": "", "detail": ""})
+                    navigate(Path(mountpoint))
+                    set_status(t("Image montée: {name}", "Image mounted: {name}", name=path.name))
+                    notify_system(t("Image montée", "Image mounted"), path.name)
+                else:
+                    remember_drive_error(
+                        t("Montage ISO échoué", "ISO mount failed"),
+                        t("Seven Files n’a pas pu monter cette image. Vérifie le fichier ou réessaie avec un autre support.", "Seven Files could not mount this image. Check the file or try another image."),
+                        error or str(path),
+                    )
+                return False
+
+            GLib.idle_add(finish)
+
+        threading.Thread(target=worker, daemon=True).start()
+        return True
+
+    def usb_writer_command(*args: str) -> list[str] | None:
+        root_dir = resolve_root()
+        candidates: list[Path | str] = []
+        if root_dir:
+            candidates.append(root_dir / "bin" / "seven-usb-writer")
+        candidates.extend((Path("/opt/SevenOS/bin/seven-usb-writer"), "seven-usb-writer"))
+        for candidate in candidates:
+            if isinstance(candidate, Path):
+                if candidate.exists() and os.access(candidate, os.X_OK):
+                    return [str(candidate), *args]
+            elif shutil.which(candidate):
+                return [candidate, *args]
+        return None
+
+    def usb_writer_status() -> dict[str, object]:
+        command = usb_writer_command("status", "--json")
+        if not command:
+            return {"state": "missing", "devices": [], "tools": {}}
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, check=False, timeout=4)
+            if result.returncode == 0:
+                data = json.loads(result.stdout or "{}")
+                return data if isinstance(data, dict) else {"state": "unknown", "devices": [], "tools": {}}
+        except Exception:
+            pass
+        return {"state": "unknown", "devices": [], "tools": {}}
+
+    def open_usb_writer_for_image(path: Path) -> bool:
+        if not is_disk_image_file(path):
+            return False
+        command = usb_writer_command("open", str(path))
+        if not command:
+            remember_drive_error(
+                t("USB Writer indisponible", "USB Writer unavailable"),
+                t("SevenOS USB Writer n’est pas installé. Lance ./install.sh usb-writer --yes.", "SevenOS USB Writer is not installed. Run ./install.sh usb-writer --yes."),
+                str(path),
+            )
+            return True
+        set_status(t("Ouverture du créateur USB pour {name}", "Opening USB Writer for {name}", name=path.name))
+        try:
+            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            remember_recent(path)
+            notify_system(t("Créateur USB", "USB Writer"), path.name)
+        except OSError as exc:
+            remember_drive_error(
+                t("USB Writer indisponible", "USB Writer unavailable"),
+                t("Seven Files n’a pas pu ouvrir le créateur USB.", "Seven Files could not open USB Writer."),
+                str(exc),
+            )
+        return True
+
+    def copy_disk_image_sha256(path: Path) -> bool:
+        if not is_disk_image_file(path):
+            return False
+
+        def worker(cancelled, report):
+            if cancelled():
+                return OPERATION_CANCELLED
+            report(1, 2, t("Calcul SHA256", "Calculating SHA256"))
+            digest = file_hash(path)
+            report(2, 2, t("SHA256 prêt", "SHA256 ready"))
+            return digest
+
+        def done(digest):
+            if digest == OPERATION_CANCELLED:
+                finish_operation(t("SHA256 annulé", "SHA256 cancelled"))
+                return
+            copy_text(f"sha256  {digest}  {path}")
+            finish_operation(t("SHA256 copié", "SHA256 copied"))
+
+        run_background(t("Vérification image", "Verifying image"), worker, done)
+        return True
+
+    def verify_disk_image_checksum(path: Path) -> bool:
+        if not is_disk_image_file(path):
+            return False
+        sidecar, expected = checksum_sidecar_for(path)
+        if not sidecar or not expected:
+            set_status(t("Aucun checksum trouvé près de cette image", "No checksum found next to this image"))
+            copy_disk_image_sha256(path)
+            return True
+
+        def worker(cancelled, report):
+            if cancelled():
+                return OPERATION_CANCELLED
+            report(1, 2, t("Vérification checksum", "Verifying checksum"))
+            actual = file_hash(path)
+            report(2, 2, t("Checksum prêt", "Checksum ready"))
+            return actual
+
+        def done(actual):
+            if actual == OPERATION_CANCELLED:
+                finish_operation(t("Vérification annulée", "Verification cancelled"))
+                return
+            if str(actual).lower() == expected.lower():
+                finish_operation(t("Checksum valide", "Checksum verified"))
+                notify_system(t("Image vérifiée", "Image verified"), path.name)
+            else:
+                message = t("Checksum différent: image potentiellement corrompue.", "Checksum mismatch: image may be corrupted.")
+                copy_text(f"expected  {expected}  {sidecar}\nactual    {actual}  {path}")
+                finish_operation(message)
+                notify_system(t("Image non vérifiée", "Image not verified"), message)
+
+        run_background(t("Vérification checksum", "Verifying checksum"), worker, done)
+        return True
+
+    def show_disk_image_sheet(path: Path) -> bool:
+        if not is_disk_image_file(path):
+            return False
+        status = usb_writer_status()
+        sidecar, expected_checksum = checksum_sidecar_for(path)
+        devices = status.get("devices") if isinstance(status.get("devices"), list) else []
+        tools = status.get("tools") if isinstance(status.get("tools"), dict) else {}
+        state = str(status.get("state") or "unknown")
+        try:
+            image_size = format_size(path.stat().st_size)
+        except OSError:
+            image_size = t("Indisponible", "Unavailable")
+        dialog = Gtk.Dialog(title=t("Image disque", "Disk Image"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.set_default_size(540, 430)
+        dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
+        box = decorate_dialog(
+            dialog,
+            t("Image disque", "Disk Image"),
+            t("Prépare le montage ou le flash USB sans passer par le terminal.", "Prepare mounting or USB writing without using the terminal."),
+            "drive-removable-media-symbolic",
+        )
+
+        for label, value in (
+            (t("Fichier", "File"), path.name),
+            (t("Emplacement", "Location"), str(path.parent)),
+            (t("Taille", "Size"), image_size),
+            (t("Checksum", "Checksum"), sidecar.name if sidecar else t("Non trouvé", "Not found")),
+            ("USB Writer", t("Prêt", "Ready") if state == "ready" else state),
+            (t("Clés détectées", "Detected USB drives"), str(len(devices))),
+        ):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.get_style_context().add_class("inspector-card")
+            key = Gtk.Label(label=label)
+            key.set_xalign(0)
+            key.get_style_context().add_class("preview-heading")
+            val = Gtk.Label(label=value)
+            val.set_xalign(1)
+            val.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            val.get_style_context().add_class("preview-value")
+            row.pack_start(key, False, False, 0)
+            row.pack_start(val, True, True, 0)
+            box.pack_start(row, False, False, 0)
+
+        if devices:
+            device_hint = ", ".join(str(item.get("path") or item.get("name") or "") for item in devices[:3] if isinstance(item, dict))
+        else:
+            device_hint = t("Branche une clé USB avant de flasher.", "Plug in a USB drive before writing.")
+        hint = Gtk.Label(label=device_hint)
+        hint.set_xalign(0)
+        hint.set_line_wrap(True)
+        hint.get_style_context().add_class("preview-hint")
+        box.pack_start(hint, False, False, 0)
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        mount_btn = Gtk.Button(label=t("Monter", "Mount"))
+        mount_btn.get_style_context().add_class("selection-action")
+        mount_btn.connect("clicked", lambda *_: (dialog.destroy(), mount_disk_image(path)))
+        usb_btn = Gtk.Button(label=t("Flasher USB", "Write USB"))
+        usb_btn.get_style_context().add_class("selection-action")
+        usb_btn.connect("clicked", lambda *_: (dialog.destroy(), open_usb_writer_for_image(path)))
+        hash_btn = Gtk.Button(label=t("Copier SHA256", "Copy SHA256"))
+        hash_btn.get_style_context().add_class("selection-action")
+        hash_btn.connect("clicked", lambda *_: copy_disk_image_sha256(path))
+        verify_btn = Gtk.Button(label=t("Vérifier", "Verify"))
+        verify_btn.get_style_context().add_class("selection-action")
+        verify_btn.set_sensitive(bool(expected_checksum))
+        verify_btn.connect("clicked", lambda *_: verify_disk_image_checksum(path))
+        copy_btn = Gtk.Button(label=t("Copier chemin", "Copy Path"))
+        copy_btn.get_style_context().add_class("selection-action")
+        copy_btn.connect("clicked", lambda *_: copy_path(path))
+        for button in (mount_btn, usb_btn, verify_btn, hash_btn, copy_btn):
+            actions.pack_start(button, False, False, 0)
+        box.pack_start(actions, False, False, 0)
+
+        if tools:
+            missing_tools = [name for name, available in tools.items() if not available]
+            if missing_tools:
+                warn = Gtk.Label(label=t("Outils manquants: {items}", "Missing tools: {items}", items=", ".join(missing_tools)))
+                warn.set_xalign(0)
+                warn.set_line_wrap(True)
+                warn.get_style_context().add_class("preview-hint")
+                box.pack_start(warn, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+        return True
+
     def unmount_device_and_refresh(device: str, label: str = "", mounted_path: str = "") -> None:
         if not device.startswith("/dev/"):
             remember_drive_error(tr_text("Drive issue"), tr_text("Cannot unmount this device"), device)
@@ -6244,6 +6895,9 @@ def run_files(start_path: str) -> int:
         uri = str(target)
         if uri.startswith("file://"):
             navigate(Path(urllib.parse.unquote(urllib.parse.urlparse(uri).path)))
+        elif uri.startswith("trash://"):
+            TRASH_FILES_DIR.mkdir(parents=True, exist_ok=True)
+            navigate(TRASH_FILES_DIR)
         elif uri.startswith(("smb://", "sftp://", "ftp://", "dav://")):
             subprocess.Popen(["gio", "open", uri] if shutil.which("gio") else ["xdg-open", uri], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             status_label.set_text(f"Opening network location {uri}")
@@ -6675,15 +7329,14 @@ def run_files(start_path: str) -> int:
         runtime_preview_visible = preview_visible_pref
         width, height = window.get_size()
         if runtime_preview_visible and width < 960:
-            window.unmaximize()
-            window.resize(max(COMFORT_WINDOW_SIZE[0], width), max(height, DEFAULT_WINDOW_SIZE[1]))
-            preview.set_visible(True)
-            set_status(t("Inspecteur ouvert avec plus d'espace", "Inspector opened with more room"))
+            runtime_preview_visible = False
+            preview.set_visible(False)
+            set_status(t("Inspecteur disponible en fenêtre plus large", "Inspector available in a wider window"))
         else:
             preview.set_visible(runtime_preview_visible)
             set_status(tr_text("Preview shown") if preview_visible_pref else tr_text("Preview hidden"))
         next_width, next_height = window.get_size()
-        layout_width = COMFORT_WINDOW_SIZE[0] if runtime_preview_visible and width < 960 else max(width, next_width)
+        layout_width = max(width, next_width)
         adapt_layout(window, type("SevenFilesLayoutEvent", (), {"width": layout_width, "height": max(height, next_height)})())
         if runtime_preview_visible:
             preview.set_visible(True)
@@ -7102,7 +7755,6 @@ def run_files(start_path: str) -> int:
     initial_size = compact_window_size(*requested_size)
     window.set_default_size(*initial_size)
     window.resize(*initial_size)
-    render()
     root.show_all()
     sidebar.set_visible(runtime_sidebar_visible)
     actions_group.set_visible(False)
@@ -7117,8 +7769,15 @@ def run_files(start_path: str) -> int:
     window.resize(*initial_size)
     adapt_layout(window, type("SevenFilesInitialLayout", (), {"width": initial_size[0], "height": initial_size[1]})())
     window.show()
-    if restored_size:
-        set_status(tr_text("Restored previous Seven Files session"))
+
+    def initial_render() -> bool:
+        render()
+        if restored_size:
+            set_status(tr_text("Restored previous Seven Files session"))
+        return False
+
+    set_status(t("Ouverture de Seven Files...", "Opening Seven Files..."))
+    GLib.timeout_add(STARTUP_RENDER_DELAY_MS, initial_render)
     Gtk.main()
     return 0
 

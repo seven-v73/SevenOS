@@ -11,12 +11,17 @@ SevenOS action registry
 Usage:
   seven actions
   seven actions --json
+  seven actions native --json
   seven actions list
   seven actions category <name>
   seven actions run <id> [--dry-run]
 
 The registry is the shared action contract for Seven Hub, Waybar,
 Quick Settings and future native SevenOS surfaces.
+
+The full catalog stays broad for user-facing launchers. The native catalog is
+owned by seven-daemon and should be preferred by system surfaces that only need
+stable OS state, plans and diagnostics.
 EOF
 }
 
@@ -35,6 +40,16 @@ tools.plan	System	Tools UX Plan	seven tools plan	safe	Show the SevenOS tool ergo
 tools.detail.files	System	Files Tool Detail	seven tools detail files	safe	Show Seven Files readiness, route, probe and blockers without opening the full dashboard.
 tools.detail.notes	System	Notes Tool Detail	seven tools detail notes	safe	Show Seven Notes readiness, route, probe and blockers without opening the full dashboard.
 tools.detail.doctor	System	Doctor Tool Detail	seven tools detail doctor	safe	Show Seven Doctor readiness, route, probe and blockers without opening the full dashboard.
+native.actions	System	Native Core Actions	seven-daemon actions --json	safe	Show the Rust-owned SevenOS action contract used by native surfaces.
+native.action.health	System	Native Health Action	seven-daemon action-plan core.health --json	safe	Show the daemon action plan for fast system health.
+native.surfaces	System	Native Surface Contract	seven core surfaces --json	safe	Show the daemon-owned readiness contract for Settings, Doctor, Store, Installer, Files, Reader, Terminal and Home.
+native.action.installer	System	Native Installer Action	seven-daemon action-plan installer.status --json	safe	Show the daemon action plan for graphical installation readiness.
+native.installer.flow	System	Native Installer Flow	seven core installer-flow --json	safe	Show the daemon-owned ISO and graphical installer flow contract before building or flashing SevenOS.
+native.update	System	Native Update Status	seven core update --json	safe	Show the daemon-owned SevenOS update readiness contract.
+native.update.plan	System	Native Update Plan	seven core update-plan --json	safe	Show the daemon-owned update workflow plan with rollback and privileged boundaries.
+native.doctor.task	System	Native Doctor Task Manager	seven core doctor-task --json	safe	Show the daemon-owned resource, process and service snapshot used by Seven Doctor.
+native.experience	System	Native Experience State	seven core experience --json	safe	Show the daemon-owned theme, language, profile and session state for SevenOS surfaces.
+native.action.software	System	Native Software Action	seven-daemon action-plan packages.plan --json	safe	Show the daemon action plan for package and profile delivery.
 quality.ux.fast	System	Fast UX Gate	seven ux fast --json	safe	Run the bounded daily UX gate for native tools, manifests and design coherence.
 experience.center	Desktop	Open Experience Center	seven experience-center --gui	safe	Open Rescue Mode, Time Machine, Timeline, Permissions, Focus Journeys and Workspace Memory.
 experience.briefing	System	Daily Briefing	seven briefing	safe	Show the calm daily SevenOS readiness summary and next actions.
@@ -257,7 +272,7 @@ motion.premium	Desktop	Enable Premium Motion	seven motion premium	changes	Apply 
 motion.profile	Desktop	Apply Profile Motion	seven motion profile	changes	Apply the active mini OS motion language.
 motion.auto	Desktop	Automatic Motion	seven motion set auto	changes	Let each mini OS choose its own motion preset.
 motion.reduced	Desktop	Reduced Motion	seven motion reduced	changes	Apply a calmer animation preset for accessibility and low-power sessions.
-profile.status	Profiles	Profile Status	seven profile status	safe	Show installed and active profile state.
+profile.status	Profiles	Profile Status	seven core profiles-status	safe	Show installed and active profile state from Seven Core.
 profile.current	Profiles	Current Profile	seven profile current	safe	Show the active profile in detail.
 profile.guide	Profiles	Profile Guide	seven profile guide	safe	Show recommended actions for the active profile.
 profile.apps	Profiles	Profile Apps	seven profile apps	safe	Show apps and launch commands for the active profile.
@@ -265,7 +280,7 @@ profile.gaps	Profiles	Profile Gaps	seven profile gaps	safe	Show incomplete profi
 profile.requirements	Profiles	Profile Requirements	seven profile requirements $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))')	safe	Show missing package requirements for the active mini OS.
 profile.requirements.install	Profiles	Install Profile Requirements	seven profile requirements $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --apply --yes	packages	Install missing required packages for the active mini OS.
 profile.requirements.optional	Profiles	Install Optional Requirements	seven profile requirements $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --optional --apply --yes	packages	Install optional/profile community packages when available.
-profile.plan	Profiles	Profile Plan	seven profile plan	safe	Show prioritized profile completion plan.
+profile.plan	Profiles	Profile Plan	seven core profile-plan	safe	Show prioritized profile completion plan from Seven Core.
 profile.aliases	Profiles	Profile Aliases	seven profile aliases	safe	Show retired profile aliases and their active replacements.
 profile.migrate_aliases	Profiles	Migrate Profile Aliases	seven profile migrate-aliases --apply	changes	Rewrite stale local state from retired profile aliases to active mini OS names.
 profile.isolation	Profiles	Profile Isolation	seven profile isolation status	safe	Show active packages, quiet packages, services and strict app-data boundaries.
@@ -492,9 +507,9 @@ cluster.nodes	Ecosystem	SevenCluster Nodes	seven cluster nodes	safe	Show declare
 cluster.plan	Ecosystem	SevenCluster Plan	seven cluster plan	safe	Show next steps before any multi-machine orchestration is enabled.
 flatpak.status	Apps	Flatpak Status	seven flatpak status	safe	Check Flathub and Flatpak readiness.
 flatpak.install	Apps	Install Default Flatpaks	seven flatpak install	packages	Install default Flatpak apps including Bottles and creative tools.
-sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.
+sevenpkg.status	Apps	Software Status	seven core packages	safe	Show SevenOS software layer state from Seven Core.
 sevenpkg.doctor	Apps	SevenPkg Doctor	sevenpkg doctor	safe	Diagnose SevenPkg sources, mini OS software layers, optional packages and removal guards.
-sevenpkg.plan	Apps	Software Plan	sevenpkg plan	safe	Show prioritized software and app completion actions.
+sevenpkg.plan	Apps	Software Plan	seven core packages-plan	safe	Show prioritized software and app completion actions from Seven Core.
 sevenpkg.meta	Apps	Meta Packages	sevenpkg meta	safe	List SevenOS software bundles.
 sevenpkg.owner	Apps	Package Owner	sevenpkg owner nmap	safe	Show which SevenOS mini OS owns a package before install/remove decisions.
 sevenpkg.optional	Apps	Optional Software	sevenpkg optional	safe	Show optional SevenOS software layers without installing them.
@@ -579,7 +594,35 @@ print_rows_for_category() {
 json_output() {
   local rows
   rows="${1:-$(action_rows)}"
-  ACTION_ROWS="$rows" python - <<'PY'
+  local native_payload
+  native_payload="$("$ROOT_DIR/bin/seven-daemon" actions --json 2>/dev/null || true)"
+  if ! python -m json.tool >/dev/null 2>&1 <<<"$native_payload"; then
+    native_payload='{}'
+  fi
+  local native_state native_count native_writer
+  native_state="$(NATIVE_ACTIONS_JSON="$native_payload" python - <<'PY'
+import json, os
+data = json.loads(os.environ.get("NATIVE_ACTIONS_JSON") or "{}")
+print(data.get("state", "unknown"))
+PY
+)"
+  native_count="$(NATIVE_ACTIONS_JSON="$native_payload" python - <<'PY'
+import json, os
+data = json.loads(os.environ.get("NATIVE_ACTIONS_JSON") or "{}")
+print(data.get("count", 0))
+PY
+)"
+  native_writer="$(NATIVE_ACTIONS_JSON="$native_payload" python - <<'PY'
+import json, os
+data = json.loads(os.environ.get("NATIVE_ACTIONS_JSON") or "{}")
+print(data.get("writer", "unknown"))
+PY
+)"
+  ACTION_ROWS="$rows" \
+  NATIVE_ACTIONS_STATE="$native_state" \
+  NATIVE_ACTIONS_COUNT="$native_count" \
+  NATIVE_ACTIONS_WRITER="$native_writer" \
+  python - <<'PY'
 import json
 import os
 from collections import defaultdict
@@ -638,6 +681,16 @@ print(json.dumps({
     "schema": "sevenos.actions.v1",
     "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     "count": len(items),
+    "runtime": "hybrid",
+    "writer": "scripts/actions.sh",
+    "system_registry": {
+        "schema": "sevenos.core.actions.v1",
+        "command": "seven actions native --json",
+        "state": os.environ.get("NATIVE_ACTIONS_STATE", "unknown"),
+        "count": int(os.environ.get("NATIVE_ACTIONS_COUNT", "0") or 0),
+        "writer": os.environ.get("NATIVE_ACTIONS_WRITER", "unknown"),
+        "preferred_for": ["Settings", "Doctor", "Installer", "Update", "SevenAI", "native surfaces"],
+    },
     "actions": items,
     "categories": dict(sorted(categories.items())),
     "profiles": {key: value for key, value in sorted(profile_map.items()) if value},
@@ -698,6 +751,16 @@ case "$ACTION" in
     ;;
   --json|json)
     json_output
+    ;;
+  native|system)
+    shift || true
+    if [[ "${1:-}" == "--json" || "${1:-}" == "json" || -z "${1:-}" ]]; then
+      "$ROOT_DIR/bin/seven-daemon" actions --json
+    else
+      log_error "Unknown native actions option: $1"
+      usage
+      exit 1
+    fi
     ;;
   list)
     list_output

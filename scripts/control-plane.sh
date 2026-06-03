@@ -56,15 +56,23 @@ if [[ "$YES" -eq 1 ]]; then
 fi
 
 payload() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" control --json
+    return
+  fi
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
 import json
 import os
 import subprocess
 
 ROOT = os.environ["SEVENOS_ROOT"]
+COMMAND_TIMEOUT = float(os.environ.get("SEVENOS_CONTROL_COMMAND_TIMEOUT", "4.0"))
 
 def command_json(command, fallback):
-    result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, check=False)
+    try:
+        result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, check=False, timeout=COMMAND_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return fallback
     if result.returncode != 0 or not result.stdout.strip():
         return fallback
     try:
@@ -72,30 +80,30 @@ def command_json(command, fallback):
     except json.JSONDecodeError:
         return fallback
 
-readiness = command_json([os.path.join(ROOT, "scripts/readiness.sh"), "--json"], {"percent": 0, "recommendations": []})
+readiness = command_json([os.path.join(ROOT, "bin/seven-daemon"), "readiness", "--json"], {"percent": 0, "recommendations": []})
 welcome_plan = command_json([os.path.join(ROOT, "bin/seven-welcome"), "plan", "--json"], {"next": []})
-experience = command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"], {"percent": 0, "checks": [], "recommendations": []})
+experience = command_json([os.path.join(ROOT, "bin/seven-daemon"), "experience", "--json"], {"percent": 0, "checks": [], "recommendations": []})
 shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"], {"posture": "unknown", "percent": 0, "checks": [], "recommendations": []})
 shield_plan = command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"], {"next": []})
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}, "recommendations": []})
 server_plan = command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"], {"next": []})
 atlas = command_json([os.path.join(ROOT, "bin/seven"), "atlas", "status", "--json"], {"state": "unknown", "missing_required": []})
 atlas_plan = command_json([os.path.join(ROOT, "bin/seven-profile-requirements"), "status", "atlas", "--json"], {"next": []})
-installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
-installer_plan = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "plan", "--json"], {"next": []})
-packages_plan = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"next": []})
-public_quality = command_json([os.path.join(ROOT, "scripts/public-experience.sh"), "doctor", "--json", "--refresh"], {"score": 0, "daily_quality_ready": False, "public_quality_ready": False, "gates": []})
-profile_health = command_json([os.path.join(ROOT, "bin/seven"), "profile", "health", "--json"], {"summary": {}})
+installer = command_json([os.path.join(ROOT, "bin/seven-daemon"), "installer", "--json"], {"ready": False, "mode": "foundation"})
+installer_plan = command_json([os.path.join(ROOT, "bin/seven-daemon"), "installer-plan", "--json"], {"next": []})
+packages_plan = command_json([os.path.join(ROOT, "bin/seven-daemon"), "packages-plan", "--json"], {"next": []})
+public_quality = command_json([os.path.join(ROOT, "scripts/public-experience.sh"), "doctor", "--json"], {"score": 0, "daily_quality_ready": False, "public_quality_ready": False, "gates": []})
+profile_health = command_json([os.path.join(ROOT, "bin/seven-daemon"), "profile-health", "--json"], {"summary": {}})
 store = command_json([os.path.join(ROOT, "scripts/store.sh"), "json"], {"summary": {}, "modules": []})
 box = command_json([os.path.join(ROOT, "scripts/box.sh"), "json"], {"summary": {}, "checks": []})
 cloud = command_json([os.path.join(ROOT, "scripts/cloud.sh"), "json"], {"summary": {}, "targets": []})
 flow = command_json([os.path.join(ROOT, "scripts/flow.sh"), "json"], {"summary": {}, "recipes": []})
 cluster = command_json([os.path.join(ROOT, "scripts/cluster.sh"), "json"], {"summary": {}, "actions": []})
 ecosystem = command_json([os.path.join(ROOT, "scripts/ecosystem.sh"), "json"], {"modules": [], "processes": []})
-profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
-profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
+profiles = command_json([os.path.join(ROOT, "bin/seven-daemon"), "profiles-status", "--json"], [])
+profile_plan = command_json([os.path.join(ROOT, "bin/seven-daemon"), "profile-plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
-daily = command_json([os.path.join(ROOT, "scripts/daily-driver.sh"), "status", "--json"], {"decision": "unknown", "blockers": [], "warnings": []})
+daily = command_json([os.path.join(ROOT, "bin/seven-daemon"), "daily", "--json"], {"decision": "unknown", "blockers": [], "warnings": []})
 
 actions_by_command = {item.get("command"): item for item in actions.get("actions", [])}
 public_gates = {item.get("key"): item for item in public_quality.get("gates", []) if isinstance(item, dict)}
@@ -255,7 +263,7 @@ for item in packages_plan.get("next", []):
         "packages",
         item.get("severity", "medium"),
         item.get("title", "Complete software layer"),
-        item.get("command", "sevenpkg plan"),
+        item.get("command", "seven core packages-plan"),
         item.get("reason", "Improve software readiness"),
         item.get("impact", "packages"),
     )

@@ -142,7 +142,7 @@ Install into Studio? yes/no
 
 This keeps SevenOS public-friendly while preserving technical control.
 
-The current command contract is:
+The current user and developer command contract is:
 
 ```bash
 sevenpkg catalog
@@ -153,6 +153,11 @@ sevenpkg resolve blender --json
 seven install blender --preview
 seven install blender
 ```
+
+Native UI surfaces should not call these inspection commands on every refresh.
+For dashboards, use `seven-daemon packages-catalog --json` and
+`seven-daemon packages-strategy --json`; keep `sevenpkg` for explicit user
+queries, previews and transactions.
 
 Machine-readable install previews must expose both the user request and the
 effective routing decision. For example, a public request can keep
@@ -197,15 +202,19 @@ catalog result -> natural mini OS -> source -> preview -> install
 When a catalog app belongs to a mini OS, the public install path should target
 that mini OS by default.
 
-Seven Store consumes `sevenpkg strategy --json`, `sevenpkg catalog --json` and
-`sevenpkg resolve <app> --json`. It should treat `sevenpkg/apps.json` as the
-first source of truth for curated apps, then fall back to repository adapters.
+Seven Store consumes `seven-daemon packages-strategy --json`,
+`seven-daemon packages-catalog --json` and `sevenpkg resolve <app> --json`.
+The daemon owns fast read models for UI, Helper, Hub and release gates; SevenPkg
+stays responsible for transaction previews and installs. Store should treat
+`sevenpkg/apps.json` as the first source of truth for curated apps, then fall
+back to repository adapters.
 
 ## Shared State Contract
 
 SevenPkg routing is now part of the global SevenOS state snapshot so the Hub,
 Helper, Settings, Store and future surfaces can read the same package truth
-without starting their own rootfs scans.
+without starting their own rootfs scans. The snapshot is produced from Seven
+Core daemon contracts, not from repeated UI-side SevenPkg scans.
 
 `seven state --json` exposes:
 
@@ -215,10 +224,10 @@ without starting their own rootfs scans.
 - `packages_catalog`: curated app-domain catalog;
 - `packages_footprint`: fast rootfs readiness, duplication and coverage audit.
 
-Surfaces should prefer these state fields for dashboards and only call
-`sevenpkg footprint --json` when the user explicitly asks for a full byte-size
-audit. This keeps Equinox responsive while preserving one authoritative package
-model.
+Surfaces should prefer these state fields or the matching `seven-daemon
+packages-* --json` contracts for dashboards, and only call `sevenpkg footprint
+--json` when the user explicitly asks for a full byte-size audit. This keeps
+Equinox responsive while preserving one authoritative package model.
 
 The state cache treats this contract as semantic, not just syntactic: a cached
 snapshot without the package strategy schemas or with an empty curated catalog
@@ -269,7 +278,7 @@ explicit.
 
 ## Commands
 
-Use these commands to inspect the current strategy:
+Use these commands to inspect the current strategy from the SevenPkg side:
 
 ```bash
 sevenpkg strategy
@@ -283,6 +292,14 @@ sevenpkg forge sources
 sevenpkg global-policy
 ```
 
+Use these commands for UI-grade read models:
+
+```bash
+seven-daemon packages-strategy --json
+seven-daemon packages-catalog --json
+seven-daemon packages-footprint --json
+```
+
 Use these commands for actual package work:
 
 ```bash
@@ -292,5 +309,7 @@ sevenpkg shield install wireshark-qt --source pacman
 sevenpkg forge install code --source pacman
 ```
 
-The ideal long-term public UI is Seven Store. It should call the same SevenPkg
-strategy and present engines as SevenOS concepts, not raw backend names.
+The ideal long-term public UI is Seven Store. It should call the Seven Core
+daemon read models for passive state, then SevenPkg transaction plans when the
+user intentionally previews or installs something. Engines must be presented as
+SevenOS concepts, not raw backend names.

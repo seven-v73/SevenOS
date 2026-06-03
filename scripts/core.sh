@@ -16,6 +16,7 @@ OBSERVER_SERVICE_TARGET="$SYSTEMD_USER_DIR/seven-context-observer.service"
 JSON_OUTPUT=0
 ACTION="${1:-status}"
 COMPACT_KEEP="${SEVENOS_CORE_EVENT_KEEP:-5000}"
+CORE_ACTION_ID=""
 
 usage() {
   cat <<'EOF'
@@ -39,6 +40,27 @@ Usage:
   seven core snapshot --json
   seven core health --json
   seven core profiles --json
+  seven core profiles-status --json
+  seven core profile-gaps --json
+  seven core profile-plan --json
+  seven core profile-health --json
+  seven core packages --json
+  seven core packages-plan --json
+  seven core packages-strategy --json
+  seven core packages-catalog --json
+  seven core packages-footprint --json
+  seven core surfaces --json
+  seven core installer-flow --json
+  seven core update --json
+  seven core update-plan --json
+  seven core doctor-task --json
+  seven core experience --json
+  seven core readiness --json
+  seven core daily --json
+  seven core smoke --json
+  seven core actions --json
+  seven core action-plan <id> --json
+  seven core action-run <id> --json
   seven core observe --json
   seven core compact-bus [--keep N]
 
@@ -57,7 +79,18 @@ while [[ "$#" -gt 0 ]]; do
       shift
       ;;
     -h|--help|help) usage; exit 0 ;;
-    *) log_error "Unknown core option: $arg"; usage; exit 1 ;;
+    *)
+      case "$ACTION" in
+        action-plan|action-run)
+          if [[ -z "$CORE_ACTION_ID" ]]; then
+            CORE_ACTION_ID="$arg"
+          else
+            log_error "Unknown core option: $arg"; usage; exit 1
+          fi
+          ;;
+        *) log_error "Unknown core option: $arg"; usage; exit 1 ;;
+      esac
+      ;;
   esac
   shift || true
 done
@@ -106,7 +139,12 @@ event_count() {
 }
 
 status_json() {
-  local contracts api bus_schema daemon daemon_src daemon_bin daemon_json daemon_profiles daemon_shield daemon_server daemon_atlas daemon_installer daemon_packages daemon_insights daemon_phase_gate bus_c bus_c_bin cc_state make_state service observer_service observer_unit rust cargo events state
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" core-status --json
+    return
+  fi
+
+  local contracts api bus_schema daemon daemon_src daemon_bin daemon_json daemon_actions daemon_surfaces daemon_profiles daemon_shield daemon_server daemon_atlas daemon_installer daemon_installer_flow daemon_update daemon_doctor_task daemon_experience daemon_packages daemon_insights daemon_phase_gate bus_c bus_c_bin cc_state make_state service observer_service observer_unit rust cargo events state
   contracts=0
   [[ "$(exec_state scripts/state.sh)" == OK ]] && contracts=$((contracts + 1))
   [[ "$(exec_state scripts/control-plane.sh)" == OK ]] && contracts=$((contracts + 1))
@@ -120,12 +158,18 @@ status_json() {
   daemon_src="$(file_state seven-core/daemon/src/main.rs)"
   daemon_bin="$(exec_state bin/seven-daemon)"
   daemon_json="$([[ -s "$DAEMON_MANIFEST" ]] && grep -q 'serde_json' "$DAEMON_MANIFEST" && printf OK || printf MISS)"
+  daemon_actions="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.core.actions.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_surfaces="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.core.surfaces.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_profiles="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.daemon.profiles.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_shield="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.shield.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_server="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.server.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_windows="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.windows.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_atlas="$([[ -x "$ROOT_DIR/bin/seven" ]] && "$ROOT_DIR/bin/seven" atlas status --json >/dev/null 2>&1 && printf OK || printf MISS)"
   daemon_installer="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.installer.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_installer_flow="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.installer-flow.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_update="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.update.v2' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_doctor_task="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.doctor-task-manager.v2' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_experience="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.experience.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_packages="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.packages-plan.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_insights="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.insights.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_phase_gate="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.phase-gate.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
@@ -151,7 +195,7 @@ status_json() {
     state="RUNTIME_READY"
   fi
 
-  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_JSON_STATE="$daemon_json" DAEMON_PROFILES_STATE="$daemon_profiles" DAEMON_SHIELD_STATE="$daemon_shield" DAEMON_SERVER_STATE="$daemon_server" DAEMON_WINDOWS_STATE="$daemon_windows" DAEMON_ATLAS_STATE="$daemon_atlas" DAEMON_INSTALLER_STATE="$daemon_installer" DAEMON_PACKAGES_STATE="$daemon_packages" DAEMON_INSIGHTS_STATE="$daemon_insights" DAEMON_PHASE_GATE_STATE="$daemon_phase_gate" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" OBSERVER_SERVICE_STATE="$observer_service" OBSERVER_UNIT_STATE="$observer_unit" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
+  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_JSON_STATE="$daemon_json" DAEMON_ACTIONS_STATE="$daemon_actions" DAEMON_SURFACES_STATE="$daemon_surfaces" DAEMON_PROFILES_STATE="$daemon_profiles" DAEMON_SHIELD_STATE="$daemon_shield" DAEMON_SERVER_STATE="$daemon_server" DAEMON_WINDOWS_STATE="$daemon_windows" DAEMON_ATLAS_STATE="$daemon_atlas" DAEMON_INSTALLER_STATE="$daemon_installer" DAEMON_INSTALLER_FLOW_STATE="$daemon_installer_flow" DAEMON_UPDATE_STATE="$daemon_update" DAEMON_DOCTOR_TASK_STATE="$daemon_doctor_task" DAEMON_EXPERIENCE_STATE="$daemon_experience" DAEMON_PACKAGES_STATE="$daemon_packages" DAEMON_INSIGHTS_STATE="$daemon_insights" DAEMON_PHASE_GATE_STATE="$daemon_phase_gate" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" OBSERVER_SERVICE_STATE="$observer_service" OBSERVER_UNIT_STATE="$observer_unit" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
 import json
 import os
 
@@ -168,12 +212,18 @@ components = [
     {"key": "bus_writer", "title": "Rust SevenBus writer", "state": os.environ["DAEMON_BIN_STATE"], "detail": "seven-daemon emit"},
     {"key": "bus_reader", "title": "Typed SevenBus reader", "state": os.environ["DAEMON_JSON_STATE"], "detail": "serde_json snapshot parser"},
     {"key": "events_reader", "title": "Rust event list reader", "state": os.environ["DAEMON_JSON_STATE"], "detail": "seven-daemon events / summary"},
+    {"key": "native_action_registry", "title": "Native action registry", "state": os.environ["DAEMON_ACTIONS_STATE"], "detail": "seven-daemon actions / action-plan / action-run"},
+    {"key": "native_surfaces_contract", "title": "Native surfaces contract", "state": os.environ["DAEMON_SURFACES_STATE"], "detail": "seven-daemon surfaces"},
     {"key": "profile_engine", "title": "Rust profile inventory engine", "state": os.environ["DAEMON_PROFILES_STATE"], "detail": "seven-daemon profiles"},
     {"key": "shield_engine", "title": "Rust Shield posture engine", "state": os.environ["DAEMON_SHIELD_STATE"], "detail": "seven-daemon shield / shield-plan"},
     {"key": "server_engine", "title": "Rust Server readiness engine", "state": os.environ["DAEMON_SERVER_STATE"], "detail": "seven-daemon server / server-plan"},
     {"key": "windows_engine", "title": "Windows app compatibility engine", "state": os.environ["DAEMON_WINDOWS_STATE"], "detail": "seven-daemon windows / windows-plan"},
     {"key": "atlas_engine", "title": "Atlas Explorer readiness contract", "state": os.environ["DAEMON_ATLAS_STATE"], "detail": "seven atlas status"},
     {"key": "installer_engine", "title": "Rust Installer readiness engine", "state": os.environ["DAEMON_INSTALLER_STATE"], "detail": "seven-daemon installer / installer-plan"},
+    {"key": "installer_flow_engine", "title": "Rust Installer flow contract", "state": os.environ["DAEMON_INSTALLER_FLOW_STATE"], "detail": "seven-daemon installer-flow"},
+    {"key": "update_engine", "title": "Rust Update readiness engine", "state": os.environ["DAEMON_UPDATE_STATE"], "detail": "seven-daemon update / update-plan"},
+    {"key": "doctor_task_engine", "title": "Rust Doctor task-manager engine", "state": os.environ["DAEMON_DOCTOR_TASK_STATE"], "detail": "seven-daemon doctor-task"},
+    {"key": "experience_engine", "title": "Rust Experience state engine", "state": os.environ["DAEMON_EXPERIENCE_STATE"], "detail": "seven-daemon experience"},
     {"key": "packages_engine", "title": "Rust software readiness engine", "state": os.environ["DAEMON_PACKAGES_STATE"], "detail": "seven-daemon packages / packages-plan"},
     {"key": "insights_engine", "title": "Rust product insights engine", "state": os.environ["DAEMON_INSIGHTS_STATE"], "detail": "seven-daemon insights"},
     {"key": "phase_gate_engine", "title": "Rust phase gate engine", "state": os.environ["DAEMON_PHASE_GATE_STATE"], "detail": "seven-daemon phase-gate"},
@@ -211,9 +261,15 @@ print(json.dumps({
         "windows_engine": os.environ["DAEMON_WINDOWS_STATE"],
         "atlas_engine": os.environ["DAEMON_ATLAS_STATE"],
         "installer_engine": os.environ["DAEMON_INSTALLER_STATE"],
+        "installer_flow_engine": os.environ["DAEMON_INSTALLER_FLOW_STATE"],
+        "update_engine": os.environ["DAEMON_UPDATE_STATE"],
+        "doctor_task_engine": os.environ["DAEMON_DOCTOR_TASK_STATE"],
+        "experience_engine": os.environ["DAEMON_EXPERIENCE_STATE"],
         "packages_engine": os.environ["DAEMON_PACKAGES_STATE"],
         "insights_engine": os.environ["DAEMON_INSIGHTS_STATE"],
         "phase_gate_engine": os.environ["DAEMON_PHASE_GATE_STATE"],
+        "action_engine": os.environ["DAEMON_ACTIONS_STATE"],
+        "surfaces_engine": os.environ["DAEMON_SURFACES_STATE"],
     },
     "components": components,
     "next_focus": [
@@ -227,6 +283,8 @@ print(json.dumps({
         "Move Server readiness consumers from Bash to seven-daemon server",
         "Move Atlas Explorer consumers toward the native Core contract",
         "Move Installer readiness consumers from Bash to seven-daemon installer",
+        "Move Seven Doctor task-manager consumers from Python to seven-daemon doctor-task",
+        "Move theme, language, profile and session readers to seven-daemon experience",
         "Move SevenPkg software consumers from Python to seven-daemon packages",
         "Move product diagnosis consumers from Bash to seven-daemon insights",
         "Move phase transition decisions from Bash to seven-daemon phase-gate",
@@ -366,6 +424,174 @@ profiles_json() {
     "$ROOT_DIR/bin/seven-daemon" profiles --json
   else
     printf '{"schema":"sevenos.daemon.profiles.v1","state":"MISS","profiles":[]}\n'
+  fi
+}
+
+profiles_status_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" profiles-status --json
+  else
+    printf '[]\n'
+  fi
+}
+
+profile_gaps_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" profile-gaps --json
+  else
+    printf '{"schema":"sevenos.profile-gaps.v1","profiles":[],"state":"MISS"}\n'
+  fi
+}
+
+profile_plan_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" profile-plan --json
+  else
+    printf '{"schema":"sevenos.profile-plan.v1","summary":{"total":0,"critical":0,"high":0,"medium":0},"next":[],"state":"MISS"}\n'
+  fi
+}
+
+profile_health_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" profile-health --json
+  else
+    printf '{"schema":"sevenos.profile-health.v1","summary":{"total":0,"ready":0},"profiles":[],"state":"MISS"}\n'
+  fi
+}
+
+packages_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" packages --json
+  else
+    printf '[]\n'
+  fi
+}
+
+packages_plan_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" packages-plan --json
+  else
+    printf '{"schema":"sevenos.packages-plan.v1","state":"MISS","summary":{"total":0},"next":[]}\n'
+  fi
+}
+
+packages_strategy_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" packages-strategy --json
+  else
+    printf '{"schema":"sevenos.sevenpkg-strategy.v1","state":"MISS","profiles":[]}\n'
+  fi
+}
+
+packages_catalog_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" packages-catalog --json
+  else
+    printf '{"schema":"sevenos.app-catalog.v1","count":0,"items":[],"state":"MISS"}\n'
+  fi
+}
+
+packages_footprint_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" packages-footprint --json
+  else
+    printf '{"schema":"sevenos.sevenpkg-footprint.v1","state":"MISS","summary":{"mini_os":0,"ready_rootfs":0}}\n'
+  fi
+}
+
+actions_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" actions --json
+  else
+    printf '{"schema":"sevenos.core.actions.v1","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
+surfaces_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" surfaces --json
+  else
+    printf '{"schema":"sevenos.core.surfaces.v1","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
+installer_flow_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" installer-flow --json
+  else
+    printf '{"schema":"sevenos.installer-flow.v1","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
+update_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" update --json
+  else
+    printf '{"schema":"sevenos.update.v2","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
+update_plan_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" update-plan --json
+  else
+    printf '{"schema":"sevenos.update-plan.v1","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
+doctor_task_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" doctor-task --json
+  else
+    printf '{"schema":"sevenos.doctor-task-manager.v2","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
+experience_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" experience --json
+  else
+    printf '{"schema":"sevenos.experience.v1","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
+readiness_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" readiness --json
+  else
+    printf '{"schema":"sevenos.readiness.v1","state":"MISS","percent":0,"recommendations":[]}\n'
+  fi
+}
+
+daily_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" daily --json
+  else
+    printf '{"schema":"sevenos.daily-driver.v1","state":"MISS","decision":"unknown","summary":{"readiness":0},"blockers":[],"warnings":[]}\n'
+  fi
+}
+
+action_plan_json() {
+  if [[ -z "$CORE_ACTION_ID" ]]; then
+    printf '{"schema":"sevenos.core.action-plan.v1","state":"blocked","reason":"missing-action-id","usage":"seven core action-plan <id> --json"}\n'
+    return 2
+  fi
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" action-plan "$CORE_ACTION_ID" --json
+  else
+    printf '{"schema":"sevenos.core.action-plan.v1","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
+action_run_json() {
+  if [[ -z "$CORE_ACTION_ID" ]]; then
+    printf '{"schema":"sevenos.core.action-run.v1","state":"blocked","reason":"missing-action-id","usage":"seven core action-run <id> --json"}\n'
+    return 2
+  fi
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" action-run "$CORE_ACTION_ID" --json
+  else
+    printf '{"schema":"sevenos.core.action-run.v1","state":"MISS","message":"seven-daemon missing"}\n'
   fi
 }
 
@@ -535,6 +761,153 @@ case "$ACTION" in
       profiles_json
     else
       profiles_json | python -m json.tool
+    fi
+    ;;
+  profiles-status)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      profiles_status_json
+    else
+      profiles_status_json | python -m json.tool
+    fi
+    ;;
+  profile-gaps|profiles-gaps)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      profile_gaps_json
+    else
+      profile_gaps_json | python -m json.tool
+    fi
+    ;;
+  profile-plan|profiles-plan)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      profile_plan_json
+    else
+      profile_plan_json | python -m json.tool
+    fi
+    ;;
+  profile-health|profiles-health)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      profile_health_json
+    else
+      profile_health_json | python -m json.tool
+    fi
+    ;;
+  packages|package-status)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      packages_json
+    else
+      packages_json | python -m json.tool
+    fi
+    ;;
+  packages-plan|package-plan)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      packages_plan_json
+    else
+      packages_plan_json | python -m json.tool
+    fi
+    ;;
+  packages-strategy|package-strategy)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      packages_strategy_json
+    else
+      packages_strategy_json | python -m json.tool
+    fi
+    ;;
+  packages-catalog|package-catalog)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      packages_catalog_json
+    else
+      packages_catalog_json | python -m json.tool
+    fi
+    ;;
+  packages-footprint|package-footprint)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      packages_footprint_json
+    else
+      packages_footprint_json | python -m json.tool
+    fi
+    ;;
+  surfaces)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      surfaces_json
+    else
+      surfaces_json | python -m json.tool
+    fi
+    ;;
+  installer-flow)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      installer_flow_json
+    else
+      installer_flow_json | python -m json.tool
+    fi
+    ;;
+  update)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      update_json
+    else
+      update_json | python -m json.tool
+    fi
+    ;;
+  update-plan)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      update_plan_json
+    else
+      update_plan_json | python -m json.tool
+    fi
+    ;;
+  doctor-task)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      doctor_task_json
+    else
+      doctor_task_json | python -m json.tool
+    fi
+    ;;
+  experience)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      experience_json
+    else
+      experience_json | python -m json.tool
+    fi
+    ;;
+  readiness)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      readiness_json
+    else
+      readiness_json | python -m json.tool
+    fi
+    ;;
+  daily|daily-driver)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      daily_json
+    else
+      daily_json | python -m json.tool
+    fi
+    ;;
+  smoke|smoke-gate)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      "$ROOT_DIR/bin/seven-daemon" smoke --json
+    else
+      "$ROOT_DIR/bin/seven-daemon" smoke --json | python -m json.tool
+    fi
+    ;;
+  actions)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      actions_json
+    else
+      actions_json | python -m json.tool
+    fi
+    ;;
+  action-plan)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      action_plan_json
+    else
+      action_plan_json | python -m json.tool
+    fi
+    ;;
+  action-run)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      action_run_json
+    else
+      action_run_json | python -m json.tool
     fi
     ;;
   observe)

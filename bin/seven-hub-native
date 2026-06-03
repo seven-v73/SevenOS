@@ -468,7 +468,7 @@ def packages_plan_payload() -> dict:
     if value:
         return value
     try:
-        return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "plan", "--json"))
+        return json.loads(run_text(str(ROOT / "bin" / "seven-daemon"), "packages-plan", "--json"))
     except Exception:
         return {"schema": "sevenos.packages-plan.v1", "summary": {}, "next": []}
 
@@ -478,7 +478,7 @@ def packages_strategy_payload() -> dict:
     if value:
         return value
     try:
-        return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "strategy", "--json"))
+        return json.loads(run_text(str(ROOT / "bin" / "seven-daemon"), "packages-strategy", "--json"))
     except Exception:
         return {"schema": "sevenos.sevenpkg-strategy.v1", "profiles": [], "engine_states": {}}
 
@@ -488,7 +488,7 @@ def packages_catalog_payload() -> dict:
     if value:
         return value
     try:
-        return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "catalog", "--json"))
+        return json.loads(run_text(str(ROOT / "bin" / "seven-daemon"), "packages-catalog", "--json"))
     except Exception:
         return {"schema": "sevenos.app-catalog.v1", "count": 0, "domains": {}, "items": []}
 
@@ -498,7 +498,7 @@ def packages_footprint_payload() -> dict:
     if value:
         return value
     try:
-        return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "footprint", "--fast", "--json"))
+        return json.loads(run_text(str(ROOT / "bin" / "seven-daemon"), "packages-footprint", "--json"))
     except Exception:
         return {"schema": "sevenos.sevenpkg-footprint.v1", "summary": {}, "rootfs": [], "duplication": {}, "catalog": {}}
 
@@ -1927,10 +1927,10 @@ def run_gui() -> int:
                         )
                         button = Gtk.Button()
                         button.set_icon_name("package-x-generic-symbolic")
-                        button.set_tooltip_text(item.get("command", "sevenpkg plan"))
+                        button.set_tooltip_text(item.get("command", "seven core packages-plan"))
                         button.connect(
                             "clicked",
-                            lambda _button, command=item.get("command", "sevenpkg plan"), title_text=item.get("title", "Software Plan"): run_ecosystem_command(
+                            lambda _button, command=item.get("command", "seven core packages-plan"), title_text=item.get("title", "Software Plan"): run_ecosystem_command(
                                 command,
                                 title=f"SevenOS Software - {title_text}",
                             ),
@@ -2379,7 +2379,7 @@ def run_gui() -> int:
                     ("Shield scope", "seven shield scope"),
                     ("SevenStore", "seven-store"),
                     ("Seven Reader", "seven-reader"),
-                    ("Updates and packages", "sevenpkg plan"),
+                    ("Updates and packages", "seven core packages-plan"),
                     ("Doctor and repair", "seven doctor"),
                     ("Graphical installer runtime", "seven installer runtime"),
                 ]:

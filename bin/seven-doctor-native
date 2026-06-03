@@ -168,6 +168,17 @@ def service_rows(limit: int = 26) -> list[dict[str, str]]:
 
 
 def task_snapshot(doctor: dict) -> dict[str, object]:
+    native = run_text([str(ROOT / "bin" / "seven-daemon"), "doctor-task", "--json"], timeout=3.0)
+    if native:
+        try:
+            payload = json.loads(native)
+            if payload.get("state") == "ready":
+                alerts = dict(payload.get("alerts") or {})
+                alerts["issues"] = len(doctor.get("issues") or [])
+                payload["alerts"] = alerts
+                return payload
+        except json.JSONDecodeError:
+            pass
     mem, mem_detail = memory_percent()
     disk, disk_detail = disk_percent()
     processes = process_rows()

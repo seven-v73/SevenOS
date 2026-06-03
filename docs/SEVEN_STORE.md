@@ -84,15 +84,20 @@ shared runtimes only.
 The current machine contract is:
 
 ```bash
-sevenpkg strategy --json
-sevenpkg catalog --json
+seven-daemon packages-strategy --json
+seven-daemon packages-catalog --json
+seven-daemon packages-footprint --json
 sevenpkg resolve <app> --json
-sevenpkg footprint --fast --json
 ```
 
 SevenStore search should rank `sevenpkg/apps.json` catalog entries before raw
 repository results because they include domain, risk, permissions and source
 intent.
+
+SevenPkg remains the transaction engine for previews, installs, removals and
+profile package maintenance. Passive UI state should come from Seven Core first:
+Store, Hub and Settings read the daemon contracts above and only fall back to
+SevenPkg when Core is unavailable.
 
 Install previews should preserve the user's requested source while also showing
 the effective route from SevenPkg:

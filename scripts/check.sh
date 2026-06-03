@@ -476,6 +476,10 @@ PROFILE_ISOLATION_PREVIEW="$profile_isolation_preview" python -c 'import json,os
 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" health --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" profiles --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" profiles-status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" profile-gaps --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" profile-plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" profile-health --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" shield --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" shield-plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" cyberspace --json | python -m json.tool >/dev/null
@@ -484,8 +488,11 @@ PROFILE_ISOLATION_PREVIEW="$profile_isolation_preview" python -c 'import json,os
 "$ROOT_DIR/bin/seven-daemon" server-plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" installer --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" installer-plan --json | python -m json.tool >/dev/null
-"$ROOT_DIR/bin/seven-daemon" packages --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" packages --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if isinstance(data, list) and data and data[0].get("writer") == "seven-daemon" else 1)'
 "$ROOT_DIR/bin/seven-daemon" packages-plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" packages-strategy --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.sevenpkg-strategy.v1" and data.get("writer") == "seven-daemon" else 1)'
+"$ROOT_DIR/bin/seven-daemon" packages-catalog --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.app-catalog.v1" and data.get("writer") == "seven-daemon" and int(data.get("count",0) or 0) >= 12 else 1)'
+"$ROOT_DIR/bin/seven-daemon" packages-footprint --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.sevenpkg-footprint.v1" and data.get("writer") == "seven-daemon" else 1)'
 "$ROOT_DIR/bin/seven-daemon" insights --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" phase-gate --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" events --json | python -m json.tool >/dev/null

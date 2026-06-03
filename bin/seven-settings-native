@@ -716,7 +716,9 @@ def active_profile() -> tuple[str, str]:
         naming = catalog.get("profile_naming", {}) if isinstance(catalog.get("profile_naming"), dict) else {}
         return str(naming.get(key) or key.title()), tr_text("Active")
     if PROFILE_STATUS_CACHE is None:
-        payload = run_json_timeout([str(ROOT / "bin/seven"), "profile", "status", "--json"], [], timeout=0.8)
+        payload = run_json_timeout([str(ROOT / "bin/seven-daemon"), "profiles-status", "--json"], [], timeout=0.8)
+        if not isinstance(payload, list):
+            payload = run_json_timeout([str(ROOT / "bin/seven"), "profile", "status", "--json"], [], timeout=0.8)
         PROFILE_STATUS_CACHE = payload if isinstance(payload, list) else []
     payload = PROFILE_STATUS_CACHE
     if isinstance(payload, list):
@@ -735,7 +737,9 @@ def active_profile_key() -> str:
             if key.strip() in {"SEVENOS_ACTIVE_PROFILE", "SEVENOS_PROFILE"} and value.strip():
                 return value.strip().strip('"').strip("'").lower()
     if PROFILE_STATUS_CACHE is None and deep_settings_enabled():
-        payload = run_json_timeout([str(ROOT / "bin/seven"), "profile", "status", "--json"], [], timeout=0.8)
+        payload = run_json_timeout([str(ROOT / "bin/seven-daemon"), "profiles-status", "--json"], [], timeout=0.8)
+        if not isinstance(payload, list):
+            payload = run_json_timeout([str(ROOT / "bin/seven"), "profile", "status", "--json"], [], timeout=0.8)
         PROFILE_STATUS_CACHE = payload if isinstance(payload, list) else []
     payload = PROFILE_STATUS_CACHE
     if isinstance(payload, list):
@@ -4334,7 +4338,9 @@ def run(initial_page: str = "overview") -> int:
         )
 
     def show_software_overview() -> None:
-        payload = run_json_timeout([str(ROOT / "bin/sevenpkg"), "status", "--json"], [], timeout=2.0)
+        payload = run_json_timeout([str(ROOT / "bin/seven-daemon"), "packages", "--json"], [], timeout=1.2)
+        if not isinstance(payload, list):
+            payload = run_json_timeout([str(ROOT / "bin/sevenpkg"), "status", "--json"], [], timeout=2.0)
         rows: list[tuple[str, str, str, str | None]] = []
         if isinstance(payload, list):
             for item in payload[:18]:
@@ -5335,7 +5341,7 @@ def run(initial_page: str = "overview") -> int:
         if stripped == "seven-files resources status":
             show_files_resources_overview()
             return True
-        if stripped == "sevenpkg status":
+        if stripped in {"seven core packages", "sevenpkg status"}:
             show_software_overview()
             return True
         if stripped.startswith("seven flatpak status") or stripped.startswith("flatpak list"):
@@ -6364,7 +6370,7 @@ def run(initial_page: str = "overview") -> int:
         "seven language repair",
         "seven-files resources status",
         "seven fonts status",
-        "sevenpkg status",
+        "seven core packages",
         "seven shield audit",
         "wpctl status",
         "powerprofilesctl",

@@ -158,6 +158,10 @@ def simple_out(command: list[str], fallback: str = "", timeout: float = 1.0) -> 
 
 
 def active_profile() -> str:
+    native = run_json([str(ROOT / "bin/seven-daemon"), "experience", "--json"], timeout=0.8)
+    native_key = str((native.get("profile") or {}).get("key") or "").lower()
+    if native_key in PROFILES:
+        return native_key
     data = run_json([str(ROOT / "bin/seven"), "profile", "current", "--json"], timeout=2.0)
     key = str(data.get("key") or data.get("profile") or "equinox").lower()
     return key if key in PROFILES else "equinox"
@@ -990,7 +994,9 @@ def payload() -> dict:
     device_continuity = device_continuity_state(profile)
     daily_briefing = daily_briefing_state(profile, report, personal_setup, privacy_report, device_continuity, events, backups, context)
     intent_palette = intent_palette_state(profile)
-    profile_health = run_json([str(ROOT / "bin/seven"), "profile", "health", "--json"], {}, timeout=3.5)
+    profile_health = run_json([str(ROOT / "bin/seven-daemon"), "profile-health", "--json"], {}, timeout=1.0)
+    if not profile_health:
+        profile_health = run_json([str(ROOT / "bin/seven"), "profile", "health", "--json"], {}, timeout=3.5)
     bridge_graph = run_json([str(ROOT / "bin/seven"), "bridge", "graph", "--json"], {}, timeout=3.5)
     missions = mission_flow_state(profile, profile_health, bridge_graph)
     differentiators = run_json(

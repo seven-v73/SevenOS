@@ -115,6 +115,18 @@ def run_json(command, fallback):
         return fallback
 
 
+def daemon_json(action, fallback):
+    return run_json([str(root / "bin" / "seven-daemon"), action, "--json"], fallback)
+
+
+def sevenpkg_json(*args, fallback):
+    return run_json([str(root / "bin" / "sevenpkg"), *args, "--json"], fallback)
+
+
+def dict_with_schema(payload, schema):
+    return isinstance(payload, dict) and payload.get("schema") == schema
+
+
 def shared_package_state():
     try:
         data = json.loads(state_cache_path.read_text(encoding="utf-8"))
@@ -126,9 +138,17 @@ def shared_package_state():
     strategy = data.get("packages_strategy")
     catalog = data.get("packages_catalog")
     footprint = data.get("packages_footprint")
-    if not isinstance(strategy, dict) or strategy.get("schema") != "sevenos.sevenpkg-strategy.v1":
+    if (
+        not isinstance(strategy, dict)
+        or strategy.get("schema") != "sevenos.sevenpkg-strategy.v1"
+        or strategy.get("writer") != "seven-daemon"
+    ):
         return {}
-    if not isinstance(catalog, dict) or catalog.get("schema") != "sevenos.app-catalog.v1":
+    if (
+        not isinstance(catalog, dict)
+        or catalog.get("schema") != "sevenos.app-catalog.v1"
+        or catalog.get("writer") != "seven-daemon"
+    ):
         return {}
     try:
         catalog_count = int(catalog.get("count", 0) or 0)
@@ -136,7 +156,11 @@ def shared_package_state():
         catalog_count = 0
     if catalog_count < 12:
         return {}
-    if not isinstance(footprint, dict) or footprint.get("schema") != "sevenos.sevenpkg-footprint.v1":
+    if (
+        not isinstance(footprint, dict)
+        or footprint.get("schema") != "sevenos.sevenpkg-footprint.v1"
+        or footprint.get("writer") != "seven-daemon"
+    ):
         return {}
     return {
         "packages_strategy": strategy,
@@ -250,7 +274,9 @@ UI_CONTRACT = {
 
 manifest_path = root / "sevenpkg" / "metapackages.json"
 manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
-status = run_json([str(root / "bin" / "sevenpkg"), "status", "--json"], [])
+status = daemon_json("packages", [])
+if not isinstance(status, list):
+    status = sevenpkg_json("status", fallback=[])
 flatpak = run_json(
     [str(root / "scripts" / "flatpak.sh"), "status", "--json"],
     {"ready": False, "apps": [], "installed": 0, "total": 0},
@@ -264,18 +290,18 @@ actions_payload = run_json(
     {"actions": []},
 )
 package_state = shared_package_state()
-strategy_payload = package_state.get("packages_strategy") or run_json(
-    [str(root / "bin" / "sevenpkg"), "strategy", "--json"],
-    {"profiles": []},
-)
-app_catalog_payload = package_state.get("packages_catalog") or run_json(
-    [str(root / "bin" / "sevenpkg"), "catalog", "--json"],
-    {"items": []},
-)
-footprint_payload = package_state.get("packages_footprint") or run_json(
-    [str(root / "bin" / "sevenpkg"), "footprint", "--fast", "--json"],
-    {"summary": {}, "rootfs": []},
-)
+strategy_payload = package_state.get("packages_strategy") or daemon_json("packages-strategy", {"profiles": []})
+if not dict_with_schema(strategy_payload, "sevenos.sevenpkg-strategy.v1"):
+    strategy_payload = sevenpkg_json("strategy", fallback={"profiles": []})
+app_catalog_payload = package_state.get("packages_catalog") or daemon_json("packages-catalog", {"items": []})
+if not dict_with_schema(app_catalog_payload, "sevenos.app-catalog.v1"):
+    app_catalog_payload = sevenpkg_json("catalog", fallback={"items": []})
+footprint_payload = package_state.get("packages_footprint") or daemon_json("packages-footprint", {"summary": {}, "rootfs": []})
+if not dict_with_schema(footprint_payload, "sevenos.sevenpkg-footprint.v1"):
+    footprint_payload = run_json(
+        [str(root / "bin" / "sevenpkg"), "footprint", "--fast", "--json"],
+        {"summary": {}, "rootfs": []},
+    )
 if not isinstance(manifest, dict):
     manifest = {}
 if not isinstance(status, list):
