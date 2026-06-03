@@ -90,6 +90,16 @@ preflight_graphical_profile() {
     "efiboot/loader/entries/01-sevenos-live.conf" "systemd.gpt_auto=0"
   check_profile "BIOS boot must be quiet and branded" \
     "syslinux/archiso_sys-linux.cfg" "quiet splash"
+  check_profile "BIOS boot menu must use the reliable text menu" \
+    "syslinux/archiso_head.cfg" "UI menu.c32"
+  check_profile "BIOS boot menu must expose a readable public title" \
+    "syslinux/archiso_head.cfg" "SevenOS Boot Menu"
+  check_profile "BIOS boot menu must render selected entries with high contrast" \
+    "syslinux/archiso_head.cfg" "MENU COLOR sel"
+  reject_profile "BIOS boot menu must not use fragile graphical vesamenu backgrounds" \
+    "syslinux/archiso_head.cfg" 'UI[[:space:]]+vesamenu\\.c32|MENU BACKGROUND'
+  reject_profile "BIOS boot menu must not skip user choice immediately" \
+    "syslinux/archiso_head.cfg" '^MENU[[:space:]]+IMMEDIATE'
   check_profile "BIOS boot must suppress noisy kernel errors in the normal route" \
     "syslinux/archiso_sys-linux.cfg" "loglevel=0"
   check_profile "BIOS boot must not wait for systemd gpt-auto-root" \
