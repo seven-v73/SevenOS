@@ -86,16 +86,32 @@ confirm_offline_first_rootfs() {
   return 1
 }
 
+resolve_root_dir() {
+  if [[ -x "$ROOT_DIR/install.sh" && -d "$ROOT_DIR/bin" && -d "$ROOT_DIR/scripts" ]]; then
+    printf '%s\n' "$ROOT_DIR"
+    return 0
+  fi
+  for candidate in /opt/SevenOS /usr/share/sevenos /SevenOS; do
+    if [[ -x "$candidate/install.sh" && -d "$candidate/bin" && -d "$candidate/scripts" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
 main() {
   install -d "$(dirname "$LOG_FILE")"
   : >"$LOG_FILE"
   log "SevenOS graphical installer finalization"
-  log "Root: $ROOT_DIR"
 
-  if [[ ! -x "$ROOT_DIR/install.sh" ]]; then
-    log "FAIL: missing $ROOT_DIR/install.sh"
+  if ! ROOT_DIR="$(resolve_root_dir)"; then
+    log "FAIL: SevenOS root directory not found"
+    log "Checked: ${SEVENOS_ROOT:-/opt/SevenOS}, /opt/SevenOS, /usr/share/sevenos, /SevenOS"
+    log "Hint: the Calamares unpackfs step must copy /run/archiso/airootfs, including /opt/SevenOS"
     return 127
   fi
+  log "Root: $ROOT_DIR"
 
   export SEVENOS_ROOT="$ROOT_DIR"
   export SEVENOS_YES=1

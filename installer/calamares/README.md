@@ -41,13 +41,16 @@ Calamares calls SevenOS post-install actions inside the target system through
 `modules/shellprocess.conf`:
 
 ```bash
-/opt/SevenOS/bin/seven-calamares-finalize
+/usr/local/bin/seven-calamares-finalize
 ```
 
-The finalizer writes `/var/log/sevenos-install.log`, runs the base layer,
-post-install checks and the fresh-install verifier where available. This keeps
-Calamares from failing silently and gives the user/support surface a concrete
-log when a machine-specific issue appears.
+The shellprocess hook falls back to `/opt/SevenOS/bin/seven-calamares-finalize`
+if needed, but `/usr/local/bin` is the stable target-system entrypoint copied
+from the live rootfs. The finalizer writes `/var/log/sevenos-install.log`, keeps
+the install offline-first after `unpackfs`, runs post-install checks and the
+fresh-install verifier where available. This keeps Calamares from failing
+silently and gives the user/support surface a concrete log when a
+machine-specific issue appears.
 
 No disk-writing Calamares config should be treated as release-ready until it is
 tested in disposable VMs and reviewed through `seven installer doctor`.

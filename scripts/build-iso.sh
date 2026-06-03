@@ -205,7 +205,9 @@ preflight_graphical_profile() {
     "installer/calamares/modules/unpackfs.conf" "/run/archiso/airootfs"
   check_repo "Calamares unpackfs must not use the default CHANGES example" \
     "installer/calamares/modules/unpackfs.conf" "sourcefs: \"file\""
-  check_repo "Calamares shellprocess must finalize SevenOS through the guarded wrapper" \
+  check_repo "Calamares shellprocess must finalize SevenOS through the installed system wrapper" \
+    "installer/calamares/modules/shellprocess.conf" "/usr/local/bin/seven-calamares-finalize"
+  check_repo "Calamares shellprocess must keep /opt/SevenOS as fallback" \
     "installer/calamares/modules/shellprocess.conf" "/opt/SevenOS/bin/seven-calamares-finalize"
   check_repo "Calamares finalizer must run through Bash to avoid executable-bit failures" \
     "installer/calamares/modules/shellprocess.conf" "/bin/bash -lc"
