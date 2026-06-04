@@ -194,8 +194,12 @@ preflight_graphical_profile() {
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/unpackfs.conf"
   check_profile "Live build must install Calamares live cleanup configuration" \
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/shellprocess-livecleanup.conf"
-  check_profile "Live build must install the safe Calamares live cleanup helper" \
-    "airootfs/root/customize_airootfs.sh" "seven-calamares-livecleanup"
+  check_profile "Live profile must track the safe Calamares live cleanup helper" \
+    "profiledef.sh" "/usr/local/bin/seven-calamares-livecleanup"
+  check_profile "Live ISO must ship a Calamares finalize wrapper outside /opt" \
+    "airootfs/usr/local/bin/seven-calamares-finalize" "SevenOS finalizer was not found"
+  check_profile "Live ISO must ship a Calamares cleanup wrapper outside /opt" \
+    "airootfs/usr/local/bin/seven-calamares-livecleanup" "SevenOS live cleanup helper was not found"
   check_profile "Live build must install Calamares user password policy" \
     "airootfs/root/customize_airootfs.sh" "/etc/calamares/modules/users.conf"
   check_profile "Live build must install Calamares SevenOS branding" \
@@ -231,16 +235,16 @@ preflight_graphical_profile() {
     "installer/calamares/modules/unpackfs.conf" "/run/archiso/airootfs"
   check_repo "Calamares unpackfs must not use the default CHANGES example" \
     "installer/calamares/modules/unpackfs.conf" "sourcefs: \"file\""
-  check_repo "Calamares shellprocess must finalize SevenOS through the copied installed root" \
-    "installer/calamares/modules/shellprocess.conf" "/bin/bash /opt/SevenOS/bin/seven-calamares-finalize"
+  check_repo "Calamares shellprocess must finalize SevenOS through the stable installed wrapper" \
+    "installer/calamares/modules/shellprocess.conf" "/bin/bash /usr/local/bin/seven-calamares-finalize"
   reject_repo "Calamares finalizer command must not expose shell variables to Calamares interpolation" \
-    "installer/calamares/modules/shellprocess.conf" '\\$(log|hook|status)|\\$\\{(log|hook|status)\\}'
+    "installer/calamares/modules/shellprocess.conf" '\$(log|hook|status)|\$\{(log|hook|status)\}'
   check_repo "Calamares live cleanup must not kill running live-session processes" \
     "installer/calamares/modules/shellprocess-livecleanup.conf" "seven-calamares-livecleanup"
-  check_repo "Calamares live cleanup must run through the copied installed root" \
-    "installer/calamares/modules/shellprocess-livecleanup.conf" "/bin/bash /opt/SevenOS/bin/seven-calamares-livecleanup"
+  check_repo "Calamares live cleanup must run through the stable installed wrapper" \
+    "installer/calamares/modules/shellprocess-livecleanup.conf" "/bin/bash /usr/local/bin/seven-calamares-livecleanup"
   reject_repo "Calamares live cleanup command must not expose shell variables to Calamares interpolation" \
-    "installer/calamares/modules/shellprocess-livecleanup.conf" '\\$(log|hook|status)|\\$\\{(log|hook|status)\\}'
+    "installer/calamares/modules/shellprocess-livecleanup.conf" '\$(log|hook|status)|\$\{(log|hook|status)\}'
   check_repo "Calamares live cleanup helper must remove live metadata offline" \
     "bin/seven-calamares-livecleanup" "without touching running live processes"
   check_repo "Calamares live cleanup helper must skip safely when target files are not ready" \

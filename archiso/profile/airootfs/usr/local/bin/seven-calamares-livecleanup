@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+log() {
+  printf '[SevenOS Calamares cleanup wrapper] %s\n' "$*"
+}
+
+for candidate in \
+  /opt/SevenOS/bin/seven-calamares-livecleanup \
+  /usr/share/sevenos/bin/seven-calamares-livecleanup \
+  /SevenOS/bin/seven-calamares-livecleanup
+do
+  if [[ -f "$candidate" ]]; then
+    log "running live cleanup: $candidate"
+    /bin/bash "$candidate" || log "WARN: live cleanup returned a non-zero status; finalizer will continue."
+    exit 0
+  fi
+done
+
+log "WARN: SevenOS live cleanup helper was not found; finalizer will continue."
+exit 0

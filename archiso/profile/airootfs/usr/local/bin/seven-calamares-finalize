@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+log() {
+  printf '[SevenOS Calamares wrapper] %s\n' "$*"
+}
+
+for candidate in \
+  /opt/SevenOS/bin/seven-calamares-finalize \
+  /usr/share/sevenos/bin/seven-calamares-finalize \
+  /SevenOS/bin/seven-calamares-finalize
+do
+  if [[ -f "$candidate" ]]; then
+    log "running finalizer: $candidate"
+    exec /bin/bash "$candidate"
+  fi
+done
+
+log "ERROR: SevenOS finalizer was not found in the installed root."
+log "Checked /opt/SevenOS, /usr/share/sevenos and /SevenOS."
+log "This usually means the live rootfs did not copy /opt/SevenOS during unpackfs."
+exit 127
