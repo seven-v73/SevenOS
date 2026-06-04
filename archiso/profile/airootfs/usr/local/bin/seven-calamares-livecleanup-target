@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+TARGET_ROOT="${1:-}"
+LOG_FILE="${TARGET_ROOT%/}/var/log/sevenos-install.log"
+
+log() {
+  install -d "$(dirname "$LOG_FILE")"
+  printf '[SevenOS Calamares target cleanup] %s\n' "$*" | tee -a "$LOG_FILE"
+}
+
+if [[ -z "$TARGET_ROOT" || ! -d "$TARGET_ROOT" ]]; then
+  printf '[SevenOS Calamares target cleanup] WARN: target root is not available: %s\n' "${TARGET_ROOT:-<empty>}"
+  exit 0
+fi
+
+log "target root: $TARGET_ROOT"
+
+if [[ -x /opt/SevenOS/bin/seven-calamares-livecleanup ]]; then
+  log "running live cleanup helper against target root"
+  SEVENOS_TARGET_ROOT="$TARGET_ROOT" \
+    /bin/bash /opt/SevenOS/bin/seven-calamares-livecleanup 2>&1 | tee -a "$LOG_FILE" || \
+    log "WARN: live cleanup helper returned a non-zero status; continuing"
+else
+  log "WARN: live cleanup helper is missing in live /opt/SevenOS; continuing"
+fi
+
+exit 0

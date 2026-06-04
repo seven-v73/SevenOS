@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+TARGET_ROOT="${1:-}"
+LOG_FILE="${TARGET_ROOT%/}/var/log/sevenos-install.log"
+
+log() {
+  install -d "$(dirname "$LOG_FILE")"
+  printf '[SevenOS Calamares target finalizer] %s\n' "$*" | tee -a "$LOG_FILE"
+}
+
+fail() {
+  log "ERROR: $*"
+  exit 127
+}
+
+if [[ -z "$TARGET_ROOT" || ! -d "$TARGET_ROOT" ]]; then
+  printf '[SevenOS Calamares target finalizer] ERROR: target root is not available: %s\n' "${TARGET_ROOT:-<empty>}"
+  exit 127
+fi
+
+log "target root: $TARGET_ROOT"
+
+install -Dm755 /usr/local/bin/seven-calamares-finalize \
+  "$TARGET_ROOT/usr/local/bin/seven-calamares-finalize" 2>/dev/null || true
+install -Dm755 /usr/local/bin/seven-calamares-livecleanup \
+  "$TARGET_ROOT/usr/local/bin/seven-calamares-livecleanup" 2>/dev/null || true
+
+if [[ ! -x "$TARGET_ROOT/opt/SevenOS/install.sh" && -d /opt/SevenOS ]]; then
+  log "restoring /opt/SevenOS into target because unpackfs did not provide a complete tree"
+  install -d "$TARGET_ROOT/opt"
+  rsync -a --delete \
+    --exclude .git \
+    --exclude __pycache__ \
+    --exclude out \
+    /opt/SevenOS/ "$TARGET_ROOT/opt/SevenOS/" \
+    2>&1 | tee -a "$LOG_FILE"
+fi
+
+if [[ ! -x "$TARGET_ROOT/usr/local/bin/seven-calamares-finalize" ]]; then
+  fail "target wrapper is missing after injection"
+fi
+
+if [[ ! -x "$TARGET_ROOT/opt/SevenOS/bin/seven-calamares-finalize" ]]; then
+  fail "SevenOS finalizer is missing in target /opt/SevenOS"
+fi
+
+log "running installed finalizer in chroot"
+chroot "$TARGET_ROOT" /bin/bash /usr/local/bin/seven-calamares-finalize 2>&1 | tee -a "$LOG_FILE"
+status="${PIPESTATUS[0]}"
+if [[ "$status" -ne 0 ]]; then
+  log "ERROR: installed finalizer failed with exit=$status"
+  exit "$status"
+fi
+
+log "target finalization completed"

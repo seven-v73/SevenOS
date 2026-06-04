@@ -84,8 +84,9 @@ if kind == "cleanup":
     checks = [
         ("installer/calamares/settings.conf", "shellprocess@livecleanup"),
         ("installer/calamares/settings.conf", "shellprocess-livecleanup.conf"),
-        ("installer/calamares/modules/shellprocess-livecleanup.conf", "/bin/bash -lc"),
-        ("installer/calamares/modules/shellprocess-livecleanup.conf", "starting installed-root live cleanup"),
+        ("installer/calamares/modules/shellprocess-livecleanup.conf", "dontChroot: true"),
+        ("installer/calamares/modules/shellprocess-livecleanup.conf", "/usr/local/bin/seven-calamares-livecleanup-target ${ROOT}"),
+        ("archiso/profile/airootfs/usr/local/bin/seven-calamares-livecleanup-target", "SEVENOS_TARGET_ROOT"),
         ("archiso/profile/airootfs/usr/local/bin/seven-calamares-livecleanup", "SevenOS live cleanup helper was not found"),
         ("bin/seven-calamares-livecleanup", "without touching running live processes"),
         ("bin/seven-calamares-livecleanup", "target passwd file is missing"),
@@ -94,9 +95,10 @@ if kind == "cleanup":
     module = root / "installer/calamares/modules/shellprocess-livecleanup.conf"
 elif kind == "finalize":
     checks = [
-        ("installer/calamares/modules/shellprocess.conf", "/bin/bash -lc"),
-        ("installer/calamares/modules/shellprocess.conf", "starting installed-root finalization"),
-        ("installer/calamares/modules/shellprocess.conf", "The unpackfs step did not copy the expected SevenOS files into the target"),
+        ("installer/calamares/modules/shellprocess.conf", "dontChroot: true"),
+        ("installer/calamares/modules/shellprocess.conf", "/usr/local/bin/seven-calamares-finalize-target ${ROOT}"),
+        ("archiso/profile/airootfs/usr/local/bin/seven-calamares-finalize-target", "restoring /opt/SevenOS into target"),
+        ("archiso/profile/airootfs/usr/local/bin/seven-calamares-finalize-target", "chroot"),
         ("archiso/profile/airootfs/usr/local/bin/seven-calamares-finalize", "SevenOS finalizer was not found"),
         ("bin/seven-calamares-finalize", "Clean live ISO residue"),
         ("bin/seven-calamares-finalize", "Configure network stack"),
@@ -115,7 +117,8 @@ else:
     raise SystemExit(0)
 
 module_text = module.read_text(encoding="utf-8", errors="ignore")
-if any(token in module_text for token in fragile_markers):
+allowed = module_text.replace("${ROOT}", "")
+if any(token in allowed for token in fragile_markers):
     print("MISS")
     raise SystemExit(0)
 
