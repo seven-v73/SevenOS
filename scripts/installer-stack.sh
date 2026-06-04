@@ -74,7 +74,7 @@ from pathlib import Path
 root = Path(os.environ["ROOT_DIR"])
 kind = os.environ["KIND"]
 
-fragile = ("$log", "$hook", "$status", "${log}", "${hook}", "${status}")
+fragile_markers = ("$",)
 common_settings = (root / "installer/calamares/settings.conf").read_text(encoding="utf-8", errors="ignore")
 if "- displaymanager" in common_settings or "- networkcfg" in common_settings:
     print("MISS")
@@ -115,7 +115,7 @@ else:
     raise SystemExit(0)
 
 module_text = module.read_text(encoding="utf-8", errors="ignore")
-if any(token in module_text for token in fragile):
+if any(token in module_text for token in fragile_markers):
     print("MISS")
     raise SystemExit(0)
 

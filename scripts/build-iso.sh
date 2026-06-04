@@ -240,13 +240,13 @@ preflight_graphical_profile() {
   check_repo "Calamares shellprocess must explain missing installed-root files" \
     "installer/calamares/modules/shellprocess.conf" "The unpackfs step did not copy the expected SevenOS files into the target"
   reject_repo "Calamares finalizer command must not expose shell variables to Calamares interpolation" \
-    "installer/calamares/modules/shellprocess.conf" '\$(log|hook|status)|\$\{(log|hook|status)\}'
+    "installer/calamares/modules/shellprocess.conf" '\$'
   check_repo "Calamares live cleanup must not kill running live-session processes" \
     "installer/calamares/modules/shellprocess-livecleanup.conf" "seven-calamares-livecleanup"
   check_repo "Calamares live cleanup must use an inline diagnostic route" \
     "installer/calamares/modules/shellprocess-livecleanup.conf" "starting installed-root live cleanup"
   reject_repo "Calamares live cleanup command must not expose shell variables to Calamares interpolation" \
-    "installer/calamares/modules/shellprocess-livecleanup.conf" '\$(log|hook|status)|\$\{(log|hook|status)\}'
+    "installer/calamares/modules/shellprocess-livecleanup.conf" '\$'
   check_repo "Calamares live cleanup helper must remove live metadata offline" \
     "bin/seven-calamares-livecleanup" "without touching running live processes"
   check_repo "Calamares live cleanup helper must skip safely when target files are not ready" \
