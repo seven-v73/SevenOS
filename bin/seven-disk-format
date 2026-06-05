@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+usage() {
+  cat <<'EOF'
+SevenOS disk format helper
+
+Usage:
+  seven-disk-format format DEVICE FILESYSTEM LABEL
+
+Supported filesystems:
+  exfat, fat32, ext4, ntfs
+
+This helper is intentionally strict and is meant to be executed through pkexec
+by Seven Files. It formats one explicit volume/partition only.
+EOF
+}
+
+action="${1:-}"
+device="${2:-}"
+filesystem="${3:-}"
+label="${4:-}"
+
+[[ "$action" == "format" ]] || { usage >&2; exit 2; }
+[[ "$device" == /dev/* && -b "$device" ]] || { echo "Invalid block device: $device" >&2; exit 2; }
+
+filesystem="$(printf '%s' "$filesystem" | tr '[:upper:]' '[:lower:]')"
+case "$filesystem" in
+  exfat|fat32|ext4|ntfs) ;;
+  *) echo "Unsupported filesystem: $filesystem" >&2; exit 2 ;;
+esac
+
+info_json="$(lsblk -J -o NAME,PATH,TYPE,RM,TRAN,MOUNTPOINTS,FSTYPE,SIZE,PKNAME "$device" 2>/dev/null || true)"
+[[ -n "$info_json" ]] || { echo "Cannot inspect $device" >&2; exit 3; }
+
+read -r dev_type removable transport mounts parent_name < <(
+  python - "$device" "$info_json" <<'PY'
+import json, sys
+device = sys.argv[1]
+payload = json.loads(sys.argv[2] or "{}")
+found = {}
+
+def walk(items):
+    global found
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get("path") == device:
+            found = item
+            return
+        walk(item.get("children") or [])
+
+walk(payload.get("blockdevices") or [])
+mounts = found.get("mountpoints")
+if isinstance(mounts, list):
+    mount_text = ",".join(str(m) for m in mounts if m)
+else:
+    mount_text = str(found.get("mountpoint") or "")
+print(
+    str(found.get("type") or ""),
+    str(found.get("rm") or "0"),
+    str(found.get("tran") or ""),
+    mount_text or "-",
+    str(found.get("pkname") or ""),
+)
+PY
+)
+
+[[ -n "$dev_type" ]] || { echo "Cannot inspect $device" >&2; exit 3; }
+
+case ",$mounts," in
+  *,/,*|*,/home,*|*,/boot,*|*,/efi,*|*,/boot/efi,*)
+    echo "Refusing to format a mounted system volume: $device ($mounts)" >&2
+    exit 4
+    ;;
+esac
+
+if [[ "$dev_type" == "disk" ]]; then
+  if [[ "$removable" != "1" && "$transport" != "usb" && "$transport" != "mmc" ]]; then
+    echo "Refusing to format an internal whole disk. Select a partition instead." >&2
+    exit 4
+  fi
+fi
+
+root_source="$(findmnt -rn -o SOURCE / 2>/dev/null | head -n1 || true)"
+home_source="$(findmnt -rn -o SOURCE /home 2>/dev/null | head -n1 || true)"
+for protected in "$root_source" "$home_source"; do
+  [[ -n "$protected" ]] || continue
+  if [[ "$device" == "$protected" ]]; then
+    echo "Refusing to format active system volume: $device" >&2
+    exit 4
+  fi
+done
+
+safe_label="$(printf '%s' "$label" | tr -c 'A-Za-z0-9._ -' '_' | sed 's/^_*//; s/_*$//')"
+safe_label="${safe_label:-SevenOS}"
+
+if mountpoint -q -- "$device" 2>/dev/null; then
+  umount "$device"
+fi
+if [[ "$mounts" != "-" ]]; then
+  while IFS= read -r mountpoint; do
+    [[ -n "$mountpoint" ]] || continue
+    umount "$mountpoint" 2>/dev/null || udisksctl unmount -b "$device" >/dev/null 2>&1 || true
+  done < <(printf '%s\n' "$mounts" | tr ',' '\n')
+fi
+
+wipefs -a "$device" >/dev/null
+
+case "$filesystem" in
+  exfat)
+    command -v mkfs.exfat >/dev/null 2>&1 || { echo "mkfs.exfat is missing. Install exfatprogs." >&2; exit 5; }
+    mkfs.exfat -n "$safe_label" "$device"
+    ;;
+  fat32)
+    command -v mkfs.vfat >/dev/null 2>&1 || { echo "mkfs.vfat is missing. Install dosfstools." >&2; exit 5; }
+    mkfs.vfat -F 32 -n "${safe_label:0:11}" "$device"
+    ;;
+  ext4)
+    command -v mkfs.ext4 >/dev/null 2>&1 || { echo "mkfs.ext4 is missing. Install e2fsprogs." >&2; exit 5; }
+    mkfs.ext4 -F -L "$safe_label" "$device"
+    ;;
+  ntfs)
+    command -v mkfs.ntfs >/dev/null 2>&1 || { echo "mkfs.ntfs is missing. Install ntfs-3g." >&2; exit 5; }
+    mkfs.ntfs -F -L "$safe_label" "$device"
+    ;;
+esac
+
+sync
+udevadm settle 2>/dev/null || true
+echo "$device formatted as $filesystem with label $safe_label"

@@ -9,14 +9,14 @@ from pathlib import Path
 
 
 def resolve_root():
-    env_root = os.environ.get("SEVENOS_ROOT")
-    if env_root and Path(env_root, "install.sh").is_file():
-        return Path(env_root).resolve()
-
     script_dir = Path(__file__).resolve().parent
     candidate = script_dir.parent
     if Path(candidate, "install.sh").is_file():
         return candidate
+
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and Path(env_root, "install.sh").is_file():
+        return Path(env_root).resolve()
 
     for path in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
         if Path(path, "install.sh").is_file():
@@ -1198,25 +1198,36 @@ def handle_ecosystem(args):
 
 
 def handle_ai(args):
+    extra_args = list(args.extra)
+    trailing_json = "--json" in extra_args
+    trailing_apply = "--apply" in extra_args
+    trailing_yes = "--yes" in extra_args
+    trailing_web = "--web" in extra_args
+    extra_args = [item for item in extra_args if item not in {"--json", "--apply", "--yes", "--web"}]
     ai_actions = {
         "brief", "status", "plan", "focus", "doctor", "json", "ask", "run",
-        "intent", "apps", "context", "memory", "knowledge", "shortcuts",
-        "workflow", "llm", "models", "manager", "operate", "web", "research", "diagnose", "playbook",
-        "provider", "open", "native", "gui", "interface", "agent",
+        "intent", "apps", "context", "machine", "brain", "state", "capabilities", "memory", "preferences", "missions", "knowledge", "shortcuts",
+        "workflow", "llm", "models", "model-setup", "execution", "manager", "operate", "web", "research", "diagnose", "playbook",
+        "provider", "runtime", "agents", "coverage", "contracts", "handoffs", "permissions", "ledger", "record",
+        "learning", "learn", "habits",
+        "proactive", "suggestions",
+        "open", "native", "gui", "interface", "agent",
     }
-    if args.action not in ai_actions:
-        extra = ["ask", args.action, *args.extra]
+    if args.action == "open" and extra_args:
+        extra = ["ask", "open", *extra_args]
+    elif args.action not in ai_actions:
+        extra = ["ask", args.action, *extra_args]
     else:
-        extra = [args.action, *args.extra]
-    if args.json and args.action == "brief" and not args.extra:
+        extra = [args.action, *extra_args]
+    if (args.json or trailing_json) and args.action == "brief" and not extra_args:
         extra = ["json"]
-    elif args.json:
+    elif args.json or trailing_json:
         extra.append("--json")
-    if args.apply:
+    if args.apply or trailing_apply:
         extra.append("--apply")
-    if args.yes:
+    if args.yes or trailing_yes:
         extra.append("--yes")
-    if args.web:
+    if args.web or trailing_web:
         extra.append("--web")
     run_script(args, "scripts/ai.sh", *extra)
 
@@ -2565,6 +2576,9 @@ def main():
     production_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json", "validate"))
     production_parser.add_argument("--json", action="store_true", help="print machine-readable production readiness contract")
     production_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
+    footprint_parser = subparsers.add_parser("footprint", help="audit SevenOS size, ISO evidence and cleanup readiness")
+    footprint_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "plan", "record", "evidence", "compare", "trend", "guard"))
+    footprint_parser.add_argument("--json", action="store_true", help="print machine-readable footprint audit")
     beta_parser = subparsers.add_parser("beta", help="alias for SevenOS public beta readiness")
     beta_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json", "validate"))
     beta_parser.add_argument("--json", action="store_true", help="print machine-readable public beta readiness contract")
@@ -2897,6 +2911,11 @@ def main():
         handle_distribution(args)
     elif args.command in ("production", "beta"):
         handle_production(args)
+    elif args.command == "footprint":
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/footprint-audit.sh", *extra)
     elif args.command == "about":
         handle_about(args)
     elif args.command == "lifecycle":

@@ -14,12 +14,12 @@ from pathlib import Path
 
 
 def resolve_root() -> Path:
-    env_root = os.environ.get("SEVENOS_ROOT")
-    if env_root and (Path(env_root) / "bin/seven").exists():
-        return Path(env_root).resolve()
     here = Path(__file__).resolve()
     if (here.parent / "seven").exists():
         return here.parent.parent
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root).resolve()
     for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
         if (candidate / "bin/seven").exists():
             return candidate
@@ -137,6 +137,10 @@ class SevenAI(Gtk.Application):
         self.payload: dict = {}
         self.diagnostics: dict = {}
         self.memory: dict = {}
+        self.agent_runtime: dict = {}
+        self.permissions: dict = {}
+        self.ledger: dict = {}
+        self.learning: dict = {}
         self.shell_context: dict = {}
         self.actions: dict = {}
         self.last_prompt = ""
@@ -155,6 +159,10 @@ class SevenAI(Gtk.Application):
         self.payload = run_json([str(ROOT / "scripts/ai.sh"), "json"], {"summary": {}, "recommendations": []})
         self.diagnostics = run_json([str(ROOT / "scripts/ai.sh"), "diagnose", "system", "--json"], {})
         self.memory = run_json([str(ROOT / "scripts/ai.sh"), "memory", "--json"], {"events": [], "summary": {}})
+        self.agent_runtime = run_json([str(ROOT / "scripts/ai.sh"), "runtime", "--json"], {"state": "unknown", "registry": {}})
+        self.permissions = run_json([str(ROOT / "scripts/ai.sh"), "permissions", "--json"], {"state": "unknown", "graph": []})
+        self.ledger = run_json([str(ROOT / "scripts/ai.sh"), "ledger", "--json"], {"events": [], "summary": {}})
+        self.learning = run_json([str(ROOT / "scripts/ai.sh"), "learning", "--json"], {"state": "unknown", "config": {}, "index": {}, "habits": {}})
         self.shell_context = self.load_shell_context()
         self.actions = run_json([str(ROOT / "bin/seven-actions"), "--json"], {"actions": []}, timeout=12.0)
 
@@ -224,6 +232,8 @@ class SevenAI(Gtk.Application):
         for icon, label, action in (
             ("system-search-symbolic", tr_text("Assistant"), self.render_home),
             ("view-grid-symbolic", tr_text("Context"), self.render_context),
+            ("network-server-symbolic", tr_text("Agents"), self.render_agents),
+            ("edit-find-symbolic", tr_text("Learning"), self.render_learning),
             ("system-run-symbolic", tr_text("Actions"), self.render_actions),
             ("utilities-system-monitor-symbolic", tr_text("Diagnose"), self.render_diagnostics),
             ("document-open-recent-symbolic", tr_text("Memory"), self.render_memory),
@@ -325,6 +335,31 @@ class SevenAI(Gtk.Application):
         button.get_style_context().add_class("ghost")
         button.connect("clicked", lambda *_: self.copy_text(text))
         return button
+
+    def local_command_button(self, label: str, command: list[str], refresh_callback=None, css: str = "ghost") -> Gtk.Button:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class(css)
+        button.connect("clicked", lambda *_: self.run_local_command(command, refresh_callback))
+        return button
+
+    def run_local_command(self, command: list[str], refresh_callback=None) -> None:
+        self.status.set_text(tr_text("Running local SevenOS command..."))
+
+        def worker() -> None:
+            output = run_text(command, timeout=30.0)
+            GLib.idle_add(self.finish_local_command, output, refresh_callback)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def finish_local_command(self, output: str, refresh_callback=None) -> bool:
+        self.status.set_text(tr_text("Local command finished."))
+        if output:
+            self.timeline.pack_start(self.card(tr_text("Command Result"), output[:1200], ["LOCAL"], "system-run"), False, False, 0)
+        if refresh_callback:
+            refresh_callback()
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+        return False
 
     def copy_text(self, text: str) -> None:
         clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
@@ -450,6 +485,198 @@ class SevenAI(Gtk.Application):
         self.timeline.show_all()
         GLib.idle_add(self.scroll_to_bottom)
 
+    def render_agents(self) -> None:
+        self.clear()
+        self.show_detail(True)
+        self.agent_runtime = run_json([str(ROOT / "scripts/ai.sh"), "runtime", "--json"], self.agent_runtime or {"state": "unknown", "registry": {}})
+        agents_payload = run_json([str(ROOT / "scripts/ai.sh"), "agents", "--json"], {"agents": [], "summary": {}})
+        self.permissions = run_json([str(ROOT / "scripts/ai.sh"), "permissions", "--json"], self.permissions or {"state": "unknown", "graph": []})
+        self.ledger = run_json([str(ROOT / "scripts/ai.sh"), "ledger", "--json"], self.ledger or {"events": [], "summary": {}})
+        registry = self.agent_runtime.get("registry") if isinstance(self.agent_runtime.get("registry"), dict) else {}
+        policy = self.agent_runtime.get("policy") if isinstance(self.agent_runtime.get("policy"), dict) else {}
+        ledger = self.agent_runtime.get("ledger") if isinstance(self.agent_runtime.get("ledger"), dict) else {}
+        self.timeline.pack_start(self.label(tr_text("Agent Control"), "section-title"), False, False, 0)
+        self.timeline.pack_start(
+            self.card(
+                tr_text("SevenAI Runtime"),
+                tr_text(
+                    "Local-first orchestration. Cloud is {cloud}. Execution is {execution}.",
+                    cloud=policy.get("cloud_default", "disabled"),
+                    execution=policy.get("execution_default", "preview"),
+                ),
+                [str(self.agent_runtime.get("state", "unknown")).upper(), f"{registry.get('agents', 0)}/7", f"{ledger.get('events', 0)} LEDGER"],
+                "network-server",
+            ),
+            False,
+            False,
+            0,
+        )
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.get_style_context().add_class("quick-row")
+        row.pack_start(self.prompt_button(tr_text("Explain agents"), "explique les agents SevenOS"), False, False, 0)
+        row.pack_start(self.copy_button(tr_text("Copy JSON"), json.dumps(self.agent_runtime, ensure_ascii=False, indent=2)), False, False, 0)
+        self.timeline.pack_start(row, False, False, 0)
+
+        agents = agents_payload.get("agents") if isinstance(agents_payload.get("agents"), list) else []
+        graph = self.permissions.get("graph") if isinstance(self.permissions.get("graph"), list) else []
+        graph_by_agent = {item.get("agent"): item for item in graph if isinstance(item, dict)}
+        for agent in agents:
+            permission = graph_by_agent.get(agent.get("id"), {})
+            allowed = len(permission.get("allowed", []) if isinstance(permission.get("allowed"), list) else [])
+            confirm = len(permission.get("confirm", []) if isinstance(permission.get("confirm"), list) else [])
+            denied = len(permission.get("denied", []) if isinstance(permission.get("denied"), list) else [])
+            badges = [str(agent.get("profile", "sevenos")).upper(), str(agent.get("risk", "low")).upper(), f"{confirm} CONFIRM"]
+            card = self.card(
+                str(agent.get("name", agent.get("id", "Agent"))),
+                str(agent.get("mission", "")),
+                badges,
+                "security-high" if agent.get("risk") == "high" else "system-run",
+            )
+            card.pack_start(
+                self.label(
+                    tr_text("{allowed} allowed · {confirm} confirm · {denied} denied", allowed=allowed, confirm=confirm, denied=denied),
+                    "muted",
+                ),
+                False,
+                False,
+                0,
+            )
+            self.timeline.pack_start(card, False, False, 0)
+
+        recent = self.ledger.get("events") if isinstance(self.ledger.get("events"), list) else []
+        if recent:
+            self.timeline.pack_start(self.label(tr_text("Recent Agent Ledger"), "section-title"), False, False, 0)
+            for event in recent[-5:]:
+                self.timeline.pack_start(
+                    self.card(
+                        str(event.get("action", "SevenAI action")),
+                        f"{event.get('agent', 'agent')} · {event.get('ts', '')} · {event.get('summary', '')}",
+                        [str(event.get("risk", "low")).upper(), "APPROVED" if event.get("approved") else "PREVIEW"],
+                        "document-open-recent",
+                    ),
+                    False,
+                    False,
+                    0,
+                )
+        self.render_agent_detail()
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+
+    def render_learning(self) -> None:
+        self.clear()
+        self.show_detail(True)
+        self.learning = run_json([str(ROOT / "scripts/ai.sh"), "learning", "--json"], self.learning or {"state": "unknown", "config": {}, "index": {}, "habits": {}})
+        proactive = run_json([str(ROOT / "scripts/ai.sh"), "proactive", "--json"], {"cards": []})
+        config = self.learning.get("config") if isinstance(self.learning.get("config"), dict) else {}
+        index = self.learning.get("index") if isinstance(self.learning.get("index"), dict) else {}
+        habits = self.learning.get("habits") if isinstance(self.learning.get("habits"), dict) else {}
+        privacy = self.learning.get("privacy") if isinstance(self.learning.get("privacy"), dict) else {}
+        enabled = bool(config.get("enabled"))
+        self.timeline.pack_start(self.label(tr_text("Local Learning"), "section-title"), False, False, 0)
+        self.timeline.pack_start(
+            self.card(
+                tr_text("Personal context"),
+                tr_text("SevenAI learns only from approved local sources and local interaction memory."),
+                ["ENABLED" if enabled else "OFF", str(privacy.get("network", "none")).upper(), str(config.get("content_mode", "metadata")).upper()],
+                "edit-find",
+            ),
+            False,
+            False,
+            0,
+        )
+        self.timeline.pack_start(
+            self.card(
+                tr_text("Indexed documents"),
+                tr_text("{count} local item(s) indexed. Snippets require an explicit content scan.", count=index.get("documents", 0)),
+                [f"{len(config.get('sources', []) if isinstance(config.get('sources'), list) else [])} SOURCES", "LOCAL"],
+                "folder-documents",
+            ),
+            False,
+            False,
+            0,
+        )
+        self.timeline.pack_start(
+            self.card(
+                tr_text("Habits"),
+                tr_text("{count} SevenAI interaction(s) available for suggestions.", count=habits.get("events", 0)),
+                [f"{len(habits.get('top_intents', []) if isinstance(habits.get('top_intents'), list) else [])} INTENTS", "PRIVATE"],
+                "document-open-recent",
+            ),
+            False,
+            False,
+            0,
+        )
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.get_style_context().add_class("quick-row")
+        if enabled:
+            row.pack_start(self.local_command_button(tr_text("Scan"), [str(ROOT / "scripts/ai.sh"), "learning", "scan", "--json"], self.render_learning), False, False, 0)
+            row.pack_start(self.prompt_button(tr_text("Search"), "cherche dans mes fichiers notes"), False, False, 0)
+            row.pack_start(self.local_command_button(tr_text("Disable"), [str(ROOT / "scripts/ai.sh"), "learning", "disable", "--json"], self.render_learning), False, False, 0)
+        else:
+            row.pack_start(self.local_command_button(tr_text("Enable"), [str(ROOT / "scripts/ai.sh"), "learning", "enable", "--json"], self.render_learning, "primary"), False, False, 0)
+        row.pack_start(self.copy_button(tr_text("Copy Status"), json.dumps(self.learning, indent=2, ensure_ascii=False)), False, False, 0)
+        self.timeline.pack_start(row, False, False, 0)
+
+        sources = config.get("sources") if isinstance(config.get("sources"), list) else []
+        if sources:
+            self.timeline.pack_start(self.label(tr_text("Approved Sources"), "section-title"), False, False, 0)
+            for source in sources[:8]:
+                self.timeline.pack_start(self.card(Path(str(source)).name or str(source), str(source), ["SOURCE"], "folder"), False, False, 0)
+        cards = proactive.get("cards") if isinstance(proactive.get("cards"), list) else []
+        if cards:
+            self.timeline.pack_start(self.label(tr_text("Proactive Suggestions"), "section-title"), False, False, 0)
+            for item in cards[:6]:
+                card = self.card(
+                    str(item.get("title", "")),
+                    str(item.get("detail", "")),
+                    [str(item.get("priority", "medium")).upper(), str(item.get("profile", "sevenos")).upper()],
+                    "dialog-information",
+                )
+                command = str(item.get("command", ""))
+                if command:
+                    card.pack_start(self.copy_button(tr_text("Copy command"), command), False, False, 0)
+                self.timeline.pack_start(card, False, False, 0)
+        recent = index.get("recent") if isinstance(index.get("recent"), list) else []
+        if recent:
+            self.timeline.pack_start(self.label(tr_text("Recent Index"), "section-title"), False, False, 0)
+            for item in recent[:6]:
+                self.timeline.pack_start(self.card(str(item.get("title") or item.get("name")), str(item.get("path", "")), [str(item.get("ext", "file") or "file").upper()], "text-x-generic"), False, False, 0)
+        self.render_learning_detail()
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+
+    def render_learning_detail(self) -> None:
+        self.show_detail(True)
+        self.clear(self.detail)
+        config = self.learning.get("config") if isinstance(self.learning.get("config"), dict) else {}
+        index = self.learning.get("index") if isinstance(self.learning.get("index"), dict) else {}
+        habits = self.learning.get("habits") if isinstance(self.learning.get("habits"), dict) else {}
+        self.detail.pack_start(self.label(tr_text("Learning Guardrails"), "section-title"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Local only"), tr_text("No network call is used for learning or indexing."), ["NO CLOUD"], "security-high"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Source control"), tr_text("Only configured folders are scanned."), [str(len(config.get("sources", []) if isinstance(config.get("sources"), list) else []))], "folder"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Content mode"), str(config.get("content_mode", "metadata")), ["METADATA"], "dialog-information"), False, False, 0)
+        top = habits.get("top_intents") if isinstance(habits.get("top_intents"), list) else []
+        if top:
+            self.detail.pack_start(self.label(tr_text("Top Habits"), "section-title"), False, False, 0)
+            for item in top[:4]:
+                self.detail.pack_start(self.card(str(item.get("intent", "intent")), f"{item.get('count', 0)}", ["HABIT"], "document-open-recent"), False, False, 0)
+        self.detail.show_all()
+
+    def render_agent_detail(self) -> None:
+        self.show_detail(True)
+        self.clear(self.detail)
+        runtime = self.agent_runtime if isinstance(self.agent_runtime, dict) else {}
+        registry = runtime.get("registry") if isinstance(runtime.get("registry"), dict) else {}
+        policy = runtime.get("policy") if isinstance(runtime.get("policy"), dict) else {}
+        permissions = self.permissions if isinstance(self.permissions, dict) else {}
+        issues = permissions.get("issues") if isinstance(permissions.get("issues"), list) else []
+        self.detail.pack_start(self.label(tr_text("Agent Runtime"), "section-title"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Registry"), f"{registry.get('ready', 0)}/{registry.get('agents', 0)} agents ready", [str(runtime.get("state", "unknown")).upper()], "network-server"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Policy"), f"{policy.get('execution_default', 'preview')} · cloud {policy.get('cloud_default', 'disabled')}", ["LOCAL"], "security-high"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Permissions"), tr_text("No sensitive permission bypass.") if not issues else tr_text("{count} issue(s) need review.", count=len(issues)), ["READY" if not issues else "REVIEW"], "dialog-information"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Ledger"), f"{(self.ledger.get('summary') or {}).get('shown', 0)} visible · {(self.ledger.get('summary') or {}).get('approved', 0)} approved", ["LOCAL"], "document-open-recent"), False, False, 0)
+        self.detail.show_all()
+
     def render_detail(self, payload: dict | None = None) -> None:
         self.show_detail(True)
         self.clear(self.detail)
@@ -531,10 +758,23 @@ class SevenAI(Gtk.Application):
     def render_privacy(self) -> None:
         self.clear()
         self.show_detail(False)
+        self.permissions = run_json([str(ROOT / "scripts/ai.sh"), "permissions", "--json"], self.permissions or {"state": "unknown", "graph": []})
+        self.agent_runtime = run_json([str(ROOT / "scripts/ai.sh"), "runtime", "--json"], self.agent_runtime or {"state": "unknown", "policy": {}})
+        policy = self.agent_runtime.get("policy") if isinstance(self.agent_runtime.get("policy"), dict) else {}
+        graph = self.permissions.get("graph") if isinstance(self.permissions.get("graph"), list) else []
+        issues = self.permissions.get("issues") if isinstance(self.permissions.get("issues"), list) else []
+        confirm_count = sum(len(item.get("confirm", []) if isinstance(item.get("confirm"), list) else []) for item in graph if isinstance(item, dict))
+        denied_count = sum(len(item.get("denied", []) if isinstance(item.get("denied"), list) else []) for item in graph if isinstance(item, dict))
         self.timeline.pack_start(self.label(tr_text("Privacy"), "section-title"), False, False, 0)
         self.timeline.pack_start(self.card(tr_text("Local provider"), tr_text("SevenAI uses deterministic local guidance by default. No account, token or cloud call is required."), ["LOCAL", "NO CLOUD"], "security-high"), False, False, 0)
-        self.timeline.pack_start(self.card(tr_text("Web access"), tr_text("Web research stays disabled unless the user explicitly enables it with SEVENAI_WEB=1 or --web."), ["OPT-IN"], "network-workgroup"), False, False, 0)
-        self.timeline.pack_start(self.card(tr_text("Confirmation"), tr_text("System-changing actions are previewed first and require confirmation."), ["SAFE"], "dialog-information"), False, False, 0)
+        self.timeline.pack_start(self.card(tr_text("Web access"), tr_text("Web research stays disabled unless the user explicitly enables it with SEVENAI_WEB=1 or --web."), [str(policy.get("cloud_default", "disabled")).upper(), "OPT-IN"], "network-workgroup"), False, False, 0)
+        self.timeline.pack_start(self.card(tr_text("Confirmation"), tr_text("System-changing actions are previewed first and require confirmation."), [f"{confirm_count} CONFIRM", "PREVIEW"], "dialog-information"), False, False, 0)
+        self.timeline.pack_start(self.card(tr_text("Denied by default"), tr_text("Credentials, deletion, cloud models and sensitive cultural publishing stay blocked by default."), [f"{denied_count} DENIED", "SAFE"], "process-stop"), False, False, 0)
+        if issues:
+            for issue in issues[:5]:
+                self.timeline.pack_start(self.card(tr_text("Permission issue"), str(issue.get("message", issue)), ["REVIEW"], "dialog-warning"), False, False, 0)
+        else:
+            self.timeline.pack_start(self.card(tr_text("Permission graph ready"), tr_text("No sensitive permission is allowed without explicit confirmation."), ["READY"], "emblem-default"), False, False, 0)
         self.timeline.show_all()
 
     def preview_command(self, command: str) -> None:
@@ -721,13 +961,42 @@ def main() -> int:
     if args.json:
         available, error = gtk_available()
         payload = run_json([str(ROOT / "scripts/ai.sh"), "json"], {"summary": {}})
-        print(json.dumps({"schema": "sevenos.ai-native.v1", "native": available, "error": error, "ai": payload}, indent=2))
+        runtime = run_json([str(ROOT / "scripts/ai.sh"), "runtime", "--json"], {"state": "unknown"})
+        permissions = run_json([str(ROOT / "scripts/ai.sh"), "permissions", "--json"], {"state": "unknown"})
+        learning = run_json([str(ROOT / "scripts/ai.sh"), "learning", "--json"], {"state": "unknown", "privacy": {}, "config": {}, "index": {}, "habits": {}})
+        learning_config = learning.get("config") if isinstance(learning.get("config"), dict) else {}
+        learning_index = learning.get("index") if isinstance(learning.get("index"), dict) else {}
+        learning_habits = learning.get("habits") if isinstance(learning.get("habits"), dict) else {}
+        print(json.dumps({
+            "schema": "sevenos.ai-native.v1",
+            "native": available,
+            "error": error,
+            "ai": payload,
+            "agent_runtime": {
+                "state": runtime.get("state", "unknown"),
+                "agents": (runtime.get("registry") or {}).get("agents", 0) if isinstance(runtime.get("registry"), dict) else 0,
+                "permission_graph": permissions.get("state", "unknown"),
+            },
+            "learning": {
+                "state": learning.get("state", "unknown"),
+                "enabled": bool(learning_config.get("enabled")),
+                "documents": int(learning_index.get("documents", 0) or 0),
+                "habit_events": int(learning_habits.get("events", 0) or 0),
+                "privacy": learning.get("privacy", {}),
+            },
+        }, indent=2))
         return 0
     if args.action == "status":
         print("SevenAI Native")
         print("==============")
         print("Status: OK" if probe() == 0 else "Status: MISS")
         return 0
+    if os.environ.get("SEVENAI_LEGACY_UI", "0") != "1":
+        return subprocess.call(
+            [str(ROOT / "bin/seven-spotlight"), "ai"],
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        )
     app = SevenAI()
     return app.run([])
 

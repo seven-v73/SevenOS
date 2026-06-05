@@ -930,13 +930,28 @@ SEVENOS_TERMINAL_CLEAN=0 seven-terminal
 
 ### SevenAI
 
-Assistant local-first de SevenOS. Il peut diagnostiquer, expliquer, préparer des
-actions et demander confirmation avant les changements sensibles.
+Assistant local-first de SevenOS. Son interface principale est maintenant
+Spotlight : bouton `AI`, réponses inline, ouverture d'apps et actions SevenOS
+sans lancer une fenêtre séparée lourde.
 
 ```bash
-seven-ai
+seven spotlight ai
+seven ai open
 seven ai focus
+seven ai brain --json
+seven ai model-setup --apply --json
+seven ai execution --json
 seven ai diagnose system --json
+seven ai runtime --json
+seven ai agents --json
+seven ai coverage --json
+seven ai contracts --json
+seven ai permissions --json
+seven ai ledger --json
+seven ai learning --json
+seven ai learning scan --json
+seven ai habits --json
+seven ai proactive --json
 seven ai "prépare un espace Forge pour coder"
 ```
 
@@ -1196,6 +1211,13 @@ seven update --json
 seven release review
 seven release open
 seven release freeze --json
+seven footprint
+seven footprint plan
+seven footprint evidence
+seven footprint compare
+seven footprint trend
+seven footprint guard
+seven footprint --json
 seven quality
 seven quality doctor
 seven quality mode public
@@ -1237,6 +1259,14 @@ dépôt système et les commandes utilisables depuis partout.
 public. `seven release open` ouvre la même revue dans une surface
 native, puis `seven release freeze --json` écrit le manifeste avec les chemins
 `git-status.txt` et `diff-stat.txt`.
+`seven footprint` audite en lecture seule le poids du dépôt, de `/opt/SevenOS`,
+des artefacts ISO, du journal SevenBus et du gel Git. `seven footprint plan`
+ajoute les zones à revoir et les commandes de contrôle, sans suppression
+automatique. `seven footprint evidence` enregistre une preuve JSON dans
+`out/footprint/` et `seven footprint compare` mesure l’état live face à cette
+preuve pour comparer l’avant/après optimisation. `seven footprint trend`
+résume l’évolution de toutes les preuves enregistrées. `seven footprint guard`
+donne un verdict court avant gel : pass, warn ou block.
 `seven quality doctor` rassemble les gates qui comptent pour une expérience
 publique : santé, surfaces natives, smoke, update, mini OS, Shell AGS,
 Server/Deploy et release freeze.
@@ -2449,13 +2479,28 @@ SEVENOS_TERMINAL_CLEAN=0 seven-terminal
 
 ### SevenAI
 
-Local-first SevenOS assistant. It can diagnose, explain, prepare actions and ask
-for confirmation before sensitive changes.
+Local-first SevenOS assistant. Its main surface is now Spotlight: `AI` button,
+inline answers, app opening and SevenOS actions without launching a heavy
+separate window.
 
 ```bash
-seven-ai
+seven spotlight ai
+seven ai open
 seven ai focus
+seven ai brain --json
+seven ai model-setup --apply --json
+seven ai execution --json
 seven ai diagnose system --json
+seven ai runtime --json
+seven ai agents --json
+seven ai coverage --json
+seven ai contracts --json
+seven ai permissions --json
+seven ai ledger --json
+seven ai learning --json
+seven ai learning scan --json
+seven ai habits --json
+seven ai proactive --json
 seven ai "prepare a Forge space for coding"
 ```
 
@@ -2697,6 +2742,13 @@ seven update --json
 seven release review
 seven release open
 seven release freeze --json
+seven footprint
+seven footprint plan
+seven footprint evidence
+seven footprint compare
+seven footprint trend
+seven footprint guard
+seven footprint --json
 seven quality
 seven quality doctor
 seven lifecycle
@@ -2727,6 +2779,14 @@ system tree and the commands available from anywhere.
 `seven release open` opens the same review as a native surface, then
 `seven release freeze --json` writes the manifest with `git-status.txt` and
 `diff-stat.txt` paths.
+`seven footprint` audits the source tree, `/opt/SevenOS`, ISO artifacts and
+SevenBus journal and Git freeze state in read-only mode. `seven footprint plan`
+adds reviewable cleanup zones and inspection commands without deleting anything
+automatically. `seven footprint evidence` records a JSON proof under
+`out/footprint/` and `seven footprint compare` measures the live state against
+that proof so before/after optimization states can be compared.
+`seven footprint trend` summarizes all recorded evidence over time.
+`seven footprint guard` gives a short pre-freeze verdict: pass, warn or block.
 `seven quality doctor` combines the gates that matter for a public experience:
 health, native surfaces, smoke, update, mini OS, Shell AGS, Server/Deploy and
 release freeze.

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+SCRIPT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$SCRIPT_ROOT"
 source "$ROOT_DIR/scripts/lib.sh"
 
 usage() {
@@ -16,22 +17,45 @@ Usage:
   seven ai operate "installe blender" --json
   seven ai apps --json
   seven ai context --json
+  seven ai brain --json
+  seven ai runtime --json
+  seven ai capabilities --json
+  seven ai agents --json
+  seven ai coverage --json
+  seven ai contracts --json
+  seven ai handoffs --json
+  seven ai permissions --json
+  seven ai ledger --json
+  seven ai learning --json
+  seven ai learning enable --json
+  seven ai learning scan --json
+  seven ai habits --json
+  seven ai proactive --json
   seven ai memory --json
   seven ai memory --compact --json
+  seven ai preferences --json
+  seven ai "souviens-toi que je préfère les réponses courtes"
+  seven ai missions --json
+  seven ai missions status --json
+  seven ai missions next --json
+  seven ai missions complete --json
+  seven ai "crée une mission organiser mes documents"
   seven ai shortcuts --json
   seven ai llm --json
   seven ai models --json
+  seven ai model-setup --apply --json
+  seven ai execution --json
   seven ai manager --json
   seven ai diagnose system --json
   seven ai playbook wifi_repair --json
   seven ai provider "mon wifi ne marche pas" --json
   seven ai research "Hyprland release notes" --json --web
   SEVENAI_WEB=1 seven ai web "SevenOS Hyprland" --json
-  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|operate|apps|context|memory|knowledge|shortcuts|workflow|llm|models|manager|web|research|diagnose|playbook|provider]
+  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|operate|execution|apps|context|brain|state|capabilities|memory|preferences|missions|knowledge|shortcuts|workflow|llm|models|model-setup|manager|web|research|diagnose|playbook|provider|agents|coverage|contracts|handoffs]
 
-SevenAI Local is a provider-neutral system assistant preview. It does not call
-an online model; it reads SevenOS state, insights and actions, then turns them
-into a short operational plan for the user.
+SevenAI Local is a provider-neutral system assistant. It does not call an
+online model by default; it reads SevenOS state, insights and actions, then can
+optionally use a local Ollama model for deeper local reasoning.
 
 The agent mode adds local intent parsing, app discovery, cautious execution,
 system context and a local-only memory log.
@@ -40,6 +64,24 @@ EOF
 
 agent() {
   python "$ROOT_DIR/scripts/seven_ai_agent.py" "$@"
+}
+
+runtime() {
+  local runtime_script="$SCRIPT_ROOT/scripts/seven_ai_runtime.py"
+  if [[ -f "$runtime_script" ]]; then
+    SEVENOS_ROOT="$SCRIPT_ROOT" python "$runtime_script" "$@"
+    return
+  fi
+  python "$ROOT_DIR/scripts/seven_ai_runtime.py" "$@"
+}
+
+learning() {
+  local learning_script="$SCRIPT_ROOT/scripts/seven_ai_learning.py"
+  if [[ -f "$learning_script" ]]; then
+    SEVENOS_ROOT="$SCRIPT_ROOT" python "$learning_script" "$@"
+    return
+  fi
+  python "$ROOT_DIR/scripts/seven_ai_learning.py" "$@"
 }
 
 command_json() {
@@ -340,9 +382,10 @@ PY
 doctor_json() {
   local payload
   payload="$(payload_json)"
-  SEVENAI_PAYLOAD="$payload" SEVENAI_ROOT="$ROOT_DIR" python - <<'PY'
+  SEVENAI_PAYLOAD="$payload" SEVENAI_ROOT="$SCRIPT_ROOT" python - <<'PY'
 import json
 import os
+from pathlib import Path
 import subprocess
 
 payload = json.loads(os.environ.get("SEVENAI_PAYLOAD", "{}"))
@@ -357,11 +400,26 @@ def run_json(command, fallback):
     except Exception:
         return fallback
 
+def read_json_file(path, fallback):
+    try:
+        file_path = Path(path).expanduser()
+        if not file_path.exists():
+            return fallback
+        return json.loads(file_path.read_text(encoding="utf-8"))
+    except Exception:
+        return fallback
+
 llm = run_json([f"{root}/scripts/ai.sh", "llm", "--json"], {})
 provider = run_json([f"{root}/scripts/ai.sh", "provider", "mon wifi ne marche pas", "--json"], {})
 memory = run_json([f"{root}/scripts/ai.sh", "memory", "--json"], {})
 context = run_json([f"{root}/scripts/ai.sh", "context", "--json"], {})
 operator = run_json([f"{root}/scripts/ai.sh", "operate", "installe blender", "--json"], {})
+agent_runtime = run_json([f"{root}/scripts/ai.sh", "runtime", "--json"], {})
+permissions = run_json([f"{root}/scripts/ai.sh", "permissions", "--json"], {})
+learning = run_json([f"{root}/scripts/ai.sh", "learning", "--json"], {})
+brain = run_json([f"{root}/scripts/ai.sh", "brain", "--json"], {})
+if brain.get("schema") != "sevenos.ai.brain.v1":
+    brain = read_json_file("~/.cache/sevenos/ai-brain.json", brain)
 
 providers = llm.get("providers") if isinstance(llm.get("providers"), list) else []
 active_providers = [item.get("key") for item in providers if item.get("status") == "active"]
@@ -382,6 +440,16 @@ if provider.get("external_calls"):
     warnings.append("local provider made external calls")
 if operator.get("schema") != "sevenos.ai.operation-plan.v1":
     warnings.append("operation planner is not available")
+if agent_runtime.get("state") != "ready":
+    warnings.append("agent runtime is not ready")
+if (agent_runtime.get("registry") or {}).get("agents") != 7:
+    warnings.append("agent registry should expose seven SevenOS agents")
+if permissions.get("state") != "ready":
+    warnings.append("agent permission graph needs attention")
+if learning.get("schema") != "sevenos.ai-learning.v1":
+    warnings.append("learning contract is not available")
+if brain.get("schema") != "sevenos.ai.brain.v1":
+    warnings.append("brain contract is not available")
 
 print(json.dumps({
     "schema": "sevenos.ai.doctor.v1",
@@ -400,11 +468,32 @@ print(json.dumps({
         "requires_confirmation": ((operator.get("summary") or {}).get("requires_confirmation")),
         "contract": list((operator.get("contract") or {}).keys()),
     },
+    "agent_runtime": {
+        "state": agent_runtime.get("state", "unknown"),
+        "agents": (agent_runtime.get("registry") or {}).get("agents", 0),
+        "ledger_events": (agent_runtime.get("ledger") or {}).get("events", 0),
+        "cloud_default": (agent_runtime.get("policy") or {}).get("cloud_default", "unknown"),
+        "permission_graph": permissions.get("state", "unknown"),
+    },
+    "learning": {
+        "state": learning.get("state", "unknown"),
+        "enabled": ((learning.get("config") or {}).get("enabled")),
+        "documents": ((learning.get("index") or {}).get("documents", 0)),
+        "habit_events": ((learning.get("habits") or {}).get("events", 0)),
+        "privacy": learning.get("privacy", {}),
+    },
+    "brain": {
+        "state": brain.get("state", "unknown"),
+        "score": brain.get("score", 0),
+        "profile": (brain.get("profile") or {}).get("key", "unknown"),
+        "theme": (brain.get("theme") or {}).get("mode", "unknown"),
+        "issues": len(brain.get("issues", [])) if isinstance(brain.get("issues"), list) else 0,
+    },
     "context_available": bool(context.get("active_window") or context.get("shell_context")),
-    "native_surface": "bin/seven-ai-native",
+    "native_surface": "bin/seven-spotlight ai",
     "warnings": warnings,
     "limits": [
-        "Local provider is deterministic and rule/context based; model-backed reasoning is future work.",
+        "Seven-local remains the deterministic safe fallback; Ollama is used only when a local model is active.",
         "Memory is local SQLite and needs periodic compaction on heavy test machines.",
         "Web research is explicit opt-in and not part of the default local context.",
         "System-changing actions require preview/apply confirmation and should stay routed through SevenOS commands.",
@@ -445,14 +534,47 @@ action="${1:-brief}"
 case "$action" in
   open|native|gui|interface)
     shift || true
-    exec "$ROOT_DIR/bin/seven-ai-native" open "$@"
+    if [[ "$action" == "open" && "$#" -gt 0 ]]; then
+      query_parts=()
+      agent_flags=()
+      for item in "$@"; do
+        case "$item" in
+          --json|--apply|--yes|--web) agent_flags+=("$item") ;;
+          *) query_parts+=("$item") ;;
+        esac
+      done
+      if [[ "${#query_parts[@]}" -gt 0 ]]; then
+        exec "$ROOT_DIR/scripts/seven_ai_agent.py" ask "open ${query_parts[*]}" "${agent_flags[@]}"
+      fi
+    fi
+    exec "$ROOT_DIR/bin/seven-spotlight" ai
     ;;
   brief|status) brief ;;
   plan) plan ;;
   focus) focus ;;
   doctor) shift || true; doctor "$@" ;;
   json|--json) payload_json ;;
-  ask|run|intent|operate|apps|context|memory|knowledge|shortcuts|workflow|llm|models|manager|web|research|diagnose|playbook|provider)
+  runtime|agents|coverage|contracts|handoffs|permissions|ledger)
+    shift
+    runtime "$action" "$@"
+    ;;
+  record)
+    shift
+    runtime record "$@"
+    ;;
+  learning|learn)
+    shift
+    learning "$@"
+    ;;
+  habits)
+    shift
+    learning habits "$@"
+    ;;
+  proactive|suggestions)
+    shift
+    learning proactive "$@"
+    ;;
+  ask|run|intent|operate|execution|apps|context|machine|brain|state|capabilities|memory|preferences|missions|knowledge|shortcuts|workflow|llm|models|model-setup|manager|web|research|diagnose|playbook|provider)
     shift
     agent "$action" "$@"
     ;;

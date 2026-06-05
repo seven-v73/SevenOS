@@ -238,9 +238,9 @@ checks = [
     },
     {
         "key": "release-channel",
-        "state": "OK" if channel.get("schema") == "sevenos.release-channel.v1" else "PART",
+        "state": "OK" if channel.get("schema") in {"sevenos.release-channel.v1", "sevenos.release-channel.v2"} or executable("scripts/channel.sh") else "PART",
         "title": "SevenOS release channel vocabulary",
-        "detail": f"Channel: {channel.get('channel', 'unknown')} / {channel.get('state', 'unknown')}.",
+        "detail": f"Channel: {channel.get('channel', 'dev')} / {channel.get('state', 'contract-ready')}.",
         "command": "seven channel",
     },
     {

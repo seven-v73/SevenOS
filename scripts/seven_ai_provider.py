@@ -15,10 +15,28 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 from typing import Any
 
 from seven_i18n import language_code as sevenos_language_code
+
+
+AI_CONFIG_FILE = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos" / "ai.env"
+
+
+def provider_config() -> dict[str, str]:
+    data: dict[str, str] = {}
+    try:
+        for line in AI_CONFIG_FILE.read_text(encoding="utf-8", errors="ignore").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            data[key.strip()] = value.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return data
 
 
 def normalize(value: str) -> str:
@@ -65,18 +83,34 @@ def unique_items(items: list[str]) -> list[str]:
     return result
 
 
+def clean_model_output(value: str) -> str:
+    value = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", value)
+    value = value.replace("\x08", "")
+    value = "".join(ch for ch in value if ch in "\n\t" or ord(ch) >= 32)
+    return re.sub(r"[ \t]+\n", "\n", value).strip()
+
+
 def requested_provider() -> str:
     requested = os.environ.get("SEVENAI_PROVIDER", "").strip().lower()
     if requested:
         return requested
+    config = provider_config()
+    requested = config.get("SEVENAI_PROVIDER", "").strip().lower()
+    if requested:
+        return requested
     if os.environ.get("SEVENAI_OLLAMA") == "1":
         return "ollama"
+    if config.get("SEVENAI_OLLAMA") == "1":
+        return "ollama"
     if os.environ.get("SEVENAI_LLAMA_CPP") == "1":
+        return "llama.cpp"
+    if config.get("SEVENAI_LLAMA_CPP") == "1":
         return "llama.cpp"
     return "seven-local"
 
 
 def model_runtime_status() -> dict[str, Any]:
+    config = provider_config()
     ollama = shutil.which("ollama")
     llama_cli = shutil.which("llama-cli") or shutil.which("llama")
     active = requested_provider()
@@ -99,7 +133,7 @@ def model_runtime_status() -> dict[str, Any]:
                         ollama_models.append(parts[0])
         except Exception:
             ollama_running = False
-    llama_model = os.environ.get("SEVENAI_LLAMA_MODEL", "")
+    llama_model = os.environ.get("SEVENAI_LLAMA_MODEL") or config.get("SEVENAI_LLAMA_MODEL", "")
     return {
         "schema": "sevenos.ai.model-runtime.v1",
         "active": active,
@@ -110,7 +144,7 @@ def model_runtime_status() -> dict[str, Any]:
             "available": bool(ollama and ollama_running),
             "command": ollama or "",
             "active": active == "ollama",
-            "model": os.environ.get("SEVENAI_OLLAMA_MODEL", "llama3.2:3b"),
+            "model": os.environ.get("SEVENAI_OLLAMA_MODEL") or config.get("SEVENAI_OLLAMA_MODEL") or "llama3.2:3b",
             "models": ollama_models[:8],
             "start": "ollama serve",
         },
@@ -119,7 +153,7 @@ def model_runtime_status() -> dict[str, Any]:
             "available": bool(llama_cli and llama_model),
             "command": llama_cli or "",
             "active": active in {"llama.cpp", "llama-cpp", "llamacpp"},
-            "model": llama_model,
+            "model": llama_model or config.get("SEVENAI_LLAMA_MODEL", ""),
         },
         "policy": {
             "local_only": True,
@@ -178,26 +212,29 @@ def ollama_answer(prompt: str, context: dict[str, Any] | None, fallback: dict[st
         "Réponse:"
     )
     try:
-        result = subprocess.run(
-            ["ollama", "run", model, model_prompt],
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=float(os.environ.get("SEVENAI_MODEL_TIMEOUT", "18")),
+        request = urllib.request.Request(
+            "http://127.0.0.1:11434/api/generate",
+            data=json.dumps({"model": model, "prompt": model_prompt, "stream": False}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
+        with urllib.request.urlopen(request, timeout=float(os.environ.get("SEVENAI_MODEL_TIMEOUT", "45"))) as response:
+            api_payload = json.loads(response.read().decode("utf-8", errors="ignore") or "{}")
     except Exception as exc:
         payload = dict(fallback)
+        payload["provider"] = "ollama"
         payload["model_provider"] = runtime
         payload["provider_status"] = "fallback"
         payload["why"]["signals"].append(f"ollama:error:{type(exc).__name__}")
         return payload
-    answer = result.stdout.strip()
-    if result.returncode != 0 or not answer:
+    answer = clean_model_output(str(api_payload.get("response") or ""))
+    if not answer:
         payload = dict(fallback)
+        payload["provider"] = "ollama"
         payload["model_provider"] = runtime
         payload["provider_status"] = "fallback"
         payload["why"]["signals"].append("ollama:unavailable-model")
-        payload["model_error"] = result.stderr.strip()[:500]
+        payload["model_error"] = str(api_payload)[:500]
         return payload
     suggestions = list(fallback.get("suggestions", []))
     return {
@@ -236,6 +273,10 @@ def local_answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str
     app_label = str(shell_app.get("label") or app_key)
     service = str(shell_app.get("service") or "")
     density = str(shell_layout.get("density") or "")
+    learning = context.get("learning") if isinstance(context.get("learning"), dict) else {}
+    learning_config = learning.get("config") if isinstance(learning.get("config"), dict) else {}
+    learning_index = learning.get("index") if isinstance(learning.get("index"), dict) else {}
+    learning_habits = learning.get("habits") if isinstance(learning.get("habits"), dict) else {}
     signals: list[str] = []
     if profile:
         signals.append(f"profile:{profile}")
@@ -368,6 +409,40 @@ def local_answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str
             "seven ai shortcuts",
             "seven ai \"mets le thème light\"",
         ]
+    elif any(token in raw for token in ("mes fichiers", "mes documents", "mes notes", "my files", "my documents", "my notes", "cherche dans mes", "search my")):
+        documents = int(learning_index.get("documents", 0) or 0)
+        enabled = bool(learning_config.get("enabled"))
+        if enabled and documents:
+            answer = (
+                f"J’ai un index local de {documents} élément(s) approuvés. Je peux chercher par nom, type ou titre sans envoyer tes fichiers au cloud."
+                if language == "fr"
+                else f"I have a local index of {documents} approved item(s). I can search by name, type or title without sending files to the cloud."
+            )
+            suggestions = [
+                "seven ai learning search notes --json",
+                "seven ai learning search README --json",
+                "seven ai learning scan --json",
+            ]
+            signals.append(f"learning:index:{documents}")
+        else:
+            answer = (
+                "L’apprentissage local des fichiers est prêt, mais il faut l’activer puis scanner les sources approuvées."
+                if language == "fr"
+                else "Local file learning is ready, but it must be enabled and approved sources must be scanned first."
+            )
+            suggestions = ["seven ai learning enable --json", "seven ai learning scan --json"]
+            signals.append("learning:available")
+    elif any(token in raw for token in ("habitudes", "habits", "ce que j'utilise", "ce que j’utilise", "usage", "personnalise")):
+        events = int(learning_habits.get("events", 0) or 0)
+        top = learning_habits.get("top_intents") if isinstance(learning_habits.get("top_intents"), list) else []
+        top_label = ", ".join(str(item.get("intent")) for item in top[:3] if item.get("intent"))
+        answer = (
+            f"Je vois {events} interaction(s) locales SevenAI. Les habitudes dominantes sont: {top_label or 'pas encore assez nettes'}."
+            if language == "fr"
+            else f"I can see {events} local SevenAI interaction(s). Dominant habits are: {top_label or 'not clear enough yet'}."
+        )
+        suggestions = ["seven ai habits --json", "seven ai learning --json", "seven ai shortcuts"]
+        signals.append(f"habits:{events}")
 
     if context.get("diagnostics", {}).get("failed_units"):
         suggestions.append("seven ai playbook failed_services --json")

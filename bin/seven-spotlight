@@ -639,6 +639,7 @@ filter_catalog() {
   local mode="${1:-all}"
   case "$mode" in
     all|spotlight) cat ;;
+    ai) awk -F '\t' '$1 == "intent"' ;;
     apps) awk -F '\t' '$1 == "app"' ;;
     files) awk -F '\t' '$1 == "file"' ;;
     settings) awk -F '\t' '$1 == "setting"' ;;
@@ -653,6 +654,7 @@ filter_catalog() {
 
 mode_message() {
   case "${1:-all}" in
+    ai) printf 'SevenAI · ask, open apps, inspect this machine, diagnose SevenOS' ;;
     apps) printf 'Applications · launch installed desktop apps' ;;
     files) printf 'Files · folders · projects · recent documents' ;;
     settings) printf 'Settings · network · audio · power · notifications · keyboard' ;;
@@ -1210,6 +1212,7 @@ case "${1:-open}" in
   open|spotlight) open_spotlight "${2:-all}" ;;
   field|input) open_field "${2:-all}" ;;
   rofi|fallback) SEVENOS_SPOTLIGHT_NATIVE=0 open_spotlight "${2:-all}" ;;
+  ai) open_spotlight ai ;;
   apps|applications) open_spotlight apps ;;
   files) open_spotlight files ;;
   settings) open_spotlight settings ;;
@@ -1226,7 +1229,7 @@ case "${1:-open}" in
   query) shift; handle_freeform "$*" ;;
   dispatch) shift; dispatch_item "$@" ;;
   *)
-    printf 'Usage: seven-spotlight [open [mode]|field [mode]|rofi [mode]|apps|files|settings|system|web|clipboard|windows|history|index|doctor [--json]|catalog|count|eval QUERY|query QUERY|dispatch TYPE KEY COMMAND]\n' >&2
+    printf 'Usage: seven-spotlight [open [mode]|field [mode]|rofi [mode]|ai|apps|files|settings|system|web|clipboard|windows|history|index|doctor [--json]|catalog|count|eval QUERY|query QUERY|dispatch TYPE KEY COMMAND]\n' >&2
     exit 2
     ;;
 esac

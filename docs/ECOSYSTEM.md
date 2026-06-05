@@ -322,6 +322,22 @@ SevenAI Agent adds the first executable OS-agent foundation:
   before any repair action runs.
 - `seven ai research "query" --json --web` uses explicit web access and stores
   research results in the local SQLite cache.
+- `seven ai runtime --json` exposes the local-first agent runtime: registry,
+  policy, ledger path and readiness.
+- `seven ai agents --json` exposes the seven domain agents: Equinox, Forge,
+  Shield, Studio, Pulse, Atlas and Baobab.
+- `seven ai permissions --json` exposes the permission graph, including which
+  actions are allowed, denied or require explicit confirmation.
+- `seven ai ledger --json` exposes the local action ledger so SevenOS can
+  explain what SevenAI planned or applied.
+- `seven ai learning --json` exposes the local learning layer: approved
+  folders, indexed document metadata, local-only privacy state and habits.
+- `seven ai learning enable --json` activates personal learning without
+  scanning hidden or arbitrary folders.
+- `seven ai learning scan --json` indexes approved sources with metadata only;
+  `--content` is required before short text snippets are stored.
+- `seven ai habits --json` summarizes local SevenAI usage patterns so
+  suggestions can become more personal without a cloud account.
 
 By default the agent answers as a normal user-facing assistant, not as raw
 JSON. Machine-readable output stays available through `--json` for Hub,
@@ -333,8 +349,23 @@ The safety contract is simple: app/UI actions can run directly, system actions
 are previewed unless `--apply` is present, privileged package/root actions must
 remain explicit and explain their command before execution, software installs
 route through SevenPkg instead of raw package-manager commands, and the provider
-layer must stay local-only unless a future user-controlled adapter is explicitly
-installed by the user.
+does not override these contracts. The provider layer must stay local-only
+unless a future user-controlled adapter is explicitly installed by the user.
+
+SevenAI Agent Runtime is the system-facing layer under the assistant:
+
+- agent registry: `ai/agents.json`;
+- runtime CLI: `scripts/seven_ai_runtime.py`;
+- ledger: `$XDG_STATE_HOME/sevenos/ai/ledger.jsonl`;
+- learning config: `$XDG_CONFIG_HOME/sevenos/ai-learning.json`;
+- learning index: `$XDG_STATE_HOME/sevenos/ai-learning.sqlite3`;
+- policy: local-first, cloud disabled by default, preview-first execution;
+- gate: `seven ai doctor --json` checks provider, memory, operation contracts,
+  agent runtime, registry count, permission graph and ledger writability.
+
+This is the direction for Settings, Doctor, Store, Installer, Files and future
+surfaces: consume stable SevenAI contracts instead of scraping conversational
+output or calling separate scripts directly.
 
 Model-backed answers are treated as an explanation layer, not as an execution
 engine. The deterministic intent parser, confirmation contract, SevenPkg routing

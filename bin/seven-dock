@@ -26,7 +26,8 @@ resolve_root() {
 ROOT_DIR="$(resolve_root || true)"
 canvas="${ROOT_DIR:+$ROOT_DIR/bin/seven-dock-canvas}"
 native="${ROOT_DIR:+$ROOT_DIR/bin/seven-dock-native}"
-config_file="$HOME/.config/sevenos/dock.json"
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+config_file="$config_home/sevenos/dock.json"
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp/sevenos-$(id -u)}"
 pid_file="$runtime_dir/sevenos-dock.pid"
 state_file="$runtime_dir/sevenos-dock-state.json"
@@ -39,10 +40,14 @@ default_config_json() {
   "position": "bottom",
   "size": "compact",
   "magnification": true,
-  "effect": "magnetic",
-  "autohide": true,
+  "effect": "gentle",
+  "autohide": false,
   "autohide_delay": 2.25,
-  "reserve_space": false,
+  "reserve_space": true,
+  "avoid_windows": true,
+  "edit_mode": false,
+  "fullscreen_behavior": "smart-hide",
+  "dock_layout_version": 2,
   "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
   "profile_pins": {},
   "folders": ["downloads", "home"]
@@ -54,7 +59,56 @@ ensure_config() {
   mkdir -p "$(dirname "$config_file")"
   if [[ ! -s "$config_file" ]]; then
     default_config_json > "$config_file"
+    return
   fi
+  python - "$config_file" <<'PY'
+import json, sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+
+changed = False
+version = int(data.get("dock_layout_version") or 0)
+if version < 2:
+    # Version 2 makes the Dock a real system surface by default: visible,
+    # reserved-space, and gentle motion instead of floating over windows.
+    data["autohide"] = False
+    data["reserve_space"] = True
+    data["avoid_windows"] = True
+    if str(data.get("effect", "magnetic")).lower() == "magnetic":
+        data["effect"] = "gentle"
+    data["dock_layout_version"] = 2
+    changed = True
+
+defaults = {
+    "enabled": True,
+    "position": "bottom",
+    "size": "compact",
+    "magnification": True,
+    "effect": "gentle",
+    "autohide": False,
+    "autohide_delay": 2.25,
+    "reserve_space": True,
+    "avoid_windows": True,
+    "edit_mode": False,
+    "fullscreen_behavior": "smart-hide",
+    "dock_layout_version": 2,
+    "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+    "profile_pins": {},
+    "folders": ["downloads", "home"],
+}
+for key, value in defaults.items():
+    if key not in data:
+        data[key] = value
+        changed = True
+
+if changed:
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+PY
 }
 
 config_enabled() {
@@ -94,7 +148,7 @@ except Exception:
 def as_bool(value):
     return str(value).lower() in {"1", "true", "yes", "on", "enable", "enabled"}
 
-if key in {"enabled", "autohide", "reserve_space", "magnification"}:
+if key in {"enabled", "autohide", "reserve_space", "magnification", "avoid_windows", "edit_mode"}:
     data[key] = as_bool(raw)
 elif key == "autohide_delay":
     try:
@@ -109,14 +163,23 @@ elif key == "effect":
         value = "gentle"
     data[key] = value if value in {"magnetic", "gentle", "none"} else "magnetic"
     data["magnification"] = data[key] != "none"
+elif key == "fullscreen_behavior":
+    value = str(raw).lower()
+    data[key] = value if value in {"smart-hide", "dim", "always-visible"} else "smart-hide"
 else:
     data[key] = raw
 
 data.setdefault("enabled", True)
 data.setdefault("position", "bottom")
 data.setdefault("size", "compact")
-data.setdefault("effect", "magnetic" if data.get("magnification", True) else "none")
+data.setdefault("effect", "gentle" if data.get("magnification", True) else "none")
+data.setdefault("autohide", False)
 data.setdefault("autohide_delay", 2.25)
+data.setdefault("reserve_space", True)
+data.setdefault("avoid_windows", True)
+data.setdefault("edit_mode", False)
+data.setdefault("fullscreen_behavior", "smart-hide")
+data.setdefault("dock_layout_version", 2)
 data.setdefault("pinned", ["files", "apps", "browser", "terminal", "spotlight", "hub"])
 data.setdefault("profile_pins", {})
 data.setdefault("folders", ["downloads", "home"])
@@ -296,7 +359,7 @@ PY
     key="${1:-}"
     value="${2:-}"
     case "$key" in
-      enabled|autohide|reserve_space|magnification|effect|autohide_delay)
+      enabled|autohide|reserve_space|magnification|avoid_windows|edit_mode|fullscreen_behavior|effect|autohide_delay)
         [[ -n "$value" ]] || { printf 'Usage: seven-dock set %s <value>\n' "$key" >&2; exit 1; }
         set_config_value "$key" "$value"
         if is_running; then
@@ -310,7 +373,7 @@ PY
         if is_running; then close_dock; open_dock; fi
         ;;
       *)
-        printf 'Usage: seven-dock set <enabled|autohide|autohide_delay|delay|effect|magnification|reserve_space> <value>\n' >&2
+        printf 'Usage: seven-dock set <enabled|autohide|autohide_delay|delay|effect|magnification|reserve_space|avoid_windows|edit_mode|fullscreen_behavior> <value>\n' >&2
         exit 1
         ;;
     esac
@@ -353,7 +416,32 @@ PY
     set_config_value effect "$value"
     if is_running; then close_dock; open_dock; fi
     ;;
+  edit)
+    shift || true
+    value="${1:-toggle}"
+    if [[ "$value" == "toggle" ]]; then
+      current="$(python - "$config_file" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+print("off" if data.get("edit_mode", False) else "on")
+PY
+)"
+      value="$current"
+    fi
+    case "$value" in
+      on|true|1|enable|enabled) set_config_value edit_mode true ;;
+      off|false|0|disable|disabled) set_config_value edit_mode false ;;
+      *) printf 'Usage: seven-dock edit <on|off|toggle>\n' >&2; exit 1 ;;
+    esac
+    if is_running; then close_dock; open_dock; fi
+    ;;
   limits|doctor)
+    ensure_config
     if binary="$(dock_binary)"; then
       "$binary" --limits --json
     else
@@ -365,8 +453,12 @@ PY
     shift || true
     tile="${1:-}"
     if [[ -z "$tile" ]]; then
-      printf 'Usage: seven-dock pin <files|apps|browser|terminal|spotlight|hub|settings>\n' >&2
+      printf 'Usage: seven-dock pin <files|apps|browser|terminal|spotlight|hub|settings|trash>\n' >&2
       exit 1
+    fi
+    if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+      printf 'DRY-RUN > Dock > Pin %s\n' "$tile"
+      exit 0
     fi
     python - "$config_file" "$tile" <<'PY'
 import json, sys
@@ -384,10 +476,14 @@ data.setdefault("enabled", True)
 data.setdefault("position", "bottom")
 data.setdefault("size", "compact")
 data.setdefault("magnification", True)
-data.setdefault("effect", "magnetic")
-data.setdefault("autohide", True)
+data.setdefault("effect", "gentle")
+data.setdefault("autohide", False)
 data.setdefault("autohide_delay", 2.25)
-data.setdefault("reserve_space", False)
+data.setdefault("reserve_space", True)
+data.setdefault("avoid_windows", True)
+data.setdefault("edit_mode", False)
+data.setdefault("fullscreen_behavior", "smart-hide")
+data.setdefault("dock_layout_version", 2)
 data.setdefault("folders", ["downloads", "home"])
 path.write_text(json.dumps(data, indent=2) + "\n")
 PY
@@ -398,6 +494,10 @@ PY
     if [[ -z "$tile" ]]; then
       printf 'Usage: seven-dock unpin <id>\n' >&2
       exit 1
+    fi
+    if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+      printf 'DRY-RUN > Dock > Unpin %s\n' "$tile"
+      exit 0
     fi
     python - "$config_file" "$tile" <<'PY'
 import json, sys
@@ -419,7 +519,8 @@ PY
     fi
     ;;
   *)
-    printf 'Usage: seven-dock [toggle|open|close|enable|disable|autohide <on|off|toggle>|delay <seconds>|effect <magnetic|gentle|none>|set <key> <value>|restart|repair|status|settings|limits|doctor|pin <id>|unpin <id>|--probe]\n' >&2
+    printf 'Usage: seven-dock [toggle|open|close|enable|disable|autohide <on|off|toggle>|delay <seconds>|effect <magnetic|gentle|none>|edit <on|off|toggle>|set <key> <value>|restart|repair|status|settings|limits|doctor|pin <id>|unpin <id>|--probe]\n' >&2
+    printf 'Keys: enabled autohide reserve_space avoid_windows edit_mode fullscreen_behavior magnification effect autohide_delay\n' >&2
     printf 'Env: SEVENOS_DOCK_RENDERER=canvas|native\n' >&2
     exit 1
     ;;

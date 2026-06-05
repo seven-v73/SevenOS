@@ -118,8 +118,13 @@ DEFAULT_CONFIG = {
     "position": "bottom",
     "size": "compact",
     "magnification": True,
+    "effect": "gentle",
     "autohide": False,
     "reserve_space": True,
+    "avoid_windows": True,
+    "edit_mode": False,
+    "fullscreen_behavior": "smart-hide",
+    "dock_layout_version": 2,
     "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
     "profile_pins": {},
     "folders": ["downloads", "home"],
@@ -158,6 +163,13 @@ def load_config() -> dict[str, object]:
         data = {}
     config = dict(DEFAULT_CONFIG)
     config.update({key: value for key, value in data.items() if key in DEFAULT_CONFIG})
+    if int(config.get("dock_layout_version") or 0) < 2:
+        config["autohide"] = False
+        config["reserve_space"] = True
+        config["avoid_windows"] = True
+        config["edit_mode"] = False
+        config["fullscreen_behavior"] = "smart-hide"
+        config["dock_layout_version"] = 2
     return config
 
 
@@ -222,6 +234,14 @@ def notification_count() -> int:
     return 0
 
 
+def trash_count() -> int:
+    trash_dir = Path.home() / ".local/share/Trash/files"
+    try:
+        return min(99, sum(1 for item in trash_dir.iterdir() if item.name not in {"", "."}))
+    except OSError:
+        return 0
+
+
 def resolve_command(command: list[str]) -> list[str]:
     if not command:
         return []
@@ -282,6 +302,19 @@ def clients_by_tile(clients: list[dict[str, object]]) -> dict[str, list[dict[str
             continue
         grouped.setdefault(tile_id, []).append(client)
     return grouped
+
+
+def focused_fullscreen_client(clients: list[dict[str, object]]) -> dict[str, object] | None:
+    for client in clients:
+        try:
+            focused = int(client.get("focusHistoryID", 9999) or 9999) == 0
+            fullscreen = int(client.get("fullscreen", 0) or 0) > 0
+        except Exception:
+            focused = False
+            fullscreen = False
+        if focused and fullscreen:
+            return client
+    return None
 
 
 def focus_client(client: dict[str, object]) -> bool:
@@ -369,8 +402,12 @@ def dock_limits_payload() -> dict[str, object]:
     pinned, folders, system = dock_tiles(config)
     groups = [group for group in (pinned, folders, system) if group]
     width, height, overflow = dock_dimensions(config, monitor_width)
-    reserve_space = bool(config.get("reserve_space", True)) and not bool(config.get("autohide", False))
-    autohide = bool(config.get("autohide", False))
+    clients = hyprland_clients()
+    fullscreen_behavior = str(config.get("fullscreen_behavior", "smart-hide") or "smart-hide")
+    fullscreen = focused_fullscreen_client(clients)
+    fullscreen_soft_hide = bool(fullscreen) and fullscreen_behavior == "smart-hide"
+    autohide = bool(config.get("autohide", False)) or fullscreen_soft_hide
+    reserve_space = bool(config.get("reserve_space", True)) and not autohide
     layer_shell_available = False
     try:
         import gi
@@ -391,7 +428,8 @@ def dock_limits_payload() -> dict[str, object]:
             "margin": DOCK_MARGIN,
             "overflow": overflow,
             "reserve_space": reserve_space,
-            "exclusive_zone": height + DOCK_MARGIN if reserve_space else 0,
+            "exclusive_zone": height + DOCK_MARGIN + 8 if reserve_space else 0,
+            "layout": "reserved-system-surface" if reserve_space else "floating-autohide-overlay",
             "layer_shell_available": layer_shell_available,
             "overlay_fallback": not layer_shell_available,
         },
@@ -408,6 +446,11 @@ def dock_limits_payload() -> dict[str, object]:
             "autohide": bool(config.get("autohide", False)),
             "reserve_space": bool(config.get("reserve_space", True)),
             "magnification": bool(config.get("magnification", True)),
+            "avoid_windows": bool(config.get("avoid_windows", True)),
+            "edit_mode": bool(config.get("edit_mode", False)),
+            "fullscreen_behavior": fullscreen_behavior,
+            "fullscreen_soft_hide": fullscreen_soft_hide,
+            "dock_layout_version": int(config.get("dock_layout_version") or 2),
         },
         "scope": {
             "active_profile": active_profile,
@@ -415,7 +458,8 @@ def dock_limits_payload() -> dict[str, object]:
             "state_file": str(DOCK_STATE_PATH),
         },
         "live": {
-            "hyprland_clients": len(hyprland_clients()),
+            "hyprland_clients": len(clients),
+            "focused_fullscreen": bool(fullscreen),
             "features": [
                 "window-counts",
                 "active-window-state",
@@ -428,6 +472,15 @@ def dock_limits_payload() -> dict[str, object]:
                 "animated-autohide",
                 "press-launch-feedback",
                 "drag-target-feedback",
+                "right-click-pin-unpin",
+                "native-dock-settings-entry",
+                "context-autohide-toggle",
+                "context-effect-control",
+                "context-dock-restart",
+                "edit-mode-surface",
+                "edit-mode-add-tile",
+                "typed-badges",
+                "fullscreen-smart-hide",
             ],
         },
     }
@@ -448,9 +501,11 @@ def tile_catalog() -> dict[str, dict[str, object]]:
         "atlas": {"id": "atlas", "title": "Atlas", "icon": "folder-documents", "style": "atlas", "command": ["seven", "atlas", "open"], "processes": ["evince", "foliate", "calibre", "marble"], "kind": "system"},
         "recorder": {"id": "recorder", "title": tr_text("Recorder"), "icon": "media-record", "style": "recorder", "command": ["seven-recorder"], "processes": ["wf-recorder"], "kind": "system"},
         "settings": {"id": "settings", "title": tr_text("Settings"), "icon": "emblem-system", "style": "settings", "command": ["seven-settings"], "processes": ["seven-settings-native", "pavucontrol", "nm-connection-editor"], "kind": "system"},
+        "add": {"id": "add", "title": tr_text("Add"), "icon": "list-add", "style": "add", "command": ["seven-settings", "dock"], "processes": ["seven-settings-native"], "kind": "system"},
         "studio": {"id": "studio", "title": tr_text("Studio"), "icon": "applications-graphics", "style": "studio", "command": ["seven-profile-center-native"], "processes": ["code", "gimp", "inkscape", "blender"], "kind": "app"},
         "downloads": {"id": "downloads", "title": tr_text("Downloads"), "icon": "folder-download", "style": "folder", "command": ["xdg-open", str(Path.home() / "Downloads")], "path": str(Path.home() / "Downloads"), "kind": "folder"},
         "home": {"id": "home", "title": tr_text("Home"), "icon": "user-home", "style": "folder", "command": ["xdg-open", str(Path.home())], "path": str(Path.home()), "kind": "folder"},
+        "trash": {"id": "trash", "title": tr_text("Trash"), "icon": "user-trash", "style": "trash", "command": ["seven-files", "trash"], "processes": ["seven-files-native"], "kind": "system"},
     }
 
 
@@ -481,7 +536,11 @@ def dock_tiles(config: dict[str, object]) -> tuple[list[dict[str, object]], list
     catalog = tile_catalog()
     pinned = [catalog[tile_id] for tile_id in effective_pinned_ids(config) if tile_id in catalog]
     folders = [catalog[tile_id] for tile_id in config.get("folders", []) if tile_id in catalog]
-    system = [catalog["settings"]]
+    taken = {str(tile.get("id", "")) for tile in [*pinned, *folders]}
+    system_ids = ["trash", "settings"]
+    if bool(config.get("edit_mode", False)):
+        system_ids.insert(0, "add")
+    system = [catalog[tile_id] for tile_id in system_ids if tile_id in catalog and tile_id not in taken]
     return pinned, folders, system
 
 
@@ -494,6 +553,7 @@ def enrich_tile(tile: dict[str, object], grouped_clients: dict[str, list[dict[st
     enriched["active"] = active
     enriched["launching"] = time.monotonic() - LAUNCHING.get(tile_id, 0) < LAUNCHING_TTL
     enriched["available"] = tile.get("kind") == "folder" or command_ready([str(part) for part in tile.get("command", [])])
+    enriched["badge_count"] = trash_count() if tile_id == "trash" else 0
     return enriched
 
 
@@ -535,8 +595,14 @@ def run_dock() -> int:
     bound_profile = active_profile_key()
     monitor_width, monitor_height = monitor_bounds(Gdk)
     dock_width, dock_height, dock_overflow = dock_dimensions(config, monitor_width)
-    reserve_space = bool(config.get("reserve_space", True)) and not bool(config.get("autohide", False))
-    autohide = bool(config.get("autohide", False))
+    clients = hyprland_clients()
+    fullscreen_behavior = str(config.get("fullscreen_behavior", "smart-hide") or "smart-hide")
+    focused_fullscreen = focused_fullscreen_client(clients)
+    fullscreen_soft_hide = bool(focused_fullscreen) and fullscreen_behavior == "smart-hide"
+    fullscreen_dim = bool(focused_fullscreen) and fullscreen_behavior == "dim"
+    autohide = bool(config.get("autohide", False)) or fullscreen_soft_hide
+    reserve_space = bool(config.get("reserve_space", True)) and not autohide
+    edit_mode = bool(config.get("edit_mode", False))
 
     css = seven_theme.gtk_app_css("dock") + """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
@@ -554,6 +620,14 @@ def run_dock() -> int:
         alpha(@seven_bg, 0.28);
       border: 1px solid alpha(@seven_text, 0.10);
       transition: background 160ms ease-out, border-color 160ms ease-out;
+    }
+    .dock-shell.edit-mode {
+      border-color: alpha(@seven_accent, 0.58);
+      background:
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_accent, 0.20), transparent 42%),
+        radial-gradient(ellipse at 82% 0%, alpha(@seven_wallpaper_secondary, 0.12), transparent 40%),
+        linear-gradient(180deg, alpha(@seven_panel, 0.94), alpha(@seven_panel_2, 0.78)),
+        alpha(@seven_bg, 0.30);
     }
     .dock-tile {
       min-width: 50px;
@@ -607,62 +681,69 @@ def run_dock() -> int:
     .dock-icon {
       min-width: 44px;
       min-height: 44px;
-      border-radius: 13px;
+      border-radius: 14px;
       background:
-        radial-gradient(circle at 32% 24%, alpha(@seven_panel, 0.92), transparent 38%),
-        linear-gradient(180deg, alpha(@seven_panel, 0.98), alpha(@seven_panel_2, 0.86)),
-        alpha(@seven_bg, 0.30);
-      border: 1px solid alpha(@seven_text, 0.12);
+        radial-gradient(circle at 28% 18%, alpha(@seven_text, 0.18), transparent 31%),
+        linear-gradient(180deg, alpha(@seven_panel, 0.74), alpha(@seven_panel_2, 0.58)),
+        alpha(@seven_bg, 0.22);
+      border: 1px solid alpha(@seven_text, 0.16);
+      box-shadow: inset 0 1px alpha(@seven_text, 0.13);
       transition: min-width 115ms ease-out, min-height 115ms ease-out, border-radius 115ms ease-out, border-color 140ms ease-out, background 140ms ease-out;
     }
     .dock-tile.magnified .dock-icon {
-      border-color: alpha(@seven_accent, 0.38);
+      border-color: alpha(@seven_accent, 0.46);
     }
     .dock-tile-overlay {
       min-width: 50px;
       min-height: 60px;
     }
     .dock-icon.files {
-      background: linear-gradient(180deg, rgba(112,210,255,0.96), rgba(32,132,225,0.88));
+      background: radial-gradient(circle at 25% 20%, rgba(126,218,255,0.30), transparent 36%), linear-gradient(180deg, rgba(64,136,218,0.70), rgba(28,72,132,0.54));
     }
     .dock-icon.apps {
-      background: linear-gradient(135deg, rgba(255,246,222,0.98), rgba(204,222,238,0.88));
+      background: radial-gradient(circle at 27% 20%, rgba(255,255,255,0.32), transparent 34%), linear-gradient(135deg, rgba(180,190,215,0.62), rgba(86,96,122,0.50));
     }
     .dock-icon.browser {
-      background: linear-gradient(180deg, rgba(94,192,255,0.96), rgba(43,114,224,0.90));
+      background: radial-gradient(circle at 25% 20%, rgba(120,215,255,0.32), transparent 34%), linear-gradient(180deg, rgba(54,126,214,0.70), rgba(36,72,148,0.54));
     }
     .dock-icon.terminal {
-      background: linear-gradient(180deg, rgba(70,80,96,0.98), rgba(33,39,50,0.96));
+      background: radial-gradient(circle at 28% 18%, rgba(178,190,210,0.20), transparent 34%), linear-gradient(180deg, rgba(78,86,102,0.62), rgba(22,27,36,0.68));
     }
     .dock-icon.spotlight {
-      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(205,223,238,0.90));
+      background: radial-gradient(circle at 26% 20%, rgba(255,255,255,0.42), transparent 36%), linear-gradient(180deg, rgba(210,228,245,0.68), rgba(84,112,150,0.48));
     }
     .dock-icon.hub {
-      background: linear-gradient(180deg, rgba(225,202,158,0.98), rgba(125,95,57,0.92));
+      background: radial-gradient(circle at 27% 18%, rgba(255,230,170,0.28), transparent 36%), linear-gradient(180deg, rgba(156,126,78,0.66), rgba(78,58,36,0.56));
     }
     .dock-icon.settings {
-      background: linear-gradient(180deg, rgba(240,245,248,0.98), rgba(146,160,170,0.88));
+      background: radial-gradient(circle at 28% 18%, rgba(245,250,255,0.32), transparent 35%), linear-gradient(180deg, rgba(172,184,196,0.62), rgba(82,92,106,0.52));
+    }
+    .dock-icon.trash {
+      background: radial-gradient(circle at 28% 18%, rgba(245,250,255,0.28), transparent 35%), linear-gradient(180deg, rgba(142,154,170,0.62), rgba(62,70,82,0.56));
+    }
+    .dock-icon.add {
+      background: radial-gradient(circle at 28% 18%, rgba(170,230,255,0.34), transparent 35%), linear-gradient(180deg, rgba(82,126,214,0.66), rgba(48,68,142,0.54));
     }
     .dock-icon.reader {
-      background: linear-gradient(180deg, rgba(245,239,215,0.98), rgba(181,143,91,0.90));
+      background: radial-gradient(circle at 28% 18%, rgba(255,238,188,0.30), transparent 35%), linear-gradient(180deg, rgba(170,134,82,0.64), rgba(92,66,38,0.54));
     }
     .dock-icon.store {
-      background: linear-gradient(180deg, rgba(128,210,255,0.98), rgba(122,92,255,0.90));
+      background: radial-gradient(circle at 28% 18%, rgba(136,220,255,0.30), transparent 35%), linear-gradient(180deg, rgba(104,126,228,0.68), rgba(70,54,150,0.54));
     }
     .dock-icon.shield {
-      background: linear-gradient(180deg, rgba(148,226,213,0.98), rgba(10,132,116,0.92));
+      background: radial-gradient(circle at 28% 18%, rgba(148,226,213,0.28), transparent 35%), linear-gradient(180deg, rgba(42,152,136,0.66), rgba(16,82,76,0.54));
     }
     .dock-icon.atlas {
-      background: linear-gradient(180deg, rgba(120,230,206,0.98), rgba(31,137,117,0.92));
+      background: radial-gradient(circle at 28% 18%, rgba(122,230,206,0.28), transparent 35%), linear-gradient(180deg, rgba(48,150,130,0.66), rgba(26,84,76,0.54));
     }
     .dock-icon.recorder {
-      background: linear-gradient(180deg, rgba(255,140,132,0.98), rgba(192,55,60,0.92));
+      background: radial-gradient(circle at 28% 18%, rgba(255,150,144,0.30), transparent 35%), linear-gradient(180deg, rgba(196,74,82,0.68), rgba(106,34,42,0.56));
     }
     .dock-icon.studio {
-      background: linear-gradient(180deg, rgba(245,194,231,0.98), rgba(138,92,220,0.90));
+      background: radial-gradient(circle at 28% 18%, rgba(245,194,231,0.30), transparent 35%), linear-gradient(180deg, rgba(150,104,210,0.66), rgba(82,58,132,0.54));
     }
     .dock-icon.folder {
-      background: linear-gradient(180deg, rgba(112,210,255,0.98), rgba(72,154,224,0.90));
+      background: radial-gradient(circle at 28% 18%, rgba(126,218,255,0.30), transparent 35%), linear-gradient(180deg, rgba(72,148,218,0.66), rgba(34,84,142,0.54));
     }
     .dock-dot {
       min-width: 4px;
@@ -680,11 +761,18 @@ def run_dock() -> int:
       border-radius: 999px;
       padding: 0 5px;
       color: white;
-      background: alpha(@seven_danger, 0.96);
+      background: alpha(@seven_accent, 0.96);
       font-size: 10px;
       font-weight: 500;
       margin-top: 0;
       margin-right: 0;
+      border: 1px solid alpha(@seven_text, 0.24);
+    }
+    .dock-badge.trash-badge {
+      background: alpha(@seven_warning, 0.96);
+    }
+    .dock-badge.notice-badge {
+      background: alpha(@seven_success, 0.92);
     }
     .dock-instance-badge {
       min-width: 17px;
@@ -697,6 +785,16 @@ def run_dock() -> int:
       font-weight: 500;
       margin-top: 0;
       margin-right: 0;
+      border: 1px solid alpha(@seven_text, 0.24);
+    }
+    .dock-edit-dot {
+      min-width: 7px;
+      min-height: 7px;
+      border-radius: 999px;
+      background: alpha(@seven_accent, 0.95);
+      border: 1px solid alpha(@seven_text, 0.36);
+      margin-top: 4px;
+      margin-left: 4px;
     }
     .dock-separator {
       min-width: 1px;
@@ -817,6 +915,8 @@ def run_dock() -> int:
     window.get_style_context().add_class("seven-dock")
     if autohide:
         window.set_opacity(0.18)
+    elif fullscreen_dim:
+        window.set_opacity(0.42)
 
     try:
         if force_window:
@@ -829,12 +929,13 @@ def run_dock() -> int:
         GtkLayerShell.init_for_window(window)
         if hasattr(GtkLayerShell, "set_namespace"):
             GtkLayerShell.set_namespace(window, "sevenos-dock")
-        GtkLayerShell.set_layer(window, GtkLayerShell.Layer.OVERLAY)
+        layer = GtkLayerShell.Layer.TOP if reserve_space else GtkLayerShell.Layer.OVERLAY
+        GtkLayerShell.set_layer(window, layer)
         GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.BOTTOM, True)
         GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.LEFT, True)
         GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.RIGHT, True)
         GtkLayerShell.set_margin(window, GtkLayerShell.Edge.BOTTOM, DOCK_MARGIN)
-        GtkLayerShell.set_exclusive_zone(window, dock_height + DOCK_MARGIN if reserve_space else 0)
+        GtkLayerShell.set_exclusive_zone(window, dock_height + DOCK_MARGIN + 8 if reserve_space else 0)
         GtkLayerShell.set_keyboard_interactivity(window, False)
         layer_shell_mode = True
     except Exception:
@@ -846,6 +947,8 @@ def run_dock() -> int:
     shell.set_halign(Gtk.Align.CENTER)
     shell.set_size_request(dock_width, dock_height)
     shell.get_style_context().add_class("dock-shell")
+    if edit_mode:
+        shell.get_style_context().add_class("edit-mode")
     if dock_overflow:
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
@@ -858,7 +961,7 @@ def run_dock() -> int:
     hide_source = {"id": 0}
     fade_source = {"id": 0}
     # UX contract: window.set_opacity(0.18 if autohide else 1.0)
-    opacity_state = {"value": 0.18 if autohide else 1.0}
+    opacity_state = {"value": 0.18 if autohide else 0.42 if fullscreen_dim else 1.0}
 
     def animate_dock_opacity(target: float) -> bool:
         current = float(opacity_state["value"])
@@ -888,7 +991,7 @@ def run_dock() -> int:
 
     def dim_dock() -> bool:
         hide_source["id"] = 0
-        fade_dock_to(0.18 if autohide else 1.0)
+        fade_dock_to(0.18 if autohide else 0.42 if fullscreen_dim else 1.0)
         return False
 
     def schedule_dim(*_args) -> bool:
@@ -948,8 +1051,13 @@ def run_dock() -> int:
             "policy": "visible-on-all-workspaces-until-profile-change",
             "layer_shell": layer_shell_mode,
             "reserve_space": reserve_space,
+            "fullscreen_behavior": fullscreen_behavior,
+            "fullscreen_soft_hide": fullscreen_soft_hide,
+            "fullscreen_dim": fullscreen_dim,
+            "edit_mode": edit_mode,
             "width": dock_width,
             "height": dock_height,
+            "exclusive_zone": dock_height + DOCK_MARGIN + 8 if reserve_space else 0,
         }
     )
 
@@ -1010,7 +1118,9 @@ def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk
     tile_overlay.set_size_request(48 if compact else 50, 56 if compact else 60)
     tile_overlay.get_style_context().add_class("dock-tile-overlay")
 
-    badge_count = window_count if window_count > 1 else notification_count() if tile.get("id") == "hub" else 0
+    tile_badge = int(tile.get("badge_count", 0) or 0)
+    badge_count = window_count if window_count > 1 else notification_count() if tile.get("id") == "hub" else tile_badge
+    badge_kind = "window" if window_count > 1 else "notice" if tile.get("id") == "hub" else str(tile.get("id") or "status")
     if badge_count > 0:
         badge = Gtk.Label(label=str(min(badge_count, 99)))
         badge.set_halign(Gtk.Align.END)
@@ -1018,6 +1128,10 @@ def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk
         badge.set_margin_top(0)
         badge.set_margin_end(0)
         badge.get_style_context().add_class("dock-instance-badge" if window_count > 1 else "dock-badge")
+        if badge_kind == "trash":
+            badge.get_style_context().add_class("trash-badge")
+        elif badge_kind == "notice":
+            badge.get_style_context().add_class("notice-badge")
 
     icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     icon_box.set_halign(Gtk.Align.CENTER)
@@ -1033,6 +1147,16 @@ def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk
     tile_overlay.add(icon_box)
     if badge_count > 0:
         tile_overlay.add_overlay(badge)
+    if (
+        bool(config.get("edit_mode", False))
+        and tile.get("kind") in {"app", "system"}
+        and str(tile.get("id", "")) not in {"settings", "trash", "add"}
+    ):
+        edit_dot = Gtk.Box()
+        edit_dot.set_halign(Gtk.Align.START)
+        edit_dot.set_valign(Gtk.Align.START)
+        edit_dot.get_style_context().add_class("dock-edit-dot")
+        tile_overlay.add_overlay(edit_dot)
 
     tile_widget = {
         "event": event,
@@ -1564,6 +1688,29 @@ def show_context_menu(widget, tile: dict[str, object], config: dict[str, object]
         menu_item.connect("activate", lambda _item: callback())
         menu.append(menu_item)
 
+    def separator() -> None:
+        menu.append(Gtk.SeparatorMenuItem())
+
+    def dock_control_items() -> None:
+        autohide = bool(config.get("autohide", False))
+        effect = str(config.get("effect", "gentle") or "gentle").lower()
+        edit_mode = bool(config.get("edit_mode", False))
+        if edit_mode:
+            item(tr_text("Done Editing"), lambda: run_action(["seven-dock", "edit", "off"]))
+        else:
+            item(tr_text("Edit Dock"), lambda: run_action(["seven-dock", "edit", "on"]))
+        if autohide:
+            item(tr_text("Keep Dock Visible"), lambda: run_action(["seven-dock", "autohide", "off"]))
+        else:
+            item(tr_text("Auto-hide Dock"), lambda: run_action(["seven-dock", "autohide", "on"]))
+        if effect == "none":
+            item(tr_text("Enable Gentle Effect"), lambda: run_action(["seven-dock", "effect", "gentle"]))
+        elif effect == "gentle":
+            item(tr_text("Try Magnetic Effect"), lambda: run_action(["seven-dock", "effect", "magnetic"]))
+        else:
+            item(tr_text("Calm Dock Effect"), lambda: run_action(["seven-dock", "effect", "gentle"]))
+        item(tr_text("Restart Dock"), lambda: run_action(["seven-dock", "restart"]))
+
     if tile.get("window_count"):
         item(tr_text("Show Windows"), lambda: run_action(["seven-overview", "windows"]))
         item(tr_text("Focus"), lambda: focus_tile_window(tile, clients_by_tile(hyprland_clients())))
@@ -1592,7 +1739,9 @@ def show_context_menu(widget, tile: dict[str, object], config: dict[str, object]
         else:
             item(tr_text("Keep in Dock"), lambda: update_pinned(tile_id, keep=True))
 
-    item(tr_text("Dock Settings"), lambda: run_action(["seven-dock", "settings"]))
+    separator()
+    dock_control_items()
+    item(tr_text("Dock Settings"), lambda: run_action(["seven-settings", "dock"]))
     menu.show_all()
     try:
         menu.popup_at_pointer(event)

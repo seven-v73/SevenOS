@@ -63,6 +63,8 @@ gvfs-smb
 udisks2
 ntfs-3g
 exfatprogs
+dosfstools
+e2fsprogs
 file-roller
 sushi
 ffmpegthumbnailer

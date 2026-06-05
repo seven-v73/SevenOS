@@ -91,6 +91,7 @@ class Item:
 
 CATEGORIES = [
     ("all", "seven-spotlight", "All"),
+    ("ai", "seven-ai", "AI"),
     ("apps", "view-grid-symbolic", "Applications"),
     ("files", "system-file-manager", "Files"),
     ("settings", "seven-settings", "Settings"),
@@ -100,6 +101,28 @@ CATEGORIES = [
     ("atlas", "folder-documents", "Atlas"),
     ("history", "document-open-recent", "History"),
 ]
+
+AI_PROMPTS = [
+    ("État de ma machine", "quel est l'état de ma machine"),
+    ("Taille du disque", "quel est la taille de mon disque"),
+    ("Mémoire RAM", "combien j'ai de ram"),
+    ("Ouvrir les paramètres", "ouvre les paramètres"),
+    ("Diagnostiquer SevenOS", "diagnose system"),
+    ("Réparer le Wi-Fi", "mon wifi ne marche pas"),
+    ("Politique d’exécution", "montre la politique d'exécution SevenAI"),
+]
+AI_FOLLOW_UPS = [
+    ("Nouvelle question", "__new_question__"),
+    ("Copier la réponse", "__copy_last__"),
+    ("Ouvrir les paramètres", "ouvre les paramètres"),
+    ("État système", "quel est l'état de ma machine"),
+    ("Disque", "quel est la taille de mon disque"),
+    ("Wi-Fi", "mon wifi ne marche pas"),
+    ("Aide SevenAI", "que peux-tu faire"),
+    ("Fermer Spotlight", "__close__"),
+]
+
+AI_SHORTCUT_HINT = "Entrée envoie · Ctrl+Entrée confirme · Ctrl+Shift+C copie · Ctrl+L recherche · Ctrl+Retour arrière efface · Esc ferme"
 
 
 def normalize(value: str) -> str:
@@ -259,8 +282,14 @@ def filter_items(items: list[Item], query: str, mode: str) -> list[Item]:
     return [item for _, __, item in sorted(ranked, key=lambda row: (row[0], row[1]))[:9]]
 
 
+def filter_items_for_contract(items: list[Item], query: str, current_mode: str) -> list[Item]:
+    """Stable alias for the public Spotlight command-surface contract."""
+    return filter_items(items, query, current_mode)
+
+
 def mode_matches(item: Item, mode: str) -> bool:
     return {
+        "ai": item.kind in {"ai_prompt", "intent"},
         "apps": item.kind == "app",
         "files": item.kind == "file",
         "settings": item.kind == "setting",
@@ -301,6 +330,471 @@ def dispatch_query(query: str) -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+
+def ai_prompt_items() -> list[Item]:
+    return [
+        Item(
+            "ai_prompt",
+            f"SevenAI · {label}",
+            f"ai.prompt.{index}",
+            prompt,
+            "Demander à SevenAI dans Spotlight.",
+            "seven-ai",
+        )
+        for index, (label, prompt) in enumerate(AI_PROMPTS, 1)
+    ]
+
+
+def ai_contextual_follow_up_items(query: str, payload: dict | None = None) -> list[Item]:
+    normalized = normalize(query)
+    items: list[Item] = []
+    def add(label: str, prompt: str, detail: str, icon: str = "seven-ai") -> None:
+        items.append(
+            Item(
+                "ai_prompt",
+                label,
+                f"ai.context.{len(items) + 1}",
+                prompt,
+                detail,
+                icon,
+            )
+        )
+
+    if any(word in normalized for word in ("disque", "stockage", "taille", "espace")):
+        add("Voir les plus gros dossiers", "quels dossiers prennent le plus d'espace", "Comprendre ce qui occupe le disque.", "drive-harddisk-symbolic")
+        add("Nettoyage sûr", "propose un nettoyage sûr sans supprimer mes fichiers", "Préparer une action non destructive.", "edit-clear-symbolic")
+    if any(word in normalized for word in ("wifi", "wi fi", "reseau", "internet")):
+        add("Diagnostiquer le Wi-Fi", "diagnostique mon wifi", "Tester réseau, Wi-Fi et services.", "network-wireless-symbolic")
+        add("Ouvrir le réseau", "ouvre les paramètres wifi", "Aller au bon panneau système.", "preferences-system-network-symbolic")
+    if any(word in normalized for word in ("etat", "machine", "sante", "diagnostic", "doctor")):
+        add("Détails santé", "explique les problèmes de ma machine", "Transformer l’état système en explication claire.", "emblem-system-symbolic")
+        add("Actions recommandées", "que dois-je faire maintenant pour stabiliser SevenOS", "Prioriser les actions utiles.", "view-list-symbolic")
+    if any(word in normalized for word in ("ouvre", "lance", "ferme", "application", "app")):
+        add("Afficher les apps", "montre mes applications", "Retrouver une app installée.", "view-grid-symbolic")
+        add("Aide lancement", "pourquoi une application ne s'ouvre pas", "Diagnostiquer un lancement d’app.", "system-run-symbolic")
+    if any(word in normalized for word in ("theme", "sombre", "clair", "apparence")):
+        add("Synchroniser thème", "synchronise le thème partout", "Préparer la correction thème SevenOS.", "preferences-desktop-theme-symbolic")
+        add("Ouvrir apparence", "ouvre apparence", "Accéder aux réglages visuels.", "preferences-desktop-wallpaper-symbolic")
+
+    result = payload.get("result") if isinstance(payload, dict) and isinstance(payload.get("result"), dict) else {}
+    if result.get("recommendations") and not items:
+        add("Expliquer la recommandation", "explique la meilleure recommandation", "Comprendre avant d’agir.", "dialog-information-symbolic")
+    return items[:3]
+
+
+def ai_follow_up_items(plan: dict | None = None, query: str = "", applied: bool = False) -> list[Item]:
+    items: list[Item] = []
+    if plan and query and not applied and sevenai_execution_label(plan) == "Confirmation":
+        items.extend(
+            [
+                Item(
+                    "ai_control",
+                    "Appliquer l’action",
+                    "ai.followup.apply",
+                    f"__apply__:{query}",
+                    "Confirmer cette action SevenOS.",
+                    "emblem-ok-symbolic",
+                ),
+                Item(
+                    "ai_control",
+                    "Annuler",
+                    "ai.followup.cancel",
+                    "__cancel__",
+                    "Garder le système inchangé.",
+                    "process-stop-symbolic",
+                ),
+            ]
+        )
+    wake_item = ai_model_wake_item()
+    if wake_item:
+        items.append(wake_item)
+    items.extend(ai_proactive_items(limit=3))
+    items.extend([
+        Item(
+            "ai_prompt",
+            label,
+            f"ai.followup.{index}",
+            prompt,
+            "Action rapide SevenAI.",
+            "seven-ai",
+        )
+        for index, (label, prompt) in enumerate(AI_FOLLOW_UPS, 1)
+    ])
+    return items
+
+
+def ai_recommendation_items(payload: dict, limit: int = 4) -> list[Item]:
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    recommendations = result.get("recommendations") if isinstance(result.get("recommendations"), list) else []
+    items: list[Item] = []
+    for index, card in enumerate(recommendations[:limit], 1):
+        if not isinstance(card, dict):
+            continue
+        title = str(card.get("title") or "").strip()
+        command = str(card.get("command") or "").strip()
+        if not title or not command:
+            continue
+        risk = str(card.get("risk") or "low").strip()
+        detail = str(card.get("detail") or "").strip()
+        if risk and risk != "low":
+            detail = f"{detail} · risque {risk}" if detail else f"Risque {risk}"
+        items.append(
+            Item(
+                "ai_action",
+                title,
+                f"ai.recommendation.{index}",
+                command,
+                detail or "Action proposée par SevenAI.",
+                "seven-ai",
+            )
+        )
+    return items
+
+
+def ai_model_wake_item() -> Item | None:
+    status = sevenai_model_status()
+    state = str(status.get("state") or "")
+    wake = str(status.get("wake") or "")
+    if state not in {"model-needs-start", "model-needs-download"} or not wake:
+        return None
+    detail = "Démarrer Ollama et préparer le modèle local SevenAI."
+    if state == "model-needs-download":
+        detail = "Télécharger le modèle local recommandé et l’activer pour SevenAI."
+    return Item(
+        "ai_control",
+        "Activer le modèle local",
+        "ai.followup.wake_model",
+        "__wake_model__",
+        detail,
+        "media-playback-start-symbolic",
+    )
+
+
+def ai_proactive_items(*, limit: int = 3) -> list[Item]:
+    try:
+        result = subprocess.run(
+            [str(ROOT / "bin/seven"), "ai", "proactive", "--json"],
+            text=True,
+            capture_output=True,
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            timeout=4,
+            check=False,
+        )
+        data = json.loads(result.stdout) if result.returncode == 0 and result.stdout.strip() else {}
+    except Exception:
+        data = {}
+    cards = data.get("cards") if isinstance(data.get("cards"), list) else []
+    items: list[Item] = []
+    for index, card in enumerate(cards[:limit], 1):
+        if not isinstance(card, dict):
+            continue
+        title = str(card.get("title") or card.get("key") or "Suggestion SevenAI").strip()
+        command = str(card.get("command") or "").strip()
+        detail = str(card.get("detail") or "Suggestion locale SevenAI.").strip()
+        if not command:
+            continue
+        title_map = {
+            "Search local context": "Rechercher dans le contexte local",
+            "Use learned habits": "Voir les habitudes apprises",
+            "Equinox daily context": "Contexte quotidien Equinox",
+            "Continue reading": "Continuer la lecture",
+            "Browse visual assets": "Explorer les visuels",
+        }
+        title = title_map.get(title, title)
+        items.append(
+            Item(
+                "action",
+                title,
+                f"ai.proactive.{index}",
+                command,
+                detail,
+                "seven-ai",
+            )
+        )
+    return items
+
+
+def sevenai_model_status() -> dict:
+    try:
+        result = subprocess.run(
+            [str(ROOT / "bin/seven"), "ai", "models", "--json"],
+            text=True,
+            capture_output=True,
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            timeout=3,
+            check=False,
+        )
+        data = json.loads(result.stdout) if result.returncode == 0 and result.stdout.strip() else {}
+    except Exception:
+        data = {}
+    return data if isinstance(data, dict) else {}
+
+
+def sevenai_model_setup_payload() -> dict:
+    result = subprocess.run(
+        [str(ROOT / "bin/seven"), "ai", "model-setup", "--apply", "--json"],
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        timeout=float(os.environ.get("SEVENOS_SPOTLIGHT_MODEL_SETUP_TIMEOUT", "1900")),
+        check=False,
+    )
+    raw = result.stdout.strip() or result.stderr.strip()
+    try:
+        payload = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        payload = {"summary": raw}
+    if not isinstance(payload, dict):
+        payload = {"summary": str(payload)}
+    payload["_returncode"] = result.returncode
+    return payload
+
+
+def sevenai_model_setup_text(payload: dict) -> str:
+    state = str(payload.get("state") or "unknown")
+    model = str(payload.get("model") or "modèle local")
+    runtime = payload.get("runtime") if isinstance(payload.get("runtime"), dict) else {}
+    ollama = runtime.get("ollama") if isinstance(runtime.get("ollama"), dict) else {}
+    if state == "ready":
+        lines = ["SevenAI", f"Le modèle local {model} est prêt.", "SevenAI peut maintenant répondre avec le provider local Ollama, tout en gardant les actions système sous contrat SevenOS."]
+    elif state == "missing-ollama":
+        lines = ["SevenAI", "Ollama n’est pas installé sur cette machine.", "Installe Ollama ou garde le provider SevenAI local déterministe."]
+    else:
+        lines = ["SevenAI", f"Préparation du modèle local : {state}.", "Le mode sûr SevenAI reste actif même si le modèle profond n’est pas encore disponible."]
+    if ollama:
+        running = "actif" if ollama.get("running") else "arrêté"
+        available = "modèle disponible" if ollama.get("available") else "modèle non disponible"
+        lines.append(f"Ollama : {running} · {available}")
+    if payload.get("_returncode", 0):
+        lines.append(f"Code retour : {payload.get('_returncode')}")
+    return "\n\n".join(lines)
+
+
+def sevenai_status_text(query: str, *, apply: bool = False) -> str:
+    if apply:
+        return "J’applique l’action confirmée avec les garde-fous SevenOS."
+    normalized = normalize(query)
+    if any(word in normalized for word in ("disque", "stockage", "taille", "espace")):
+        return "Je lis l’état du stockage local et je prépare une réponse claire."
+    if any(word in normalized for word in ("wifi", "wi fi", "reseau", "internet")):
+        return "Je vérifie le réseau et les actions sûres disponibles."
+    if any(word in normalized for word in ("etat", "machine", "sante", "diagnostic", "doctor")):
+        return "Je rassemble l’état système, la santé SevenOS et les points d’attention."
+    if any(word in normalized for word in ("ouvre", "lance", "ferme", "application", "app")):
+        return "Je cherche l’application et je prépare l’action sans toucher au système."
+    if any(word in normalized for word in ("theme", "sombre", "clair", "apparence")):
+        return "Je vérifie le thème actif et les réglages visuels SevenOS."
+    return "J’analyse localement et je garde les actions système en aperçu."
+
+
+def sevenai_pretty_text(text: str) -> str:
+    lines = []
+    for raw_line in text.strip().splitlines():
+        line = raw_line.rstrip()
+        if line.startswith("Contrat :") or line.startswith("Journal SevenAI :"):
+            lines.append(line.replace(" · ", "\n  "))
+            continue
+        if " · seven " in line:
+            head, command = line.split(" · seven ", 1)
+            lines.append(f"{head}\n  seven {command}")
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
+def sevenai_payload(query: str, *, apply: bool = False) -> dict:
+    command = [str(ROOT / "bin/seven"), "ai", query, "--json"]
+    if apply:
+        command.append("--apply")
+    result = subprocess.run(
+        command,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        timeout=14,
+        check=False,
+    )
+    raw = result.stdout.strip() or result.stderr.strip()
+    try:
+        payload = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        payload = {"result": {"summary": raw}}
+    if not isinstance(payload, dict):
+        payload = {"result": {"summary": str(payload)}}
+    payload["_returncode"] = result.returncode
+    return payload
+
+
+def sevenai_operation_payload(query: str) -> dict:
+    result = subprocess.run(
+        [str(ROOT / "bin/seven"), "ai", "operate", query, "--json"],
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        timeout=8,
+        check=False,
+    )
+    raw = result.stdout.strip() or result.stderr.strip()
+    try:
+        payload = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    payload["_returncode"] = result.returncode
+    return payload
+
+
+def sevenai_execution_label(plan: dict) -> str:
+    summary = plan.get("summary") if isinstance(plan.get("summary"), dict) else {}
+    confirmation = (plan.get("contract") or {}).get("confirm") if isinstance(plan.get("contract"), dict) else {}
+    safety = str((plan.get("intent") or {}).get("safety") or confirmation.get("safety") or "SAFE").upper()
+    if safety in {"BLOCKED", "DANGEROUS"}:
+        return "Bloqué"
+    if summary.get("requires_confirmation") or confirmation.get("needs_apply"):
+        return "Confirmation"
+    if summary.get("requires_apply"):
+        return "Aperçu"
+    return "Automatique"
+
+
+def sevenai_summary(payload: dict) -> tuple[str, str, str]:
+    intent = payload.get("intent") if isinstance(payload.get("intent"), dict) else {}
+    action = payload.get("action") if isinstance(payload.get("action"), dict) else {}
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    title = str(intent.get("intent") or action.get("type") or "SevenAI")
+    summary = str(
+        result.get("summary")
+        or result.get("message")
+        or payload.get("message")
+        or payload.get("error")
+        or "Réponse prête."
+    )
+    command = str(action.get("command") or result.get("command") or "")
+    detail = f"{title} · {command}" if command else title
+    if payload.get("_returncode", 0):
+        detail = f"{detail} · exit={payload.get('_returncode')}"
+    return title, summary, detail
+
+
+def sevenai_display_text(payload: dict, plan: dict) -> str:
+    _title, summary, detail = sevenai_summary(payload)
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    plan_summary = plan.get("summary") if isinstance(plan.get("summary"), dict) else {}
+    command = str(plan_summary.get("command") or "")
+    mode = sevenai_execution_label(plan) if plan else "Aperçu"
+    safety = str(((plan.get("intent") or {}).get("safety") if isinstance(plan.get("intent"), dict) else "") or "SAFE").upper()
+    chat = result.get("chat") if isinstance(result.get("chat"), dict) else {}
+    chat_answer = str(chat.get("answer") or "").strip()
+    chat_title = str(chat.get("title") or "").strip()
+    chat_bullets = chat.get("bullets") if isinstance(chat.get("bullets"), list) else []
+    if chat_answer:
+        lines = [chat_answer]
+        rendered_chat = [str(item).strip() for item in chat_bullets if str(item).strip()]
+        if rendered_chat:
+            lines.append("À retenir :\n" + "\n".join(f"- {item}" for item in rendered_chat[:5]))
+    else:
+        lines = [summary.strip() or "Réponse prête."]
+    selected_agent = result.get("selected_agent") if isinstance(result.get("selected_agent"), dict) else {}
+    permission_summary = result.get("permission_summary") if isinstance(result.get("permission_summary"), dict) else {}
+    if selected_agent:
+        agent_name = str(selected_agent.get("name") or selected_agent.get("id") or "Agent SevenAI").strip()
+        risk = str(selected_agent.get("risk") or "low").strip()
+        profile = str(selected_agent.get("profile") or "").strip()
+        agent_bits = [agent_name]
+        if profile:
+            agent_bits.append(f"Mini OS {profile}")
+        if risk:
+            risk_label = {"low": "faible", "medium": "moyen", "high": "élevé"}.get(risk, risk)
+            agent_bits.append(f"risque {risk_label}")
+        lines.append("Agent : " + " · ".join(agent_bits))
+    if permission_summary:
+        allowed = permission_summary.get("allowed") if isinstance(permission_summary.get("allowed"), list) else []
+        confirm = permission_summary.get("confirm") if isinstance(permission_summary.get("confirm"), list) else []
+        denied = permission_summary.get("denied") if isinstance(permission_summary.get("denied"), list) else []
+        rendered_permissions = []
+        if allowed:
+            rendered_permissions.append("Lecture autorisée : " + ", ".join(str(item) for item in allowed[:4]))
+        if confirm:
+            rendered_permissions.append("Confirmation : " + ", ".join(str(item) for item in confirm[:4]))
+        if denied:
+            rendered_permissions.append("Interdit : " + ", ".join(str(item) for item in denied[:4]))
+        if rendered_permissions:
+            lines.append("Sécurité :\n" + "\n".join(f"- {item}" for item in rendered_permissions))
+    agents = result.get("agents") if isinstance(result.get("agents"), list) else []
+    if agents:
+        rendered_agents = []
+        for item in agents[:7]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("id") or "Agent").strip()
+            state = str(item.get("state") or "unknown").strip()
+            risk = str(item.get("risk") or "low").strip()
+            risk_label = {"low": "faible", "medium": "moyen", "high": "élevé"}.get(risk, risk)
+            rendered_agents.append(f"- {name} · {state} · risque {risk_label}")
+        if rendered_agents:
+            lines.append("Agents :\n" + "\n".join(rendered_agents))
+    recommendations = result.get("recommendations") if isinstance(result.get("recommendations"), list) else []
+    if recommendations:
+        rendered = []
+        for item in recommendations[:3]:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "").strip()
+            command_text = str(item.get("command") or "").strip()
+            if title and command_text:
+                rendered.append(f"- {title} · {command_text}")
+            elif title:
+                rendered.append(f"- {title}")
+        if rendered:
+            lines.append("Actions utiles :\n" + "\n".join(rendered))
+    local_results = result.get("results") if isinstance(result.get("results"), list) else []
+    if local_results:
+        rendered_results = []
+        for item in local_results[:4]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("title") or "").strip()
+            source = str(item.get("source") or item.get("ext") or "").strip()
+            if name:
+                rendered_results.append(f"- {name}" + (f" · {source}" if source else ""))
+        if rendered_results:
+            lines.append("Trouvé localement :\n" + "\n".join(rendered_results))
+    priorities = result.get("priorities") if isinstance(result.get("priorities"), list) else []
+    if priorities:
+        rendered_priorities = []
+        for item in priorities[:4]:
+            if not isinstance(item, dict):
+                continue
+            priority = str(item.get("priority") or "").strip()
+            title = str(item.get("title") or "").strip()
+            if title:
+                rendered_priorities.append(f"- {priority.upper()} · {title}" if priority else f"- {title}")
+        if rendered_priorities:
+            lines.append("Priorités maintenant :\n" + "\n".join(rendered_priorities))
+    conversation = payload.get("conversation") if isinstance(payload.get("conversation"), dict) else {}
+    if conversation.get("used"):
+        previous = conversation.get("previous") if isinstance(conversation.get("previous"), dict) else {}
+        previous_input = str(previous.get("input") or "").strip()
+        lines.append(f"Suite de : {previous_input}" if previous_input else "Suite de la conversation locale.")
+    contract = f"Contrat : {mode} · {safety}"
+    if command:
+        contract = f"{contract} · {command}"
+    lines.append(contract)
+    ledger = payload.get("ledger") if isinstance(payload.get("ledger"), dict) else {}
+    if ledger.get("recorded"):
+        risk = str(ledger.get("risk") or "low")
+        action = str(ledger.get("action") or "action")
+        lines.append(f"Journal SevenAI : enregistré · risque {risk} · {action}")
+    if payload.get("_returncode", 0):
+        lines.append(detail)
+    return "\n\n".join(lines)
 
 
 def shutil_which(command: str) -> str | None:
@@ -388,7 +882,9 @@ def profile_css(profile: dict, mode: str) -> str:
       border-color: alpha({accent}, 0.34);
       background: alpha({accent}, {'0.15' if mode == 'light' else '0.18'});
     }}
-    .ai-card {{
+    .ai-card,
+    .ai-question,
+    .ai-answer {{
       border-color: alpha({secondary}, 0.24);
       background: alpha({secondary}, {'0.10' if mode == 'light' else '0.14'});
     }}
@@ -451,6 +947,12 @@ def spotlight_css(mode: str, profile: dict | None = None) -> str:
           background: rgba(255,255,255,0.92);
           border-color: rgba(47,123,255,0.26);
         }
+        .result-row.ai-followup {
+          min-height: 42px;
+          padding: 6px 10px;
+          border-radius: 16px;
+          background: rgba(47,123,255,0.08);
+        }
         .result-title { color: #1C1F26; font-size: 14px; font-weight: 500; }
         .result-meta { color: rgba(28,31,38,0.56); font-size: 11px; }
         .ai-card {
@@ -461,6 +963,57 @@ def spotlight_css(mode: str, profile: dict | None = None) -> str:
           color: rgba(28,31,38,0.72);
           border: 1px solid rgba(47,123,255,0.12);
           font-size: 11px;
+        }
+        .ai-question {
+          margin-top: 12px;
+          padding: 11px 14px;
+          border-radius: 18px;
+          background: rgba(47,123,255,0.13);
+          border: 1px solid rgba(47,123,255,0.18);
+          color: rgba(28,31,38,0.88);
+          font-size: 13px;
+        }
+        .ai-answer {
+          margin-top: 9px;
+          padding: 14px 16px;
+          border-radius: 20px;
+          background: rgba(255,255,255,0.84);
+          border: 1px solid rgba(47,123,255,0.18);
+          color: rgba(28,31,38,0.80);
+          font-size: 14px;
+        }
+        .ai-chat-scroll {
+          margin-top: 12px;
+          border-radius: 22px;
+          background: rgba(255,255,255,0.42);
+          border: 1px solid rgba(47,123,255,0.10);
+        }
+        .ai-chat-stack { padding: 10px; }
+        .ai-bubble {
+          padding: 11px 14px;
+          border-radius: 18px;
+          border: 1px solid rgba(47,123,255,0.14);
+        }
+        .ai-bubble.user {
+          background: rgba(47,123,255,0.13);
+          color: rgba(28,31,38,0.90);
+        }
+        .ai-bubble.agent {
+          background: rgba(255,255,255,0.86);
+          color: rgba(28,31,38,0.82);
+        }
+        .ai-bubble.system {
+          background: rgba(139,124,255,0.10);
+          color: rgba(28,31,38,0.66);
+        }
+        .ai-bubble-title { font-size: 11px; color: rgba(28,31,38,0.58); }
+        .ai-bubble-body { font-size: 14px; color: inherit; }
+        .ai-close-button {
+          min-height: 30px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.56);
+          border: 1px solid rgba(28,31,38,0.08);
+          color: rgba(28,31,38,0.72);
         }
         """ + profile_css(profile or {}, mode)
     return base + """
@@ -516,6 +1069,12 @@ def spotlight_css(mode: str, profile: dict | None = None) -> str:
       background: rgba(77,163,255,0.16);
       border-color: rgba(0,212,255,0.30);
     }
+    .result-row.ai-followup {
+      min-height: 42px;
+      padding: 6px 10px;
+      border-radius: 16px;
+      background: rgba(77,163,255,0.10);
+    }
     .result-title { color: rgba(245,247,250,0.98); font-size: 14px; font-weight: 500; }
     .result-meta { color: rgba(245,247,250,0.56); font-size: 11px; }
     .ai-card {
@@ -526,6 +1085,66 @@ def spotlight_css(mode: str, profile: dict | None = None) -> str:
       color: rgba(245,247,250,0.72);
       border: 1px solid rgba(122,92,255,0.16);
       font-size: 11px;
+    }
+    .ai-question {
+      margin-top: 12px;
+      padding: 11px 14px;
+      border-radius: 18px;
+      background: rgba(77,163,255,0.15);
+      border: 1px solid rgba(77,163,255,0.22);
+      color: rgba(245,247,250,0.94);
+      font-size: 13px;
+    }
+    .ai-answer {
+      margin-top: 9px;
+      padding: 14px 16px;
+      border-radius: 20px;
+      background: rgba(122,92,255,0.13);
+      border: 1px solid rgba(122,92,255,0.20);
+      color: rgba(245,247,250,0.90);
+      font-size: 14px;
+    }
+    .ai-chat-scroll {
+      margin-top: 12px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(77,163,255,0.12);
+    }
+    .ai-chat-stack { padding: 10px; }
+    .ai-bubble {
+      padding: 11px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .ai-bubble.user {
+      background: rgba(77,163,255,0.15);
+      color: rgba(245,247,250,0.96);
+    }
+    .ai-bubble.agent {
+      background: rgba(255,255,255,0.095);
+      color: rgba(245,247,250,0.84);
+    }
+    .ai-bubble.system {
+      background: rgba(122,92,255,0.12);
+      color: rgba(245,247,250,0.68);
+    }
+    .ai-bubble-title { font-size: 11px; color: rgba(245,247,250,0.56); }
+    .ai-bubble-body { font-size: 14px; color: inherit; }
+    .ai-hint {
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: rgba(245,247,250,0.54);
+      font-size: 12px;
+    }
+    .ai-close-button {
+      min-height: 30px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(245,247,250,0.76);
     }
     """ + profile_css(profile or {}, mode)
 
@@ -557,6 +1176,10 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     result_rows: list[Gtk.Widget] = []
     current_matches: list[Item] = []
     selected_index = 0
+    ai_busy = False
+    ai_status_bubble: Gtk.Widget | None = None
+    ai_intro_shown = False
+    ai_last_response = ""
 
     profile_title = profile_ui.get("title") or "SevenOS"
     items = profile_items(profile_ui) + read_cached_catalog(max_age=None)
@@ -586,18 +1209,122 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     category_row.get_style_context().add_class("category-row")
     root.pack_start(category_row, False, False, 0)
 
+    home = profile_ui.get("home_screen") if isinstance(profile_ui.get("home_screen"), dict) else {}
+    persona = home.get("ai_persona") or "SevenAI"
+    ai_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    ai_card = Gtk.Label(label=f"{profile_title} · {persona} répond localement. Entrée envoie, les actions système restent prévisualisées.")
+    ai_card.set_xalign(0)
+    ai_card.get_style_context().add_class("ai-card")
+    ai_header.pack_start(ai_card, True, True, 0)
+    close_button = Gtk.Button(label="Fermer")
+    close_button.get_style_context().add_class("ai-close-button")
+    close_button.set_tooltip_text("Fermer Spotlight")
+    close_button.connect("clicked", lambda _button: window.destroy())
+    ai_header.pack_start(close_button, False, False, 0)
+    root.pack_start(ai_header, False, False, 0)
+
+    ai_hint = Gtk.Label(label=AI_SHORTCUT_HINT)
+    ai_hint.set_xalign(0.5)
+    ai_hint.get_style_context().add_class("ai-hint")
+    ai_hint.set_no_show_all(True)
+    ai_hint.hide()
+    root.pack_start(ai_hint, False, False, 0)
+
+    ai_question = Gtk.Label(label="")
+    ai_question.set_xalign(0)
+    ai_question.set_line_wrap(True)
+    ai_question.set_max_width_chars(72)
+    ai_question.get_style_context().add_class("ai-question")
+    ai_question.set_no_show_all(True)
+    ai_question.hide()
+    root.pack_start(ai_question, False, False, 0)
+
+    ai_answer = Gtk.Label(label="")
+    ai_answer.set_xalign(0)
+    ai_answer.set_line_wrap(True)
+    ai_answer.set_max_width_chars(76)
+    ai_answer.get_style_context().add_class("ai-answer")
+    ai_answer.set_no_show_all(True)
+    ai_answer.hide()
+    root.pack_start(ai_answer, False, False, 0)
+
+    chat_scroll = Gtk.ScrolledWindow()
+    chat_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    chat_scroll.set_min_content_height(0)
+    chat_scroll.set_max_content_height(210)
+    chat_scroll.get_style_context().add_class("ai-chat-scroll")
+    chat_scroll.set_no_show_all(True)
+    chat_scroll.hide()
+    chat_stack = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    chat_stack.get_style_context().add_class("ai-chat-stack")
+    chat_scroll.add(chat_stack)
+    root.pack_start(chat_scroll, False, False, 0)
+
     result_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
     result_box.get_style_context().add_class("result-list")
     root.pack_start(result_box, False, False, 0)
 
-    home = profile_ui.get("home_screen") if isinstance(profile_ui.get("home_screen"), dict) else {}
-    persona = home.get("ai_persona") or "SevenAI"
-    ai_card = Gtk.Label(label=f"{profile_title} · {persona} analyse les requêtes libres et demande confirmation avant les actions système.")
-    ai_card.set_xalign(0)
-    ai_card.get_style_context().add_class("ai-card")
-    root.pack_start(ai_card, False, False, 0)
-
     category_buttons: dict[str, Gtk.Button] = {}
+
+    def scroll_chat_to_bottom() -> bool:
+        adjustment = chat_scroll.get_vadjustment()
+        adjustment.set_value(max(0, adjustment.get_upper() - adjustment.get_page_size()))
+        return False
+
+    def append_chat(role: str, title: str, body: str) -> Gtk.Widget | None:
+        body = body.strip()
+        if not body:
+            return None
+        chat_scroll.show()
+        bubble = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        bubble.get_style_context().add_class("ai-bubble")
+        bubble.get_style_context().add_class(role)
+        bubble.set_halign(Gtk.Align.END if role == "user" else Gtk.Align.FILL)
+        heading = Gtk.Label(label=title)
+        heading.set_xalign(0)
+        heading.get_style_context().add_class("ai-bubble-title")
+        content = Gtk.Label(label=body)
+        content.set_xalign(0)
+        content.set_line_wrap(True)
+        content.set_max_width_chars(78)
+        content.set_selectable(True)
+        content.get_style_context().add_class("ai-bubble-body")
+        bubble.pack_start(heading, False, False, 0)
+        bubble.pack_start(content, False, False, 0)
+        chat_stack.pack_start(bubble, False, False, 0)
+        chat_stack.show_all()
+        GLib.idle_add(scroll_chat_to_bottom)
+        return bubble
+
+    def clean_agent_body(text: str) -> str:
+        text = text.strip()
+        for prefix in ("SevenAI\n\n", "SevenAI\n", "SevenAI · "):
+            if text.startswith(prefix):
+                return sevenai_pretty_text(text[len(prefix):])
+        return sevenai_pretty_text(text)
+
+    def clear_chat() -> None:
+        nonlocal ai_status_bubble, ai_intro_shown, ai_last_response
+        for child in list(chat_stack.get_children()):
+            chat_stack.remove(child)
+        ai_status_bubble = None
+        ai_intro_shown = False
+        ai_last_response = ""
+        chat_scroll.hide()
+        ai_question.hide()
+        ai_answer.hide()
+
+    def copy_last_ai_response() -> None:
+        if not ai_last_response.strip():
+            append_chat("system", "SevenAI", "Aucune réponse à copier pour le moment.")
+            return
+        Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(ai_last_response, -1)
+        append_chat("system", "SevenAI", "Dernière réponse copiée dans le presse-papiers.")
+
+    def reset_chat_if_needed() -> None:
+        if len(chat_stack.get_children()) > 10:
+            for child in list(chat_stack.get_children())[:4]:
+                chat_stack.remove(child)
 
     def refresh_results() -> None:
         nonlocal result_rows, current_matches, selected_index
@@ -605,16 +1332,50 @@ def run(mode: str, *, field_mode: bool = False) -> int:
             result_box.remove(child)
         result_rows = []
         query = entry.get_text()
-        current_matches = filter_items(items, query, current_mode)
+        if current_mode == "ai" and query.strip():
+            current_matches = [
+                Item(
+                    "ai_prompt",
+                    f"Demander à SevenAI · {query.strip()}",
+                    "ai.current",
+                    query.strip(),
+                    "Entrée ou clic pour envoyer la question.",
+                    "seven-ai",
+                )
+            ]
+        else:
+            source_items = ai_prompt_items() if current_mode == "ai" and not query.strip() else items
+            current_matches = filter_items(source_items, query, current_mode)
         matches = current_matches
         selected_index = 0
         result_box.set_visible(bool(matches))
-        ai_card.set_visible(bool(query.strip()) and not matches)
+        ai_card.set_visible(current_mode == "ai" or (bool(query.strip()) and not matches))
+        if current_mode != "ai":
+            ai_question.hide()
+            ai_answer.hide()
         for item in matches:
             row = make_result_row(item)
             result_box.pack_start(row, False, False, 0)
             result_rows.append(row)
         update_selection()
+        result_box.show_all()
+
+    def show_ai_follow_ups(plan: dict | None = None, query: str = "", applied: bool = False, payload: dict | None = None) -> None:
+        nonlocal result_rows, current_matches, selected_index
+        for child in list(result_box.get_children()):
+            result_box.remove(child)
+        result_rows = []
+        current_matches = []
+        if payload:
+            current_matches.extend(ai_recommendation_items(payload))
+            current_matches.extend(ai_contextual_follow_up_items(query, payload))
+        current_matches.extend(ai_follow_up_items(plan, query, applied))
+        selected_index = 0
+        for item in current_matches:
+            row = make_result_row(item, len(result_rows) == selected_index)
+            result_rows.append(row)
+            result_box.pack_start(row, False, False, 0)
+        result_box.set_visible(True)
         result_box.show_all()
 
     def update_selection() -> None:
@@ -626,8 +1387,21 @@ def run(mode: str, *, field_mode: bool = False) -> int:
                 style.remove_class("selected")
 
     def set_mode(new_mode: str) -> None:
-        nonlocal current_mode
+        nonlocal current_mode, ai_intro_shown
         current_mode = new_mode
+        if new_mode == "ai":
+            entry.set_placeholder_text("Demander à SevenAI : ouvrir une app, expliquer le disque, diagnostiquer SevenOS...")
+            ai_hint.show()
+            if not ai_intro_shown:
+                append_chat(
+                    "system",
+                    "SevenAI",
+                    "Je peux ouvrir des apps, lire l’état de la machine, expliquer un problème et préparer des actions. Les changements système restent en aperçu puis confirmation.",
+                )
+                ai_intro_shown = True
+        else:
+            ai_hint.hide()
+            entry.set_placeholder_text(f"Search {profile_title}" if not field_mode else "Search apps, files, actions...")
         for key, button in category_buttons.items():
             if key == new_mode:
                 button.get_style_context().add_class("active")
@@ -652,7 +1426,7 @@ def run(mode: str, *, field_mode: bool = False) -> int:
         category_buttons[key] = button
         return button
 
-    def make_result_row(item: Item) -> Gtk.EventBox:
+    def make_result_row(item: Item, selected: bool = False) -> Gtk.EventBox:
         event = Gtk.EventBox()
         event.set_visible_window(False)
         event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
@@ -660,6 +1434,10 @@ def run(mode: str, *, field_mode: bool = False) -> int:
 
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         row.get_style_context().add_class("result-row")
+        if item.key.startswith("ai.followup.") or item.key.startswith("ai.proactive.") or item.key.startswith("ai.recommendation."):
+            row.get_style_context().add_class("ai-followup")
+        if selected:
+            row.get_style_context().add_class("selected")
         icon = Gtk.Image.new_from_icon_name(item.icon, Gtk.IconSize.DIALOG)
         icon.set_pixel_size(30)
         row.pack_start(icon, False, False, 0)
@@ -679,12 +1457,136 @@ def run(mode: str, *, field_mode: bool = False) -> int:
         return event
 
     def activate_result(item: Item) -> bool:
+        if item.command == "__close__":
+            window.destroy()
+            return True
+        if item.command == "__new_question__":
+            entry.set_text("")
+            entry.set_placeholder_text("Poser une nouvelle question à SevenAI...")
+            entry.grab_focus()
+            refresh_results()
+            return True
+        if item.command == "__copy_last__":
+            copy_last_ai_response()
+            return True
+        if item.command == "__cancel__":
+            append_chat("agent", "SevenAI", "Action annulée. Rien n’a été modifié.")
+            entry.set_text("")
+            entry.set_placeholder_text("Continuer avec SevenAI...")
+            show_ai_follow_ups(applied=True)
+            return True
+        if item.command == "__wake_model__":
+            run_ai_model_setup_inline()
+            return True
+        if item.command.startswith("__apply__:"):
+            query = item.command.split(":", 1)[1].strip()
+            if query:
+                run_ai_inline(query, apply=True)
+            return True
+        if item.kind == "ai_action":
+            command_text = item.command.strip()
+            if command_text.startswith("seven ai "):
+                query = command_text.removeprefix("seven ai ").strip()
+                query = query.removesuffix("--json").strip()
+                if (query.startswith("'") and query.endswith("'")) or (query.startswith('"') and query.endswith('"')):
+                    query = query[1:-1]
+                run_ai_inline(query)
+                return True
+            subprocess.Popen(
+                ["bash", "-lc", item.command],
+                cwd=ROOT,
+                env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            window.destroy()
+            return True
+        if item.kind == "ai_prompt":
+            entry.set_text(item.command)
+            run_ai_inline(item.command)
+            return True
         dispatch_item(item)
         window.destroy()
         return True
 
+    def run_ai_inline(query: str, *, apply: bool = False) -> None:
+        nonlocal ai_busy, ai_status_bubble, ai_last_response
+        if not query.strip() or ai_busy:
+            return
+        ai_busy = True
+        reset_chat_if_needed()
+        append_chat("user", "Vous confirmez" if apply else "Vous", query.strip())
+        ai_status_bubble = append_chat("system", "SevenAI", sevenai_status_text(query, apply=apply))
+        ai_question.hide()
+        ai_answer.hide()
+        result_box.set_visible(False)
+
+        def worker() -> None:
+            try:
+                plan = sevenai_operation_payload(query)
+                payload = sevenai_payload(query, apply=apply)
+            except Exception as exc:
+                plan = {}
+                payload = {"result": {"summary": f"SevenAI n'a pas pu répondre : {exc}"}, "_returncode": 1}
+
+            def apply_payload() -> bool:
+                nonlocal ai_busy, ai_status_bubble
+                if ai_status_bubble is not None:
+                    chat_stack.remove(ai_status_bubble)
+                    ai_status_bubble = None
+                ai_last_response = clean_agent_body(sevenai_display_text(payload, plan))
+                append_chat("agent", "SevenAI", ai_last_response)
+                entry.set_text("")
+                entry.set_placeholder_text("Continuer avec SevenAI...")
+                show_ai_follow_ups(plan, query, applied=apply, payload=payload)
+                ai_busy = False
+                return False
+
+            GLib.idle_add(apply_payload)
+
+        threading.Thread(target=worker, name="sevenos-spotlight-ai", daemon=True).start()
+
+    def run_ai_model_setup_inline() -> None:
+        nonlocal ai_busy, ai_status_bubble, ai_last_response
+        if ai_busy:
+            return
+        ai_busy = True
+        reset_chat_if_needed()
+        append_chat("user", "Vous", "Activer le modèle local SevenAI")
+        ai_status_bubble = append_chat("system", "SevenAI", "Je prépare le modèle local. Cette étape peut prendre du temps si le modèle doit être téléchargé.")
+        ai_question.hide()
+        ai_answer.hide()
+        entry.set_text("")
+        entry.set_placeholder_text("Préparation du modèle local...")
+        result_box.set_visible(False)
+
+        def worker() -> None:
+            try:
+                payload = sevenai_model_setup_payload()
+            except Exception as exc:
+                payload = {"state": "error", "summary": str(exc), "_returncode": 1}
+
+            def apply_payload() -> bool:
+                nonlocal ai_busy, ai_status_bubble
+                if ai_status_bubble is not None:
+                    chat_stack.remove(ai_status_bubble)
+                    ai_status_bubble = None
+                ai_last_response = clean_agent_body(sevenai_model_setup_text(payload))
+                append_chat("agent", "SevenAI", ai_last_response)
+                entry.set_placeholder_text("Continuer avec SevenAI...")
+                show_ai_follow_ups(applied=True)
+                ai_busy = False
+                return False
+
+            GLib.idle_add(apply_payload)
+
+        threading.Thread(target=worker, name="sevenos-spotlight-ai-model", daemon=True).start()
+
     def activate_current() -> None:
         query = entry.get_text().strip()
+        if current_mode == "ai":
+            run_ai_inline(query)
+            return
         if current_matches:
             dispatch_item(current_matches[selected_index])
         else:
@@ -707,9 +1609,28 @@ def run(mode: str, *, field_mode: bool = False) -> int:
 
     def on_key(_widget, event) -> bool:
         nonlocal selected_index
-        if event.keyval == Gdk.KEY_Escape:
+        ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
+        if event.keyval == Gdk.KEY_Escape or (ctrl and event.keyval in {Gdk.KEY_w, Gdk.KEY_W, Gdk.KEY_q, Gdk.KEY_Q}):
             window.destroy()
             return True
+        if ctrl and event.keyval == Gdk.KEY_BackSpace:
+            clear_chat()
+            entry.set_text("")
+            entry.set_placeholder_text("Continuer avec SevenAI..." if current_mode == "ai" else f"Search {profile_title}")
+            refresh_results()
+            return True
+        if ctrl and bool(event.state & Gdk.ModifierType.SHIFT_MASK) and event.keyval in {Gdk.KEY_c, Gdk.KEY_C}:
+            copy_last_ai_response()
+            return True
+        if ctrl and event.keyval in {Gdk.KEY_l, Gdk.KEY_L}:
+            entry.grab_focus()
+            entry.select_region(0, -1)
+            return True
+        if ctrl and event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter}:
+            apply_item = next((item for item in current_matches if item.command.startswith("__apply__:")), None)
+            if apply_item:
+                activate_result(apply_item)
+                return True
         if event.keyval in {Gdk.KEY_Down, Gdk.KEY_Tab} and result_rows:
             selected_index = min(selected_index + 1, len(result_rows) - 1)
             update_selection()
@@ -737,8 +1658,9 @@ def run(mode: str, *, field_mode: bool = False) -> int:
 
     entry.connect("changed", lambda _entry: refresh_results())
     window.connect("key-press-event", on_key)
+    entry.connect("key-press-event", on_key)
     window.connect("destroy", Gtk.main_quit)
-    window.set_default_size(560 if field_mode else 684, 0)
+    window.set_default_size(560 if field_mode else 760, 72 if field_mode else 430)
     window.show_all()
     set_mode(current_mode)
     refresh_catalog_async()

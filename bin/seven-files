@@ -506,6 +506,17 @@ checks.append({
     "ok": helper_path.exists() and os.access(helper_path, os.X_OK) and cmd_ok(["sh", "-lc", "command -v pkexec >/dev/null 2>&1"]),
     "detail": "administrator mount helper for internal Windows/data disks",
 })
+format_helper_path = Path(root) / "bin" / "seven-disk-format" if root else Path("/missing/seven-disk-format")
+checks.append({
+    "key": "admin-disk-format",
+    "ok": format_helper_path.exists() and os.access(format_helper_path, os.X_OK) and cmd_ok(["sh", "-lc", "command -v pkexec >/dev/null 2>&1"]),
+    "detail": "administrator format helper for removable volumes",
+})
+checks.append({
+    "key": "format-tools",
+    "ok": cmd_ok(["sh", "-lc", "command -v mkfs.exfat >/dev/null 2>&1 && command -v mkfs.vfat >/dev/null 2>&1 && command -v mkfs.ext4 >/dev/null 2>&1 && command -v mkfs.ntfs >/dev/null 2>&1"]),
+    "detail": "exFAT, FAT32, ext4 and NTFS format tools",
+})
 checks.append({
     "key": "polkit-agent",
     "ok": cmd_ok(["sh", "-lc", "pgrep -u \"$USER\" -f '^/usr/lib/polkit-kde-authentication-agent-1($| )|^/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1($| )|lxqt-policykit-agent|mate-polkit' >/dev/null 2>&1"]),
@@ -612,6 +623,11 @@ checks.append({
     "key": "system-navigation",
     "ok": '"trash://"' in native_text and '"seven://drive-panel"' in native_text and 'Path("/")' in native_text and "System Terminal Here" in native_text,
     "detail": "sidebar and context menus expose trash, system root and drive management",
+})
+checks.append({
+    "key": "secure-trash-destroy",
+    "ok": "secure_destroy_paths" in native_text and "secure_overwrite_file" in native_text and "shred" in native_text and "Empty Trash Permanently" in native_text,
+    "detail": "trash can be emptied through irreversible best-effort secure destruction",
 })
 checks.append({
     "key": "safe-admin-guidance",

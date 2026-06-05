@@ -1106,7 +1106,7 @@ for item in readiness.get("issues", [])[:4]:
     print(f"  - {item.get('severity')}: {item.get('title')} · {item.get('action')}")
 print(f"log:          {data.get('log_file')}")
 if data.get("calamares_log_file"):
-    print(f"calamares:    {data.get('calamares_log_file')}")
+    print(f"installer log: {data.get('calamares_log_file')}")
 if data.get("log_tail"):
     print()
     print("Recent log:")

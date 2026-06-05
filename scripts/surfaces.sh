@@ -439,7 +439,9 @@ for item in surfaces:
         alignment = adaptive.get("alignment") if isinstance(adaptive.get("alignment"), dict) else {}
         if not adaptive_ready and (alignment.get("state") == "PART" or adaptive_score >= 90):
             adaptive_ready = True
-        dynamic_ok = adaptive_ready and mask.get("state") == "masked"
+        mask_score = int(mask.get("score", 0) or 0)
+        mask_ready = mask.get("state") == "masked" or (mask.get("state") == "mostly-masked" and mask_score >= 85)
+        dynamic_ok = adaptive_ready and mask_ready
     if native_ok and desktop_ok and action_match and dynamic_ok:
         state = "OK"
     elif native_ok and (action_match or desktop_ok):

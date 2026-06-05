@@ -104,6 +104,15 @@ sevenpkg forge sources
 sevenpkg forge helper paru
 sevenpkg forge install code --source pacman
 sevenpkg studio packages --query blender
+seven footprint
+seven footprint plan
+seven footprint evidence
+seven footprint compare
+seven footprint trend
+seven footprint guard
+seven ai "quel est le poids de SevenOS"
+seven ai coverage --json
+seven ai contracts --json
 seven pre-push
 ```
 

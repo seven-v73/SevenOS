@@ -63,15 +63,15 @@ PROFILE_UI_PATH = CONFIG_HOME / "sevenos/profile-ui.json"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/sevenos-{os.getuid()}"))
 STATE_PATH = RUNTIME_DIR / "sevenos-dock-state.json"
 
-DOCK_HEIGHT = 64
-DOCK_MARGIN = 5
-BASE_TILE = 39
-BASE_ICON = 25
-MAX_TILE = 50
-MAX_ICON = 34
-PADDING_X = 16
-GAP = 5
-SEP = 13
+DOCK_HEIGHT = 82
+DOCK_MARGIN = 18
+BASE_TILE = 43
+BASE_ICON = 27
+MAX_TILE = 56
+MAX_ICON = 36
+PADDING_X = 21
+GAP = 8
+SEP = 16
 SIGMA = 54.0
 BOUNCE_DURATION = 0.58
 FRAME_MS = 16
@@ -118,10 +118,14 @@ DEFAULT_CONFIG = {
     "position": "bottom",
     "size": "compact",
     "magnification": True,
-    "effect": "magnetic",
-    "autohide": True,
+    "effect": "gentle",
+    "autohide": False,
     "autohide_delay": HIDE_DELAY,
-    "reserve_space": False,
+    "reserve_space": True,
+    "avoid_windows": True,
+    "edit_mode": False,
+    "fullscreen_behavior": "smart-hide",
+    "dock_layout_version": 2,
     "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
     "profile_pins": {},
     "folders": ["downloads", "home"],
@@ -151,6 +155,14 @@ def normalize_effect(value) -> str:
 
 def command_available(command: str) -> bool:
     return subprocess.run(["sh", "-lc", f"command -v {command}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+
+def trash_count() -> int:
+    trash_dir = Path.home() / ".local/share/Trash/files"
+    try:
+        return min(99, sum(1 for item in trash_dir.iterdir() if item.name not in {"", "."}))
+    except OSError:
+        return 0
 
 
 def run_action(command: list[str]) -> None:
@@ -216,6 +228,13 @@ def load_config() -> dict[str, object]:
         data = {}
     config = dict(DEFAULT_CONFIG)
     config.update({key: value for key, value in data.items() if key in DEFAULT_CONFIG})
+    if int(config.get("dock_layout_version") or 0) < 2:
+        config["autohide"] = False
+        config["reserve_space"] = True
+        config["avoid_windows"] = True
+        if normalize_effect(config.get("effect")) == "magnetic":
+            config["effect"] = "gentle"
+        config["dock_layout_version"] = 2
     return config
 
 
@@ -269,6 +288,19 @@ def clients_by_tile(clients: list[dict[str, object]]) -> dict[str, list[dict[str
     return grouped
 
 
+def focused_fullscreen_client(clients: list[dict[str, object]]) -> dict[str, object] | None:
+    for client in clients:
+        try:
+            is_focused = int(client.get("focusHistoryID", 9999) or 9999) == 0
+            fullscreen = int(client.get("fullscreen", 0) or 0) > 0
+        except Exception:
+            is_focused = False
+            fullscreen = False
+        if is_focused and fullscreen:
+            return client
+    return None
+
+
 def focus_client(client: dict[str, object]) -> bool:
     address = str(client.get("address") or "").strip()
     if not address or not command_available("hyprctl"):
@@ -301,13 +333,14 @@ def monitor_bounds() -> tuple[int, int]:
 
 def catalog() -> dict[str, dict[str, object]]:
     return {
-        "files": {"id": "files", "title": "Files", "icon": "system-file-manager", "style": (0.12, 0.52, 0.88), "command": ["seven-files"], "kind": "app"},
-        "apps": {"id": "apps", "title": "Apps", "icon": "view-app-grid-symbolic", "style": (0.85, 0.88, 0.93), "command": ["seven-overview", "apps"], "kind": "system"},
-        "browser": {"id": "browser", "title": "Browser", "icon": "web-browser", "style": (0.16, 0.45, 0.90), "command": ["xdg-open", "https://www.google.com"], "kind": "app"},
-        "terminal": {"id": "terminal", "title": "Terminal", "icon": "utilities-terminal", "style": (0.14, 0.16, 0.22), "command": ["seven-terminal", "classic"], "kind": "app"},
-        "spotlight": {"id": "spotlight", "title": "Spotlight", "icon": "system-search", "style": (0.84, 0.90, 0.96), "command": ["seven-spotlight-native", "--mode", "all"], "kind": "system"},
-        "hub": {"id": "hub", "title": "Hub", "icon": "preferences-system", "style": (0.50, 0.36, 0.20), "command": ["seven", "hub"], "kind": "app"},
-        "settings": {"id": "settings", "title": "Settings", "icon": "emblem-system", "style": (0.58, 0.62, 0.68), "command": ["seven-settings"], "kind": "system"},
+        "files": {"id": "files", "title": "Files", "icon": "system-file-manager", "style": (0.10, 0.56, 0.95), "command": ["seven-files"], "kind": "app"},
+        "apps": {"id": "apps", "title": "Apps", "icon": "view-app-grid-symbolic", "style": (0.50, 0.55, 0.68), "command": ["seven-overview", "apps"], "kind": "system"},
+        "browser": {"id": "browser", "title": "Browser", "icon": "web-browser", "style": (0.10, 0.64, 0.92), "command": ["xdg-open", "https://www.google.com"], "kind": "app"},
+        "terminal": {"id": "terminal", "title": "Terminal", "icon": "utilities-terminal", "style": (0.18, 0.21, 0.30), "command": ["seven-terminal", "classic"], "kind": "app"},
+        "spotlight": {"id": "spotlight", "title": "Spotlight", "icon": "system-search", "style": (0.20, 0.68, 0.94), "command": ["seven-spotlight-native", "--mode", "all"], "kind": "system"},
+        "hub": {"id": "hub", "title": "Hub", "icon": "preferences-system", "style": (0.74, 0.58, 0.34), "command": ["seven", "hub"], "kind": "app"},
+        "settings": {"id": "settings", "title": "Settings", "icon": "emblem-system", "style": (0.56, 0.66, 0.78), "command": ["seven-settings"], "kind": "system"},
+        "add": {"id": "add", "title": tr("Ajouter", "Add"), "icon": "list-add", "style": (0.40, 0.54, 0.92), "command": ["seven-settings", "dock"], "kind": "system"},
         "reader": {"id": "reader", "title": "Reader", "icon": "x-office-document", "style": (0.72, 0.56, 0.34), "command": ["seven-reader"], "kind": "app"},
         "store": {"id": "store", "title": "Store", "icon": "system-software-install", "style": (0.42, 0.32, 0.90), "command": ["seven-store"], "kind": "app"},
         "shield": {"id": "shield", "title": "Shield", "icon": "security-high", "style": (0.04, 0.52, 0.45), "command": ["seven-shield-center-native"], "kind": "system"},
@@ -315,6 +348,7 @@ def catalog() -> dict[str, dict[str, object]]:
         "recorder": {"id": "recorder", "title": "Recorder", "icon": "media-record", "style": (0.78, 0.22, 0.25), "command": ["seven-recorder"], "kind": "system"},
         "downloads": {"id": "downloads", "title": "Downloads", "icon": "folder-download", "style": (0.28, 0.60, 0.88), "command": ["xdg-open", str(Path.home() / "Downloads")], "kind": "folder"},
         "home": {"id": "home", "title": "Home", "icon": "user-home", "style": (0.30, 0.62, 0.88), "command": ["xdg-open", str(Path.home())], "kind": "folder"},
+        "trash": {"id": "trash", "title": tr("Corbeille", "Trash"), "icon": "user-trash", "style": (0.46, 0.52, 0.60), "command": ["seven-files", "trash"], "kind": "system"},
     }
 
 
@@ -339,7 +373,12 @@ def make_tiles(config: dict[str, object], profile: str, grouped: dict[str, list[
             ids.append(live_id)
     ids += ["|"]
     ids += [item for item in config.get("folders", []) if item in items]
-    ids += ["|", "settings"]
+    ids += ["|"]
+    if bool(config.get("edit_mode", False)) and "add" in items:
+        ids.append("add")
+    for item in ("trash", "settings"):
+        if item in items and item not in ids:
+            ids.append(item)
     tiles: list[dict[str, object]] = []
     for tile_id in ids:
         if tile_id == "|":
@@ -350,11 +389,23 @@ def make_tiles(config: dict[str, object], profile: str, grouped: dict[str, list[
         tile["windows"] = windows
         tile["window_count"] = len(windows)
         tile["active"] = any(int(client.get("focusHistoryID", 9999) or 9999) == 0 for client in windows)
+        tile["badge_count"] = trash_count() if tile_id == "trash" else 0
         tiles.append(tile)
     return tiles
 
 
-def write_state(pid: int, profile: str, width: int, height: int, layer_shell: bool, reserve_space: bool) -> None:
+def write_state(
+    pid: int,
+    profile: str,
+    width: int,
+    height: int,
+    layer_shell: bool,
+    reserve_space: bool,
+    fullscreen_behavior: str,
+    fullscreen_soft_hide: bool,
+    fullscreen_dim: bool,
+    edit_mode: bool,
+) -> None:
     try:
         RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
         STATE_PATH.write_text(json.dumps({
@@ -365,9 +416,13 @@ def write_state(pid: int, profile: str, width: int, height: int, layer_shell: bo
             "policy": "visible-on-all-workspaces-until-profile-change",
             "layer_shell": layer_shell,
             "reserve_space": reserve_space,
+            "fullscreen_behavior": fullscreen_behavior,
+            "fullscreen_soft_hide": fullscreen_soft_hide,
+            "fullscreen_dim": fullscreen_dim,
+            "edit_mode": edit_mode,
             "width": width,
             "height": height,
-            "exclusive_zone": height + DOCK_MARGIN if reserve_space else 0,
+            "exclusive_zone": height + DOCK_MARGIN + 8 if reserve_space else 0,
         }, indent=2), encoding="utf-8")
     except OSError:
         pass
@@ -407,6 +462,20 @@ def rounded_rect(cr, x: float, y: float, w: float, h: float, r: float) -> None:
     cr.close_path()
 
 
+def prism_tile_path(cr, x: float, y: float, w: float, h: float, cut: float | None = None) -> None:
+    cut = min(cut if cut is not None else w * 0.18, w * 0.28, h * 0.28)
+    cr.new_path()
+    cr.move_to(x + cut, y)
+    cr.line_to(x + w - cut, y)
+    cr.line_to(x + w, y + cut)
+    cr.line_to(x + w, y + h - cut)
+    cr.line_to(x + w - cut, y + h)
+    cr.line_to(x + cut, y + h)
+    cr.line_to(x, y + h - cut)
+    cr.line_to(x, y + cut)
+    cr.close_path()
+
+
 def mix(color: tuple[float, float, float], amount: float) -> tuple[float, float, float]:
     return tuple(min(1.0, c + (1.0 - c) * amount) for c in color)
 
@@ -436,7 +505,9 @@ class CanvasDock:
         self.Gtk = Gtk
         self.config = load_config()
         self.profile = active_profile_key()
-        self.grouped = clients_by_tile(hyprland_clients())
+        self.clients = hyprland_clients()
+        self.focused_fullscreen = focused_fullscreen_client(self.clients)
+        self.grouped = clients_by_tile(self.clients)
         self.tiles = make_tiles(self.config, self.profile, self.grouped)
         self.pointer_x: float | None = None
         self.scales = [0.0 for _ in self.tiles]
@@ -460,11 +531,15 @@ class CanvasDock:
         self.width = self.compute_width()
         self.height = DOCK_HEIGHT
         self.layer_shell = False
-        self.reserve_space = bool(self.config.get("reserve_space", False))
-        self.autohide = bool(self.config.get("autohide", True))
+        self.edit_mode = bool(self.config.get("edit_mode", False))
+        self.fullscreen_behavior = str(self.config.get("fullscreen_behavior", "smart-hide") or "smart-hide")
+        self.fullscreen_soft_hide = bool(self.focused_fullscreen) and self.fullscreen_behavior == "smart-hide"
+        self.fullscreen_dim = bool(self.focused_fullscreen) and self.fullscreen_behavior == "dim"
+        self.autohide = bool(self.config.get("autohide", False)) or self.fullscreen_soft_hide
+        self.reserve_space = bool(self.config.get("reserve_space", True)) and not self.autohide
         self.hide_delay = clamp_float(self.config.get("autohide_delay", HIDE_DELAY), 0.5, 8.0)
         self.effect = normalize_effect(self.config.get("effect") or ("magnetic" if self.config.get("magnification", True) else "none"))
-        self.effect_strength = {"magnetic": 1.0, "gentle": 0.42, "none": 0.0}.get(self.effect, 1.0)
+        self.effect_strength = {"magnetic": 1.0, "gentle": 0.72, "none": 0.0}.get(self.effect, 1.0)
         self.magnification_enabled = self.effect != "none" and bool(self.config.get("magnification", True))
         self.layer_shell_api = None
         self.revealed = not self.autohide
@@ -538,12 +613,13 @@ class CanvasDock:
             GtkLayerShell.init_for_window(self.window)
             if hasattr(GtkLayerShell, "set_namespace"):
                 GtkLayerShell.set_namespace(self.window, "sevenos-dock")
-            GtkLayerShell.set_layer(self.window, GtkLayerShell.Layer.OVERLAY)
+            layer = GtkLayerShell.Layer.TOP if self.reserve_space else GtkLayerShell.Layer.OVERLAY
+            GtkLayerShell.set_layer(self.window, layer)
             GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.BOTTOM, True)
             GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.LEFT, False)
             GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.RIGHT, False)
             GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.BOTTOM, DOCK_MARGIN)
-            GtkLayerShell.set_exclusive_zone(self.window, DOCK_HEIGHT + DOCK_MARGIN if self.reserve_space else 0)
+            GtkLayerShell.set_exclusive_zone(self.window, DOCK_HEIGHT + DOCK_MARGIN + 8 if self.reserve_space else 0)
             GtkLayerShell.set_keyboard_interactivity(self.window, False)
             self.layer_shell = True
         except Exception:
@@ -553,7 +629,20 @@ class CanvasDock:
         self.window.show_all()
         if self.autohide:
             self.set_revealed(False, immediate=True)
-        write_state(os.getpid(), self.profile, self.width, self.height, self.layer_shell, self.reserve_space)
+        elif self.fullscreen_dim:
+            self.window.set_opacity(0.42)
+        write_state(
+            os.getpid(),
+            self.profile,
+            self.width,
+            self.height,
+            self.layer_shell,
+            self.reserve_space,
+            self.fullscreen_behavior,
+            self.fullscreen_soft_hide,
+            self.fullscreen_dim,
+            self.edit_mode,
+        )
         self.Gtk.main()
         return 0
 
@@ -572,10 +661,16 @@ class CanvasDock:
                 self.layer_shell_api.set_margin(self.window, self.layer_shell_api.Edge.BOTTOM, margin)
             except Exception:
                 pass
-        self.window.set_opacity(0.68 + 0.32 * ease_out_cubic(self.reveal_progress))
+        base_opacity = 0.42 if self.fullscreen_dim and not self.autohide else 0.68
+        self.window.set_opacity(base_opacity + (1.0 - base_opacity) * ease_out_cubic(self.reveal_progress))
 
     def refresh_clients(self) -> bool:
-        self.grouped = clients_by_tile(hyprland_clients())
+        self.clients = hyprland_clients()
+        self.focused_fullscreen = focused_fullscreen_client(self.clients)
+        self.fullscreen_dim = bool(self.focused_fullscreen) and self.fullscreen_behavior == "dim"
+        if not self.autohide:
+            self.window.set_opacity(0.42 if self.fullscreen_dim else 1.0)
+        self.grouped = clients_by_tile(self.clients)
         old_ids = [tile.get("id") for tile in self.tiles]
         self.tiles = make_tiles(self.config, self.profile, self.grouped)
         if [tile.get("id") for tile in self.tiles] != old_ids:
@@ -591,25 +686,48 @@ class CanvasDock:
         provider.load_from_data(
             b"""
             window.dock-canvas-tip {
-              background: rgba(20, 22, 32, 0.84);
+              background: rgba(17, 19, 29, 0.92);
               color: rgba(247, 250, 255, 0.96);
-              border: 1px solid rgba(255, 255, 255, 0.14);
-              border-radius: 14px;
+              border: 1px solid rgba(135, 150, 255, 0.28);
+              border-radius: 18px;
             }
             window.dock-canvas-tip label {
               color: rgba(247, 250, 255, 0.96);
               font-size: 12px;
               font-weight: 500;
             }
+            .dock-canvas-title {
+              font-size: 13px;
+              font-weight: 500;
+              color: rgba(255, 255, 255, 0.98);
+            }
+            .dock-canvas-meta {
+              font-size: 11px;
+              color: rgba(204, 214, 236, 0.78);
+            }
+            .dock-canvas-preview {
+              min-width: 220px;
+            }
+            .dock-canvas-action-row {
+              margin-top: 2px;
+            }
+            .dock-canvas-secondary {
+              color: rgba(221, 228, 245, 0.90);
+            }
+            .dock-canvas-danger {
+              color: rgba(255, 210, 216, 0.98);
+              border-color: rgba(255, 120, 136, 0.26);
+            }
             window.dock-canvas-tip button {
-              background: rgba(255, 255, 255, 0.08);
-              border: 1px solid rgba(255, 255, 255, 0.08);
-              border-radius: 9px;
+              background: rgba(255, 255, 255, 0.075);
+              border: 1px solid rgba(255, 255, 255, 0.10);
+              border-radius: 11px;
               color: rgba(247, 250, 255, 0.96);
-              padding: 7px 10px;
+              padding: 8px 11px;
             }
             window.dock-canvas-tip button:hover {
-              background: rgba(95, 135, 255, 0.30);
+              background: rgba(105, 135, 255, 0.32);
+              border-color: rgba(150, 170, 255, 0.42);
             }
             """
         )
@@ -620,6 +738,8 @@ class CanvasDock:
         )
 
     def draw_icon(self, cr, tile: dict[str, object], x: float, y: float, size: int) -> None:
+        if self.draw_seven_glyph(cr, str(tile.get("id", "")), x, y, size):
+            return
         key = (str(tile.get("icon", "")), size)
         pixbuf = self.icon_cache.get(key)
         if pixbuf is None:
@@ -632,22 +752,124 @@ class CanvasDock:
             self.Gdk.cairo_set_source_pixbuf(cr, pixbuf, x, y)
             cr.paint()
 
+    def draw_seven_glyph(self, cr, tile_id: str, x: float, y: float, size: int) -> bool:
+        glyphs = {"files", "apps", "browser", "terminal", "spotlight", "hub", "downloads", "home", "trash", "settings", "add"}
+        if tile_id not in glyphs:
+            return False
+        cx = x + size / 2
+        cy = y + size / 2
+        s = size
+        cr.save()
+        cr.set_line_width(max(1.8, s * 0.075))
+        cr.set_line_cap(1)
+        cr.set_line_join(1)
+        cr.set_source_rgba(0.96, 0.98, 1.0, 0.94)
+        if tile_id in {"files", "downloads"}:
+            rounded_rect(cr, x + s * 0.12, y + s * 0.28, s * 0.76, s * 0.50, s * 0.10)
+            cr.stroke()
+            cr.move_to(x + s * 0.18, y + s * 0.30)
+            cr.line_to(x + s * 0.34, y + s * 0.18)
+            cr.line_to(x + s * 0.50, y + s * 0.30)
+            cr.stroke()
+            if tile_id == "downloads":
+                cr.move_to(cx, y + s * 0.34)
+                cr.line_to(cx, y + s * 0.62)
+                cr.move_to(cx - s * 0.12, y + s * 0.51)
+                cr.line_to(cx, y + s * 0.64)
+                cr.line_to(cx + s * 0.12, y + s * 0.51)
+                cr.stroke()
+        elif tile_id == "apps":
+            for row in range(3):
+                for col in range(3):
+                    cr.arc(x + s * (0.26 + col * 0.24), y + s * (0.26 + row * 0.24), s * 0.045, 0, math.tau)
+                    cr.fill()
+        elif tile_id == "browser":
+            cr.arc(cx, cy, s * 0.34, 0, math.tau)
+            cr.stroke()
+            cr.move_to(cx - s * 0.14, cy + s * 0.14)
+            cr.line_to(cx + s * 0.18, cy - s * 0.18)
+            cr.stroke()
+            cr.arc(cx + s * 0.18, cy - s * 0.18, s * 0.045, 0, math.tau)
+            cr.fill()
+        elif tile_id == "terminal":
+            rounded_rect(cr, x + s * 0.14, y + s * 0.22, s * 0.72, s * 0.56, s * 0.11)
+            cr.stroke()
+            cr.move_to(x + s * 0.28, cy - s * 0.07)
+            cr.line_to(x + s * 0.40, cy)
+            cr.line_to(x + s * 0.28, cy + s * 0.07)
+            cr.stroke()
+            cr.move_to(x + s * 0.48, cy + s * 0.08)
+            cr.line_to(x + s * 0.66, cy + s * 0.08)
+            cr.stroke()
+        elif tile_id == "spotlight":
+            cr.arc(cx - s * 0.05, cy - s * 0.05, s * 0.22, 0, math.tau)
+            cr.stroke()
+            cr.move_to(cx + s * 0.12, cy + s * 0.12)
+            cr.line_to(cx + s * 0.28, cy + s * 0.28)
+            cr.stroke()
+        elif tile_id == "hub":
+            for angle in (math.pi / 6, math.pi * 5 / 6, math.pi * 3 / 2):
+                cr.move_to(cx, cy)
+                cr.line_to(cx + math.cos(angle) * s * 0.28, cy + math.sin(angle) * s * 0.28)
+            cr.stroke()
+            for angle in (math.pi / 6, math.pi * 5 / 6, math.pi * 3 / 2):
+                cr.arc(cx + math.cos(angle) * s * 0.30, cy + math.sin(angle) * s * 0.30, s * 0.065, 0, math.tau)
+                cr.fill()
+            cr.arc(cx, cy, s * 0.075, 0, math.tau)
+            cr.fill()
+        elif tile_id == "home":
+            cr.move_to(x + s * 0.18, cy)
+            cr.line_to(cx, y + s * 0.22)
+            cr.line_to(x + s * 0.82, cy)
+            cr.stroke()
+            rounded_rect(cr, x + s * 0.28, cy - s * 0.02, s * 0.44, s * 0.34, s * 0.06)
+            cr.stroke()
+        elif tile_id == "trash":
+            cr.move_to(x + s * 0.28, y + s * 0.30)
+            cr.line_to(x + s * 0.72, y + s * 0.30)
+            cr.stroke()
+            rounded_rect(cr, x + s * 0.32, y + s * 0.36, s * 0.36, s * 0.40, s * 0.06)
+            cr.stroke()
+            cr.move_to(x + s * 0.40, y + s * 0.46)
+            cr.line_to(x + s * 0.40, y + s * 0.66)
+            cr.move_to(x + s * 0.60, y + s * 0.46)
+            cr.line_to(x + s * 0.60, y + s * 0.66)
+            cr.stroke()
+        elif tile_id == "settings":
+            cr.arc(cx, cy, s * 0.21, 0, math.tau)
+            cr.stroke()
+            for idx in range(8):
+                angle = idx * math.tau / 8
+                cr.move_to(cx + math.cos(angle) * s * 0.29, cy + math.sin(angle) * s * 0.29)
+                cr.line_to(cx + math.cos(angle) * s * 0.37, cy + math.sin(angle) * s * 0.37)
+            cr.stroke()
+            cr.arc(cx, cy, s * 0.055, 0, math.tau)
+            cr.fill()
+        elif tile_id == "add":
+            cr.move_to(cx - s * 0.22, cy)
+            cr.line_to(cx + s * 0.22, cy)
+            cr.move_to(cx, cy - s * 0.22)
+            cr.line_to(cx, cy + s * 0.22)
+            cr.stroke()
+        cr.restore()
+        return True
+
     def on_draw(self, _area, cr) -> bool:
         dark = current_theme_mode() != "light"
-        shell_y = 6
-        shell_h = self.height - 10
-        rounded_rect(cr, 3, shell_y + 4, self.width - 6, shell_h - 2, 26)
-        cr.set_source_rgba(0.0, 0.0, 0.0, 0.22 if dark else 0.12)
+        shell_y = 9
+        shell_h = self.height - 16
+        rounded_rect(cr, 5, shell_y + 5, self.width - 10, shell_h - 1, 24)
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.20 if dark else 0.10)
         cr.fill()
-        rounded_rect(cr, 0.5, shell_y + 0.5, self.width - 1, shell_h - 1, 26)
+        rounded_rect(cr, 1.5, shell_y + 0.5, self.width - 3, shell_h - 1, 24)
         if dark:
-            gradient = self.cairo_linear(cr, 0, shell_y, 0, shell_y + shell_h, [(0, (0.24, 0.26, 0.36, 0.78)), (0.48, (0.14, 0.15, 0.22, 0.72)), (1, (0.05, 0.06, 0.10, 0.76))])
+            gradient = self.cairo_linear(cr, 0, shell_y, 0, shell_y + shell_h, [(0, (0.23, 0.25, 0.34, 0.72)), (0.48, (0.13, 0.14, 0.20, 0.68)), (1, (0.05, 0.06, 0.09, 0.72))])
             cr.set_source(gradient)
         else:
-            gradient = self.cairo_linear(cr, 0, shell_y, 0, shell_y + shell_h, [(0, (0.92, 0.95, 1.00, 0.86)), (0.52, (0.78, 0.85, 0.95, 0.72)), (1, (0.66, 0.74, 0.88, 0.70))])
+            gradient = self.cairo_linear(cr, 0, shell_y, 0, shell_y + shell_h, [(0, (0.96, 0.98, 1.00, 0.86)), (0.52, (0.84, 0.90, 0.98, 0.76)), (1, (0.74, 0.82, 0.94, 0.70))])
             cr.set_source(gradient)
         cr.fill_preserve()
-        cr.set_source_rgba(*(0.95, 0.97, 1.0, 0.30) if dark else (0.12, 0.15, 0.22, 0.12))
+        cr.set_source_rgba(*(0.95, 0.97, 1.0, 0.24) if dark else (0.12, 0.15, 0.22, 0.10))
         cr.set_line_width(1)
         cr.stroke()
         if self.autohide and self.reveal_progress < 0.32:
@@ -656,11 +878,25 @@ class CanvasDock:
             rounded_rect(cr, self.width / 2 - handle_w / 2, 4, handle_w, handle_h, 2)
             cr.set_source_rgba(*(0.85, 0.90, 1.0, 0.44) if dark else (0.15, 0.18, 0.26, 0.34))
             cr.fill()
+        if self.edit_mode:
+            rounded_rect(cr, self.width / 2 - 64, shell_y - 3, 128, 18, 9)
+            cr.set_source_rgba(0.42, 0.52, 1.0, 0.24 if dark else 0.18)
+            cr.fill_preserve()
+            cr.set_source_rgba(0.72, 0.78, 1.0, 0.38)
+            cr.set_line_width(1)
+            cr.stroke()
+            cr.set_source_rgba(*(0.95, 0.97, 1.0, 0.78) if dark else (0.12, 0.15, 0.22, 0.72))
+            cr.select_font_face("Sans")
+            cr.set_font_size(9)
+            label = tr("Modifier le Dock", "Edit Dock")
+            ext = cr.text_extents(label)
+            cr.move_to(self.width / 2 - ext.width / 2 - ext.x_bearing, shell_y + 9 - ext.height / 2 - ext.y_bearing)
+            cr.show_text(label)
 
         self.rects = []
         self.visual_rects = []
         x = PADDING_X
-        center_y = self.height / 2 + 2
+        center_y = self.height / 2 + 1
         for index, tile in enumerate(self.tiles):
             if tile.get("separator"):
                 cr.set_source_rgba(*(0.95, 0.97, 1.0, 0.16) if dark else (0.12, 0.15, 0.22, 0.14))
@@ -673,38 +909,78 @@ class CanvasDock:
             scale = self.scales[index]
             lifted = ease_out_cubic(scale)
             bounce = self.bounce_offset(index)
-            tile_size = BASE_TILE + 2.5 * lifted
+            hover_pulse = 0.0
+            if self.hover_index == index:
+                hover_pulse = 0.5 + 0.5 * math.sin(time.monotonic() * 4.6)
+            tile_size = BASE_TILE + (MAX_TILE - BASE_TILE) * lifted
             icon_size = int(BASE_ICON + (MAX_ICON - BASE_ICON) * lifted)
             tile_x = x - (tile_size - BASE_TILE) / 2
-            tile_y = center_y - tile_size / 2 - 4 * lifted - bounce
+            tile_y = center_y - tile_size / 2 - 6 * lifted - bounce
             icon_x = tile_x + (tile_size - icon_size) / 2
             icon_y = tile_y + (tile_size - icon_size) / 2
             color = tile.get("style", (0.4, 0.5, 0.7))
             c1 = mix(color, 0.42 if not dark else 0.18)
             c2 = darken(color, 0.16)
 
-            rounded_rect(cr, tile_x + 5, tile_y + tile_size - 5, tile_size - 10, 10, 5)
-            cr.set_source_rgba(0.0, 0.0, 0.0, 0.12 + 0.12 * lifted)
+            prism_tile_path(cr, tile_x + 5, tile_y + tile_size - 3, tile_size - 10, 8, 2.6)
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.22 + 0.14 * lifted)
             cr.fill()
 
-            if tile.get("active") or lifted > 0.18:
-                rounded_rect(cr, tile_x - 2, tile_y - 2, tile_size + 4, tile_size + 4, 15 + 5 * lifted)
-                cr.set_source_rgba(0.38, 0.55, 1.0, 0.16 + 0.12 * lifted)
+            if tile.get("active") or lifted > 0.10:
+                halo_pad = 3.0 + 3.0 * lifted
+                prism_tile_path(cr, tile_x - halo_pad, tile_y - halo_pad, tile_size + halo_pad * 2, tile_size + halo_pad * 2, 10 + 4 * lifted)
+                cr.set_source_rgba(*(*mix(color, 0.12), 0.24 + 0.24 * lifted + 0.07 * hover_pulse))
                 cr.fill()
-            rounded_rect(cr, tile_x, tile_y, tile_size, tile_size, 13 + 5 * scale)
-            cr.set_source(self.cairo_linear(cr, tile_x, tile_y, tile_x, tile_y + tile_size, [(0, (*c1, 0.98)), (1, (*c2, 0.92))]))
+                prism_tile_path(cr, tile_x - halo_pad + 2.2, tile_y - halo_pad + 2.2, tile_size + (halo_pad - 2.2) * 2, tile_size + (halo_pad - 2.2) * 2, 8 + 3 * lifted)
+                cr.set_source_rgba(1.0, 1.0, 1.0, 0.05 + 0.08 * lifted)
+                cr.fill()
+            if tile.get("active"):
+                rounded_rect(cr, tile_x + 7, shell_y + shell_h - 9, tile_size - 14, 3.2, 1.6)
+                cr.set_source_rgba(*(*mix(color, 0.28), 0.84))
+                cr.fill()
+            prism_tile_path(cr, tile_x, tile_y, tile_size, tile_size, 8 + 4 * lifted)
+            cr.set_source(self.cairo_linear(cr, tile_x, tile_y, tile_x, tile_y + tile_size, [
+                (0, (*mix(color, 0.46 if dark else 0.62), 0.92 if dark else 0.94)),
+                (0.48, (*mix(color, 0.08 if dark else 0.28), 0.78 if dark else 0.84)),
+                (1, (*darken(color, 0.36 if dark else 0.16), 0.86 if dark else 0.90)),
+            ]))
             cr.fill_preserve()
-            cr.set_source_rgba(1, 1, 1, 0.18 if dark else 0.30)
+            cr.set_source_rgba(*(0.94, 0.97, 1.0, 0.34 + 0.24 * lifted) if dark else (0.10, 0.14, 0.20, 0.20 + 0.16 * lifted))
+            cr.set_line_width(1.0 + 0.35 * lifted)
+            cr.stroke()
+            cr.save()
+            prism_tile_path(cr, tile_x, tile_y, tile_size, tile_size, 8 + 4 * lifted)
+            cr.clip()
+            cr.move_to(tile_x + tile_size * 0.16, tile_y)
+            cr.line_to(tile_x + tile_size * 0.52, tile_y + tile_size * 0.46)
+            cr.line_to(tile_x, tile_y + tile_size * 0.78)
+            cr.close_path()
+            cr.set_source_rgba(1, 1, 1, (0.12 + 0.07 * lifted) if dark else (0.20 + 0.08 * lifted))
+            cr.fill()
+            cr.move_to(tile_x + tile_size, tile_y + tile_size * 0.22)
+            cr.line_to(tile_x + tile_size * 0.58, tile_y + tile_size * 0.58)
+            cr.line_to(tile_x + tile_size, tile_y + tile_size)
+            cr.close_path()
+            cr.set_source_rgba(0, 0, 0, 0.10 if dark else 0.06)
+            cr.fill()
+            cr.move_to(tile_x + tile_size * 0.18, tile_y + tile_size * 0.18)
+            cr.line_to(tile_x + tile_size * 0.82, tile_y + tile_size * 0.82)
+            cr.set_source_rgba(1, 1, 1, 0.12 + 0.10 * lifted)
             cr.set_line_width(1)
             cr.stroke()
-            rounded_rect(cr, tile_x + 5, tile_y + 4, tile_size - 10, max(7, tile_size * 0.26), 9)
-            cr.set_source_rgba(1, 1, 1, (0.12 + 0.08 * lifted) if dark else (0.18 + 0.08 * lifted))
+            cr.restore()
+            rounded_rect(cr, tile_x + tile_size * 0.28, tile_y + tile_size - 4.4, tile_size * 0.44, 2.4, 1.2)
+            cr.set_source_rgba(*(*mix(color, 0.22 if dark else 0.36), 0.64 if tile.get("active") else 0.34 + 0.20 * lifted))
             cr.fill()
             self.draw_icon(cr, tile, icon_x, icon_y, icon_size)
+            if self.edit_mode and self.customizable_tile(tile):
+                self.draw_edit_handle(cr, tile_x + 6, tile_y + 6, dark)
             if tile.get("window_count"):
                 self.draw_running_indicator(cr, tile_x + tile_size / 2, shell_y + shell_h - 9, int(tile.get("window_count", 1) or 1), dark)
             if int(tile.get("window_count", 0) or 0) > 1:
-                self.draw_badge(cr, tile_x + tile_size - 9, tile_y + 5, str(min(99, int(tile["window_count"]))))
+                self.draw_badge(cr, tile_x + tile_size - 9, tile_y + 5, str(min(99, int(tile["window_count"]))), "window")
+            elif int(tile.get("badge_count", 0) or 0) > 0:
+                self.draw_badge(cr, tile_x + tile_size - 9, tile_y + 5, str(min(99, int(tile["badge_count"]))), str(tile.get("id") or "status"))
             self.rects.append((x, 0, BASE_TILE, self.height))
             self.visual_rects.append((tile_x, tile_y, tile_size, tile_size))
             x += BASE_TILE + GAP
@@ -718,11 +994,35 @@ class CanvasDock:
             cr.arc(start + idx * 6, cy, 2.2, 0, math.tau)
             cr.fill()
 
-    def draw_badge(self, cr, cx: float, cy: float, text: str) -> None:
-        radius = 8
-        cr.set_source_rgba(0.28, 0.50, 0.90, 0.96)
-        cr.arc(cx, cy, radius, 0, math.tau)
+    def draw_edit_handle(self, cr, cx: float, cy: float, dark: bool) -> None:
+        cr.set_source_rgba(*(0.12, 0.14, 0.22, 0.70) if dark else (1.0, 1.0, 1.0, 0.78))
+        cr.arc(cx, cy, 5.2, 0, math.tau)
+        cr.fill_preserve()
+        cr.set_source_rgba(0.55, 0.64, 1.0, 0.85)
+        cr.set_line_width(1)
+        cr.stroke()
+        cr.set_source_rgba(0.55, 0.64, 1.0, 0.92)
+        cr.arc(cx, cy, 1.55, 0, math.tau)
         cr.fill()
+
+    def draw_badge(self, cr, cx: float, cy: float, text: str, kind: str = "status") -> None:
+        radius = 8.5
+        colors = {
+            "window": (0.36, 0.50, 1.0),
+            "trash": (0.56, 0.60, 0.68),
+            "hub": (0.38, 0.64, 1.0),
+            "status": (0.32, 0.52, 0.96),
+        }
+        color = colors.get(kind, colors["status"])
+        cr.set_source_rgba(0.02, 0.03, 0.06, 0.34)
+        cr.arc(cx + 0.8, cy + 1.2, radius + 1.5, 0, math.tau)
+        cr.fill()
+        cr.set_source_rgba(*color, 0.96)
+        cr.arc(cx, cy, radius, 0, math.tau)
+        cr.fill_preserve()
+        cr.set_source_rgba(1, 1, 1, 0.32)
+        cr.set_line_width(1)
+        cr.stroke()
         cr.set_source_rgba(1, 1, 1, 0.96)
         cr.select_font_face("Sans")
         cr.set_font_size(9)
@@ -791,7 +1091,7 @@ class CanvasDock:
                 moving = True
             self.scales[index] = next_scale
             self.velocities[index] = velocity
-        if moving or self.bounces:
+        if moving or self.bounces or self.hover_index is not None:
             self.area.queue_draw()
         return True
 
@@ -933,7 +1233,7 @@ class CanvasDock:
             current = [
                 str(tile.get("id"))
                 for tile in self.tiles
-                if not tile.get("separator") and tile.get("kind") != "folder" and str(tile.get("id")) != "settings"
+                if not tile.get("separator") and tile.get("kind") != "folder" and str(tile.get("id")) not in {"settings", "trash"}
             ]
             self.move_id(current, source_id, target_id)
             profile_pins = config.get("profile_pins", {})
@@ -952,6 +1252,110 @@ class CanvasDock:
         item = items.pop(items.index(source_id))
         items.insert(items.index(target_id), item)
 
+    def tip_box(self, spacing: int = 8):
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=spacing)
+        box.get_style_context().add_class("dock-canvas-preview")
+        return box
+
+    def tip_label(self, text: str, css_class: str = "dock-canvas-title"):
+        label = self.Gtk.Label(label=text)
+        label.set_xalign(0)
+        label.set_line_wrap(True)
+        label.set_max_width_chars(46)
+        label.get_style_context().add_class(css_class)
+        return label
+
+    def tip_button(self, label: str, callback, css_class: str | None = None):
+        button = self.Gtk.Button(label=label)
+        button.set_relief(self.Gtk.ReliefStyle.NONE)
+        button.get_child().set_xalign(0)
+        button.get_style_context().add_class("dock-canvas-action-row")
+        if css_class:
+            button.get_style_context().add_class(css_class)
+        button.connect("clicked", callback)
+        return button
+
+    def tile_meta(self, tile: dict[str, object], windows: list[dict[str, object]] | None = None) -> str:
+        windows = windows or []
+        if windows:
+            count = len(windows)
+            return tr(f"{count} fenêtre ouverte", f"{count} open window") if count == 1 else tr(f"{count} fenêtres ouvertes", f"{count} open windows")
+        if tile.get("kind") == "folder":
+            return tr("Pile de dossier", "Folder stack")
+        if tile.get("id") == "trash":
+            count = int(tile.get("badge_count", 0) or 0)
+            return tr(f"{count} élément dans la corbeille", f"{count} item in Trash") if count == 1 else tr(f"{count} éléments dans la corbeille", f"{count} items in Trash")
+        if tile.get("kind") == "system":
+            return tr("Surface système SevenOS", "SevenOS system surface")
+        return tr("Application prête", "Application ready")
+
+    def customizable_tile(self, tile: dict[str, object]) -> bool:
+        tile_id = str(tile.get("id") or "")
+        return bool(tile_id) and not tile.get("separator") and tile.get("kind") != "folder" and tile_id not in {"settings", "trash", "add"}
+
+    def tile_is_saved(self, tile: dict[str, object]) -> bool:
+        tile_id = str(tile.get("id") or "")
+        config = load_config()
+        return tile_id in effective_pinned(config, self.profile)
+
+    def profile_tile_ids_from_view(self) -> list[str]:
+        ids: list[str] = []
+        for tile in self.tiles:
+            tile_id = str(tile.get("id") or "")
+            if self.customizable_tile(tile) and tile_id not in ids:
+                ids.append(tile_id)
+        return ids
+
+    def set_tile_saved(self, tile: dict[str, object], saved: bool) -> None:
+        tile_id = str(tile.get("id") or "")
+        if not tile_id:
+            return
+        config = load_config()
+        profile_ids = self.profile_tile_ids_from_view()
+        global_ids = [str(item) for item in config.get("pinned", [])]
+        if saved:
+            if tile_id not in profile_ids:
+                profile_ids.append(tile_id)
+        else:
+            profile_ids = [item for item in profile_ids if item != tile_id]
+            global_ids = [item for item in global_ids if item != tile_id]
+        profile_pins = config.get("profile_pins", {})
+        if not isinstance(profile_pins, dict):
+            profile_pins = {}
+        profile_pins[self.profile] = profile_ids
+        config["profile_pins"] = profile_pins
+        config["pinned"] = global_ids
+        config["dock_layout_version"] = 2
+        save_config(config)
+        self.config = load_config()
+        self.close_preview()
+        self.close_label()
+        self.refresh_clients()
+
+    def dock_quick_controls(self):
+        config = load_config()
+        autohide = bool(config.get("autohide", self.autohide))
+        effect = normalize_effect(config.get("effect") or self.effect)
+        rows: list[tuple[str, list[str]]] = []
+        edit_mode = bool(config.get("edit_mode", self.edit_mode))
+        if edit_mode:
+            rows.append((tr("Terminer la modification", "Done Editing"), ["seven-dock", "edit", "off"]))
+        else:
+            rows.append((tr("Modifier le Dock", "Edit Dock"), ["seven-dock", "edit", "on"]))
+        if autohide:
+            rows.append((tr("Toujours visible", "Keep Dock Visible"), ["seven-dock", "autohide", "off"]))
+        else:
+            rows.append((tr("Masquer automatiquement", "Auto-hide Dock"), ["seven-dock", "autohide", "on"]))
+        if effect == "none":
+            rows.append((tr("Activer l’effet doux", "Enable Gentle Effect"), ["seven-dock", "effect", "gentle"]))
+        elif effect == "gentle":
+            rows.append((tr("Essayer l’effet magnétique", "Try Magnetic Effect"), ["seven-dock", "effect", "magnetic"]))
+        else:
+            rows.append((tr("Calmer l’effet", "Calm Dock Effect"), ["seven-dock", "effect", "gentle"]))
+        rows.append((tr("Relancer le Dock", "Restart Dock"), ["seven-dock", "restart"]))
+        rows.append((tr("Réglages du Dock", "Dock Settings"), ["seven-settings", "dock"]))
+        return rows
+
     def show_label(self, tile: dict[str, object]) -> None:
         key = f"label:{tile.get('id')}"
         if self.tip_key == key and self.hover_label is not None:
@@ -959,7 +1363,10 @@ class CanvasDock:
         self.close_preview()
         self.close_label()
         self.tip_key = key
-        self.hover_label = self.tooltip_window(str(tile.get("title", "App")), self.hover_anchor())
+        box = self.tip_box(spacing=4)
+        box.pack_start(self.tip_label(str(tile.get("title", "App"))), False, False, 0)
+        box.pack_start(self.tip_label(self.tile_meta(tile), "dock-canvas-meta"), False, False, 0)
+        self.hover_label = self.tooltip_window(box, self.hover_anchor())
 
     def show_preview(self, tile: dict[str, object], windows: list[dict[str, object]], force: bool = False) -> None:
         key = f"preview:{tile.get('id')}:{len(windows)}"
@@ -970,23 +1377,17 @@ class CanvasDock:
             return
         self.close_preview()
         self.tip_key = key
-        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=6)
-        box.get_style_context().add_class("dock-canvas-preview")
-        title = self.Gtk.Label(label=str(tile.get("title", "App")))
-        title.set_xalign(0)
-        box.pack_start(title, False, False, 0)
+        box = self.tip_box(spacing=7)
+        box.pack_start(self.tip_label(str(tile.get("title", "App"))), False, False, 0)
+        box.pack_start(self.tip_label(self.tile_meta(tile, windows), "dock-canvas-meta"), False, False, 0)
         if not windows:
-            row = self.Gtk.Label(label=tr("Aucune fenêtre ouverte", "No open windows"))
-            row.set_xalign(0)
+            row = self.tip_label(tr("Aucune fenêtre ouverte", "No open windows"), "dock-canvas-meta")
             box.pack_start(row, False, False, 0)
         for client in sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))[:6]:
             label = str(client.get("title") or client.get("class") or tile.get("title", "Window"))
             if len(label) > 46:
                 label = label[:43].rstrip() + "..."
-            row = self.Gtk.Button(label=label)
-            row.set_relief(self.Gtk.ReliefStyle.NONE)
-            row.get_child().set_xalign(0)
-            row.connect("clicked", lambda _row, selected=client: (focus_client(selected), self.close_preview()))
+            row = self.tip_button(label, lambda _row, selected=client: (focus_client(selected), self.close_preview()))
             box.pack_start(row, False, False, 0)
         self.preview = self.tooltip_window(box, self.hover_anchor())
 
@@ -994,39 +1395,44 @@ class CanvasDock:
         self.close_label()
         self.close_preview()
         self.tip_key = f"context:{tile.get('id')}:{len(windows)}"
-        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=7)
-        title = self.Gtk.Label(label=str(tile.get("title", "App")))
-        title.set_xalign(0)
-        box.pack_start(title, False, False, 0)
+        box = self.tip_box(spacing=8)
+        box.pack_start(self.tip_label(str(tile.get("title", "App"))), False, False, 0)
+        box.pack_start(self.tip_label(self.tile_meta(tile, windows), "dock-canvas-meta"), False, False, 0)
 
-        open_button = self.Gtk.Button(label=tr("Ouvrir", "Open"))
-        open_button.set_relief(self.Gtk.ReliefStyle.NONE)
-        open_button.get_child().set_xalign(0)
-        open_button.connect("clicked", lambda _button: (run_action([str(part) for part in tile.get("command", [])]), self.close_preview()))
+        open_button = self.tip_button(tr("Ouvrir", "Open"), lambda _button: (run_action([str(part) for part in tile.get("command", [])]), self.close_preview()))
         box.pack_start(open_button, False, False, 0)
 
         if windows:
-            focus_button = self.Gtk.Button(label=tr("Revenir à la dernière fenêtre", "Focus Last Window"))
-            focus_button.set_relief(self.Gtk.ReliefStyle.NONE)
-            focus_button.get_child().set_xalign(0)
-            focus_button.connect("clicked", lambda _button: (focus_client(sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))[0]), self.close_preview()))
+            focus_button = self.tip_button(tr("Revenir à la dernière fenêtre", "Focus Last Window"), lambda _button: (focus_client(sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))[0]), self.close_preview()))
             box.pack_start(focus_button, False, False, 0)
 
             for client in sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))[:5]:
                 label = str(client.get("title") or client.get("class") or tile.get("title", "Window"))
                 if len(label) > 42:
                     label = label[:39].rstrip() + "..."
-                row = self.Gtk.Button(label=f"• {label}")
-                row.set_relief(self.Gtk.ReliefStyle.NONE)
-                row.get_child().set_xalign(0)
-                row.connect("clicked", lambda _row, selected=client: (focus_client(selected), self.close_preview()))
+                row = self.tip_button(f"• {label}", lambda _row, selected=client: (focus_client(selected), self.close_preview()))
                 box.pack_start(row, False, False, 0)
 
-            close_button = self.Gtk.Button(label=tr("Fermer les fenêtres", "Close Windows"))
-            close_button.set_relief(self.Gtk.ReliefStyle.NONE)
-            close_button.get_child().set_xalign(0)
-            close_button.connect("clicked", lambda _button: (self.close_tile_windows(windows), self.close_preview()))
+            close_button = self.tip_button(tr("Fermer les fenêtres", "Close Windows"), lambda _button: (self.close_tile_windows(windows), self.close_preview()), "dock-canvas-danger")
             box.pack_start(close_button, False, False, 0)
+
+        if self.customizable_tile(tile):
+            if self.tile_is_saved(tile):
+                pin_label = tr("Retirer du Dock", "Remove from Dock")
+                pin_callback = lambda _button, selected=tile: self.set_tile_saved(selected, False)
+            else:
+                pin_label = tr("Garder dans le Dock", "Keep in Dock")
+                pin_callback = lambda _button, selected=tile: self.set_tile_saved(selected, True)
+            box.pack_start(self.tip_button(pin_label, pin_callback, "dock-canvas-secondary"), False, False, 0)
+
+        box.pack_start(self.tip_label(tr("Contrôles du Dock", "Dock Controls"), "dock-canvas-meta"), False, False, 0)
+        for label, command in self.dock_quick_controls():
+            box.pack_start(
+                self.tip_button(label, lambda _button, selected=command: (run_action(selected), self.close_preview()), "dock-canvas-secondary"),
+                False,
+                False,
+                0,
+            )
 
         self.preview = self.tooltip_window(box, self.hover_anchor())
 
@@ -1039,15 +1445,11 @@ class CanvasDock:
         self.close_label()
         self.close_preview()
         self.tip_key = key
-        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=7)
-        title = self.Gtk.Label(label=str(tile.get("title", folder.name or "Folder")))
-        title.set_xalign(0)
-        box.pack_start(title, False, False, 0)
+        box = self.tip_box(spacing=8)
+        box.pack_start(self.tip_label(str(tile.get("title", folder.name or "Folder"))), False, False, 0)
+        box.pack_start(self.tip_label(str(folder), "dock-canvas-meta"), False, False, 0)
 
-        open_button = self.Gtk.Button(label=tr("Ouvrir dans Fichiers", "Open in Files"))
-        open_button.set_relief(self.Gtk.ReliefStyle.NONE)
-        open_button.get_child().set_xalign(0)
-        open_button.connect("clicked", lambda _button: (run_action(["xdg-open", str(folder)]), self.close_preview()))
+        open_button = self.tip_button(tr("Ouvrir dans Fichiers", "Open in Files"), lambda _button: (run_action(["xdg-open", str(folder)]), self.close_preview()))
         box.pack_start(open_button, False, False, 0)
 
         try:
@@ -1058,14 +1460,10 @@ class CanvasDock:
             label = f"{'▸' if entry.is_dir() else '•'} {entry.name}"
             if len(label) > 42:
                 label = label[:39].rstrip() + "..."
-            row = self.Gtk.Button(label=label)
-            row.set_relief(self.Gtk.ReliefStyle.NONE)
-            row.get_child().set_xalign(0)
-            row.connect("clicked", lambda _row, selected=entry: (run_action(["xdg-open", str(selected)]), self.close_preview()))
+            row = self.tip_button(label, lambda _row, selected=entry: (run_action(["xdg-open", str(selected)]), self.close_preview()))
             box.pack_start(row, False, False, 0)
         if not entries:
-            empty = self.Gtk.Label(label=tr("Dossier vide", "Empty folder"))
-            empty.set_xalign(0)
+            empty = self.tip_label(tr("Dossier vide", "Empty folder"), "dock-canvas-meta")
             box.pack_start(empty, False, False, 0)
 
         self.preview = self.tooltip_window(box, self.hover_anchor())
@@ -1148,14 +1546,18 @@ class CanvasDock:
 def limits(json_output: bool) -> int:
     config = load_config()
     profile = active_profile_key()
-    grouped = clients_by_tile(hyprland_clients())
+    clients = hyprland_clients()
+    grouped = clients_by_tile(clients)
+    fullscreen = focused_fullscreen_client(clients)
     tiles = make_tiles(config, profile, grouped)
     mon_w, mon_h = monitor_bounds()
     tile_count = sum(1 for tile in tiles if not tile.get("separator"))
     sep_count = sum(1 for tile in tiles if tile.get("separator"))
     width = min(max(300, PADDING_X * 2 + tile_count * BASE_TILE + max(0, tile_count - 1) * GAP + sep_count * SEP), mon_w - DOCK_MARGIN * 2)
-    reserve_space = bool(config.get("reserve_space", False))
-    autohide = bool(config.get("autohide", True))
+    fullscreen_behavior = str(config.get("fullscreen_behavior", "smart-hide") or "smart-hide")
+    fullscreen_soft_hide = bool(fullscreen) and fullscreen_behavior == "smart-hide"
+    autohide = bool(config.get("autohide", False)) or fullscreen_soft_hide
+    reserve_space = bool(config.get("reserve_space", True)) and not autohide
     effect = normalize_effect(config.get("effect") or ("magnetic" if config.get("magnification", True) else "none"))
     hide_delay = clamp_float(config.get("autohide_delay", HIDE_DELAY), 0.5, 8.0)
     payload = {
@@ -1167,17 +1569,21 @@ def limits(json_output: bool) -> int:
             "height": DOCK_HEIGHT,
             "margin": DOCK_MARGIN,
             "reserve_space": reserve_space,
-            "exclusive_zone": DOCK_HEIGHT + DOCK_MARGIN if reserve_space else 0,
-            "layout": "floating-overlay",
+            "exclusive_zone": DOCK_HEIGHT + DOCK_MARGIN + 8 if reserve_space else 0,
+            "layout": "reserved-system-surface" if reserve_space else "floating-autohide-overlay",
             "effect": effect,
             "autohide": autohide,
             "autohide_delay": hide_delay,
+            "edit_mode": bool(config.get("edit_mode", False)),
+            "fullscreen_behavior": fullscreen_behavior,
+            "fullscreen_soft_hide": fullscreen_soft_hide,
             "hidden_margin": -(DOCK_HEIGHT - HIDDEN_PEEK) if autohide else DOCK_MARGIN,
             "hidden_peek": HIDDEN_PEEK,
         },
         "tiles": {"total": tile_count, "separators": sep_count, "profile_pins": PROFILE_PINNED.get(profile, PROFILE_PINNED["equinox"])},
         "live": {
-            "hyprland_clients": len(grouped),
+            "hyprland_clients": len(clients),
+            "focused_fullscreen": bool(fullscreen),
             "features": [
                 "canvas-draw",
                 "smooth-neighbor-magnification",
@@ -1200,6 +1606,18 @@ def limits(json_output: bool) -> int:
                 "settings-dock-controls",
                 "hover-intent-preview",
                 "direct-native-spotlight",
+                "reserved-space-default",
+                "active-window-avoidance",
+                "right-click-pin-unpin",
+                "native-dock-settings-entry",
+                "structured-context-cards",
+                "context-autohide-toggle",
+                "context-effect-control",
+                "context-dock-restart",
+                "edit-mode-surface",
+                "edit-mode-add-tile",
+                "typed-badges",
+                "fullscreen-smart-hide",
             ],
         },
     }

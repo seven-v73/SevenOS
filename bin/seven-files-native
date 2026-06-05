@@ -1491,6 +1491,16 @@ def run_files(start_path: str) -> int:
                 return candidate
         return None
 
+    def seven_disk_format_helper() -> Path | None:
+        candidates: list[Path] = []
+        if ROOT_DIR is not None:
+            candidates.append(ROOT_DIR / "bin" / "seven-disk-format")
+        candidates.extend((Path("/opt/SevenOS/bin/seven-disk-format"), Path.home() / "Code/OS/SevenOS/bin/seven-disk-format"))
+        for candidate in candidates:
+            if candidate.exists() and os.access(candidate, os.X_OK):
+                return candidate
+        return None
+
     def privileged_mount_device(device: str, label: str = "") -> tuple[str, str]:
         helper = seven_disk_mount_helper()
         pkexec = shutil.which("pkexec")
@@ -1514,6 +1524,24 @@ def run_files(start_path: str) -> int:
                     return cleaned, ""
             return "", output or tr_text("Mount completed, but SevenOS could not find the mount point.")
         return "", output or tr_text("Administrator authorization was cancelled or failed.")
+
+    def privileged_format_device(device: str, filesystem: str, label: str) -> tuple[bool, str]:
+        helper = seven_disk_format_helper()
+        pkexec = shutil.which("pkexec")
+        if not helper or not pkexec:
+            return False, tr_text("Administrator format helper is not available.")
+        try:
+            result = subprocess.run(
+                [pkexec, str(helper), "format", device, filesystem, label],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=300,
+            )
+        except Exception as exc:
+            return False, str(exc)
+        output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
+        return result.returncode == 0, output or (tr_text("Format completed.") if result.returncode == 0 else tr_text("Format failed."))
 
     def volume_label(label: str, fstype: str, size: str, device: str) -> str:
         if label:
@@ -2261,7 +2289,7 @@ def run_files(start_path: str) -> int:
     selection_primary_buttons = [
         selection_action(t("Ouvrir", "Open"), lambda: open_selected(), t("Ouvrir la sélection", "Open selection")),
         selection_action(t("Copier", "Copy"), lambda: copy_selected(), t("Copier la sélection", "Copy selection")),
-        selection_action(t("Effacer", "Clear"), lambda: (flow.unselect_all(), selection_changed(flow))[0], t("Effacer la sélection", "Clear selection")),
+        selection_action(t("Désélectionner", "Deselect"), lambda: (flow.unselect_all(), selection_changed(flow))[0], t("Retirer la sélection sans supprimer de fichier", "Clear selection without deleting files")),
     ]
     selection_more_btn = selection_action("...", lambda: show_selection_actions_menu(selection_more_btn), t("Plus d'actions", "More actions"))
     for button in selection_primary_buttons + [selection_more_btn]:
@@ -2278,6 +2306,14 @@ def run_files(start_path: str) -> int:
     operation_queue_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
     operation_queue_label.get_style_context().add_class("files-status-label")
     operation_queue.pack_start(operation_queue_label, True, True, 0)
+    operation_undo_btn = Gtk.Button(label=t("Annuler", "Undo"))
+    operation_undo_btn.set_relief(Gtk.ReliefStyle.NONE)
+    operation_undo_btn.get_style_context().add_class("selection-action")
+    operation_undo_btn.set_tooltip_text(t("Annuler la dernière action compatible", "Undo the last supported action"))
+    operation_undo_btn.connect("clicked", lambda *_: undo_last_action())
+    operation_undo_btn.set_no_show_all(True)
+    operation_undo_btn.hide()
+    operation_queue.pack_start(operation_undo_btn, False, False, 0)
     main.pack_start(operation_queue, False, False, 0)
 
     statusbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
@@ -2639,8 +2675,10 @@ def run_files(start_path: str) -> int:
                 return True
             render()
             set_status(tr_text("Undid {label}", label=label))
+            update_operation_queue(tr_text("Undid {label}", label=label))
         except Exception as exc:
             set_status(f"Undo failed: {exc}")
+            update_operation_queue(f"Undo failed: {exc}")
         return True
 
     def flash_tile(child) -> None:
@@ -3291,7 +3329,14 @@ def run_files(start_path: str) -> int:
         if message:
             operation_history.insert(0, message)
             del operation_history[4:]
-        if operation_active or operation_history:
+        if undo_stack:
+            undo_label = str(undo_stack[-1].get("label") or tr_text("last action"))
+            operation_undo_btn.set_label(t("Annuler", "Undo"))
+            operation_undo_btn.set_tooltip_text(t("Annuler : {label}", "Undo: {label}", label=undo_label))
+            operation_undo_btn.show()
+        else:
+            operation_undo_btn.hide()
+        if operation_active or operation_history or undo_stack:
             operation_queue_label.set_text("  ·  ".join(operation_history[:3]) or operation_label.get_text())
             operation_queue.show()
         else:
@@ -3545,6 +3590,7 @@ def run_files(start_path: str) -> int:
             render_limit_state["signature"] = render_signature
             render_limit_state["limit"] = RENDER_LIMIT
         directory_scan_truncated = False
+        hidden_only_count = 0
 
         def local_directory_entries(path: Path) -> tuple[list[Path], bool]:
             entries: list[Path] = []
@@ -3586,6 +3632,7 @@ def run_files(start_path: str) -> int:
             except OSError:
                 entries = []
             if not show_hidden:
+                hidden_only_count = sum(1 for path in entries if path.name.startswith("."))
                 entries = [path for path in entries if not path.name.startswith(".")]
             if search_query:
                 entries = [path for path in entries if file_matches_query(path, search_query)]
@@ -3641,9 +3688,25 @@ def run_files(start_path: str) -> int:
             box.get_style_context().add_class("empty-state")
             icon = Gtk.Image.new_from_icon_name("edit-find-symbolic" if search_query else "folder-symbolic", Gtk.IconSize.DIALOG)
             icon.set_pixel_size(42)
-            title = Gtk.Label(label=t("Aucun fichier correspondant", "No matching files") if search_query else t("Ce dossier est vide", "This folder is empty"))
+            hidden_only_empty = bool(hidden_only_count and not search_query and not show_hidden)
+            title = Gtk.Label(
+                label=t("Aucun fichier correspondant", "No matching files")
+                if search_query
+                else t("Fichiers cachés masqués", "Hidden files are hidden")
+                if hidden_only_empty
+                else t("Ce dossier est vide", "This folder is empty")
+            )
             title.get_style_context().add_class("empty-title")
-            hint_text = t("Essaie une autre recherche ou retire les filtres.", "Try another search or remove filters.") if search_query else t("Dépose des fichiers ici, colle des éléments ou crée un nouveau dossier.", "Drop files here, paste items, or create a new folder.")
+            if search_query:
+                hint_text = t("Essaie une autre recherche ou retire les filtres.", "Try another search or remove filters.")
+            elif hidden_only_empty:
+                hint_text = t(
+                    "{count} élément(s) caché(s) existent ici. Tu peux les afficher sans quitter ce dossier.",
+                    "{count} hidden item(s) exist here. You can reveal them without leaving this folder.",
+                    count=hidden_only_count,
+                )
+            else:
+                hint_text = t("Dépose des fichiers ici, colle des éléments ou crée un nouveau dossier.", "Drop files here, paste items, or create a new folder.")
             hint = Gtk.Label(label=hint_text)
             hint.set_line_wrap(True)
             hint.set_max_width_chars(30)
@@ -3664,10 +3727,15 @@ def run_files(start_path: str) -> int:
             if search_query:
                 empty_button(tr_text("Clear Search"), clear_search)
                 empty_button(tr_text("Global Search"), lambda: (search_entry.set_text(f"/{search_query.strip()}"), search_entry.grab_focus()))
+            elif hidden_only_empty:
+                empty_button(t("Afficher les cachés", "Show Hidden"), toggle_hidden)
+                empty_button(t("Nouveau dossier", "New Folder"), create_folder)
+                empty_button(t("Disques", "Drives"), show_drive_panel)
             else:
                 empty_button(tr_text("New Folder"), create_folder)
                 empty_button(tr_text("New File"), create_file)
                 empty_button(tr_text("Paste"), paste_items)
+                empty_button(t("Disques", "Drives"), show_drive_panel)
                 empty_button(t("Connecter un serveur", "Connect Server"), connect_to_server)
             box.pack_start(actions, False, False, 8)
             child.add(box)
@@ -5289,15 +5357,196 @@ def run_files(start_path: str) -> int:
         except OSError as exc:
             status_label.set_text(f"Restore failed: {exc}")
 
+    def in_trash_view() -> bool:
+        try:
+            return current.resolve().is_relative_to(TRASH_FILES_DIR.resolve())
+        except OSError:
+            return str(current).startswith(str(TRASH_FILES_DIR))
+
+    def is_trash_member(path: Path) -> bool:
+        try:
+            return path.resolve().is_relative_to(TRASH_FILES_DIR.resolve())
+        except OSError:
+            return str(path).startswith(str(TRASH_FILES_DIR))
+
+    def matching_trashinfo(path: Path) -> Path:
+        return TRASH_INFO_DIR / f"{path.name}.trashinfo"
+
+    def secure_overwrite_file(path: Path, cancelled=None) -> None:
+        if path.is_symlink():
+            path.unlink(missing_ok=True)
+            return
+        try:
+            stat = path.stat()
+        except OSError:
+            path.unlink(missing_ok=True)
+            return
+        if not path.is_file():
+            path.unlink(missing_ok=True)
+            return
+        size = max(0, int(stat.st_size))
+        # Prefer coreutils shred when available. It handles chunking and fsync
+        # better than a Python fallback, while still remaining best-effort on
+        # SSD/COW filesystems.
+        if shutil.which("shred"):
+            try:
+                result = subprocess.run(
+                    ["shred", "--force", "--zero", "--remove=unlink", "--iterations=2", str(path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    timeout=max(8.0, min(180.0, size / (32 * 1024 * 1024) + 8.0)),
+                )
+                if result.returncode == 0 or not path.exists():
+                    return
+            except subprocess.TimeoutExpired:
+                pass
+        chunk = b"\0" * (1024 * 1024)
+        with path.open("r+b", buffering=0) as handle:
+            remaining = size
+            while remaining > 0:
+                if cancelled and cancelled():
+                    raise RuntimeError(OPERATION_CANCELLED)
+                block = chunk if remaining >= len(chunk) else b"\0" * remaining
+                handle.write(block)
+                remaining -= len(block)
+            handle.flush()
+            os.fsync(handle.fileno())
+        path.unlink(missing_ok=True)
+
+    def secure_destroy_path(path: Path, cancelled=None, report=None, progress=None, total=None) -> int:
+        destroyed = 0
+        if not path.exists() and not path.is_symlink():
+            matching_trashinfo(path).unlink(missing_ok=True)
+            return 0
+        if path.is_dir() and not path.is_symlink():
+            children = sorted(path.iterdir(), key=lambda item: len(item.parts), reverse=True)
+            for child in children:
+                if cancelled and cancelled():
+                    raise RuntimeError(OPERATION_CANCELLED)
+                destroyed += secure_destroy_path(child, cancelled, report, progress, total)
+            try:
+                path.rmdir()
+            except OSError:
+                shutil.rmtree(path, ignore_errors=True)
+            matching_trashinfo(path).unlink(missing_ok=True)
+            return destroyed + 1
+        secure_overwrite_file(path, cancelled)
+        matching_trashinfo(path).unlink(missing_ok=True)
+        destroyed += 1
+        if report and progress is not None and total is not None:
+            report(progress, total, t("Destruction sécurisée {done}/{total}", "Secure erase {done}/{total}", done=progress, total=total))
+        return destroyed
+
+    def count_trash_items(paths: list[Path]) -> tuple[int, int]:
+        files = 0
+        dirs = 0
+        for path in paths:
+            if path.is_dir() and not path.is_symlink():
+                dirs += 1
+                try:
+                    for child in path.rglob("*"):
+                        if child.is_file() or child.is_symlink():
+                            files += 1
+                        elif child.is_dir():
+                            dirs += 1
+                except OSError:
+                    pass
+            else:
+                files += 1
+        return files, dirs
+
+    def secure_destroy_paths(paths: list[Path], title: str | None = None):
+        paths = [path for path in paths if is_trash_member(path)]
+        if not paths:
+            set_status(t("Aucun élément de corbeille sélectionné", "No trash item selected"))
+            return
+        file_count, dir_count = count_trash_items(paths)
+        if not confirm_dialog(
+            title or t("Détruire définitivement ?", "Destroy Permanently?"),
+            t(
+                "{items} élément(s) seront détruits depuis la corbeille.\n\nSeven Files va écraser les fichiers quand le système de fichiers le permet, puis supprimer les entrées de corbeille. Cette action est irréversible depuis SevenOS.\n\nNote honnête : sur SSD, Btrfs/COW, snapshots ou sauvegardes, seul le chiffrement/effacement du volume peut garantir qu'aucune récupération bas niveau n'est possible.",
+                "{items} item(s) will be destroyed from Trash.\n\nSeven Files will overwrite files where the filesystem allows it, then remove the trash entries. This action is irreversible from SevenOS.\n\nHonest note: on SSDs, Btrfs/COW, snapshots or backups, only volume encryption/erase can guarantee that low-level recovery is impossible.",
+                items=len(paths),
+            ),
+            t("Détruire définitivement", "Destroy Permanently"),
+        ):
+            set_status(t("Destruction annulée", "Secure erase cancelled"))
+            return
+
+        def worker(cancelled, report):
+            destroyed = 0
+            total = max(1, file_count + dir_count)
+            progress = 0
+            for path in paths:
+                if cancelled():
+                    return OPERATION_CANCELLED
+                before = destroyed
+                destroyed += secure_destroy_path(path, cancelled)
+                progress = min(total, progress + max(1, destroyed - before))
+                report(progress, total, t("Destruction sécurisée {done}/{total}", "Secure erase {done}/{total}", done=progress, total=total))
+            return destroyed
+
+        def done(result):
+            if result == OPERATION_CANCELLED:
+                finish_operation(t("Destruction annulée", "Secure erase cancelled"))
+            else:
+                finish_operation(t("{count} élément(s) détruit(s) définitivement", "{count} item(s) permanently destroyed", count=result))
+
+        run_background(t("Destruction sécurisée", "Secure erase"), worker, done)
+
+    def empty_trash_secure():
+        TRASH_FILES_DIR.mkdir(parents=True, exist_ok=True)
+        TRASH_INFO_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            paths = list(TRASH_FILES_DIR.iterdir())
+        except OSError as exc:
+            handle_file_error(t("Vider la corbeille", "Empty Trash"), TRASH_FILES_DIR, exc)
+            return
+        if not paths:
+            set_status(t("La corbeille est déjà vide", "Trash is already empty"))
+            return
+        secure_destroy_paths(paths, t("Vider la corbeille définitivement ?", "Empty Trash Permanently?"))
+
     def trash_selected():
         paths = selected_paths()
         if not paths:
             status_label.set_text("Select an item to move to Trash")
             return
+        if in_trash_view():
+            secure_destroy_paths(paths)
+            return
         blocked = next((path for path in paths if access_state(path.parent).get("writable") is not True), None)
         if blocked:
             ensure_writable_for_action(t("Corbeille", "Trash"), blocked.parent)
             return
+        files = [path for path in paths if path.is_file()]
+        folders = [path for path in paths if path.is_dir()]
+        known_size = 0
+        for path in files:
+            try:
+                known_size += path.lstat().st_size
+            except OSError:
+                pass
+        if len(paths) > 1 or folders:
+            summary_parts = [t("{count} élément(s)", "{count} item(s)", count=len(paths))]
+            if files:
+                summary_parts.append(t("{count} fichier(s)", "{count} file(s)", count=len(files)))
+            if folders:
+                summary_parts.append(t("{count} dossier(s)", "{count} folder(s)", count=len(folders)))
+            if known_size:
+                summary_parts.append(format_size(known_size))
+            if not confirm_dialog(
+                t("Mettre à la corbeille ?", "Move to Trash?"),
+                t(
+                    "{summary}\n\nLes éléments seront déplacés dans la corbeille et pourront être restaurés depuis Seven Files.",
+                    "{summary}\n\nThe items will be moved to Trash and can be restored from Seven Files.",
+                    summary=" · ".join(summary_parts),
+                ),
+                t("Mettre à la corbeille", "Move to Trash"),
+            ):
+                set_status(t("Corbeille annulée", "Trash cancelled"))
+                return
 
         def worker(cancelled, report):
             moved = 0
@@ -5694,7 +5943,7 @@ def run_files(start_path: str) -> int:
             (t("Ressources", "Resources"), t("Téléchargements, Documents, Code, Musique, Images et Vidéos suivent le Mini OS actif par défaut. Les ressources partagées restent disponibles dans le menu système.", "Downloads, Documents, Code, Music, Pictures and Videos follow the active mini OS by default. Use shared resources from the system menu if you want one global library.")),
             (t("Actions", "Actions"), t("Ctrl+K recherche toutes les actions. Ctrl+G ouvre les favoris, récents et emplacements réseau.", "Press Ctrl+K to search every file action. Use Ctrl+G for favorites, recents and network places.")),
             (t("Fichiers", "Files"), t("Double-clic ouvre, Espace prévisualise, F2 renomme, Ctrl+Z annule les actions compatibles.", "Double-click opens, Space previews, F2 renames, Ctrl+Z undoes supported actions.")),
-            (t("Volumes", "Volumes"), t("Les partitions Windows et disques amovibles apparaissent dans Emplacements. Clic droit pour monter, démonter ou éjecter.", "Windows partitions and removable drives appear in Locations. Right-click a volume to mount, unmount or eject.")),
+            (t("Volumes", "Volumes"), t("Les partitions Windows et disques amovibles apparaissent dans Emplacements. Le panneau Disques permet de monter, démonter, éjecter ou formater avec confirmation.", "Windows partitions and removable drives appear in Locations. The Drives panel can mount, unmount, eject or format with confirmation.")),
             (t("Images ISO", "ISO Images"), t("La fiche Image disque affiche taille, checksum, USB Writer, clés détectées, SHA256, montage et flash USB.", "The Disk Image sheet shows size, checksum, USB Writer, detected drives, SHA256, mount and USB writing actions.")),
             (t("Opérations", "Operations"), t("Copie, déplacement, compression et calcul de taille tournent en arrière-plan avec pause, annulation et progression.", "Copy, move, compress and size calculation run in the background with pause, cancel and progress.")),
             (t("Système", "System"), t("Les dossiers protégés affichent leur état d'accès. Seven Files guide l'action admin sans modifier les permissions automatiquement.", "Protected folders expose their access state. Seven Files guides admin actions without changing permissions automatically.")),
@@ -5821,7 +6070,11 @@ def run_files(start_path: str) -> int:
         if single:
             add_menu_item(menu, t("Renommer", "Rename"), lambda: rename_path(target) if target else None)
             add_menu_item(menu, t("Dupliquer", "Duplicate"), lambda: duplicate_path(target) if target else None)
-        add_menu_item(menu, t("Corbeille", "Trash"), trash_selected)
+        if in_trash_view():
+            add_menu_item(menu, t("Détruire définitivement", "Destroy Permanently"), lambda: secure_destroy_paths(paths))
+            add_menu_item(menu, t("Vider la corbeille", "Empty Trash"), empty_trash_secure)
+        else:
+            add_menu_item(menu, t("Corbeille", "Trash"), trash_selected)
         menu.show_all()
         try:
             menu.popup_at_widget(button, Gdk.Gravity.SOUTH_WEST, Gdk.Gravity.NORTH_WEST, None)
@@ -5843,6 +6096,222 @@ def run_files(start_path: str) -> int:
         response = dialog.run()
         dialog.destroy()
         return response == Gtk.ResponseType.OK
+
+    def device_format_info(device: str) -> dict[str, str]:
+        if not shutil.which("lsblk") or not device.startswith("/dev/"):
+            return {}
+        try:
+            result = subprocess.run(
+                ["lsblk", "-J", "-o", "PATH,LABEL,FSTYPE,MOUNTPOINTS,TYPE,SIZE,MODEL,RM,TRAN", device],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=2.5,
+            )
+            payload = json.loads(result.stdout or "{}")
+        except Exception:
+            return {}
+        item = {}
+        for candidate in payload.get("blockdevices", []) if isinstance(payload.get("blockdevices"), list) else []:
+            if isinstance(candidate, dict) and candidate.get("path") == device:
+                item = candidate
+                break
+        if not item:
+            return {}
+        mounts = mountpoints_for(item)
+        return {
+            "path": str(item.get("path") or device),
+            "label": str(item.get("label") or ""),
+            "fstype": str(item.get("fstype") or ""),
+            "type": str(item.get("type") or ""),
+            "size": str(item.get("size") or ""),
+            "model": str(item.get("model") or ""),
+            "rm": str(item.get("rm") or ""),
+            "tran": str(item.get("tran") or ""),
+            "mounts": ", ".join(mounts),
+        }
+
+    def can_offer_format(device: str, mounted_path: str = "") -> tuple[bool, str]:
+        info = device_format_info(device)
+        if not info:
+            return False, t("Seven Files ne peut pas inspecter ce volume.", "Seven Files cannot inspect this volume.")
+        mounts = {part.strip() for part in info.get("mounts", "").split(",") if part.strip()}
+        if mounts & {"/", "/home", "/boot", "/efi", "/boot/efi"}:
+            return False, t("Ce volume appartient au système actif.", "This volume belongs to the running system.")
+        if info.get("type") == "disk" and info.get("rm") not in {"1", "true", "True"} and info.get("tran") not in {"usb", "mmc"}:
+            return False, t("Seven Files ne formate pas un disque interne entier. Sélectionne une partition.", "Seven Files does not format a whole internal disk. Select a partition.")
+        if not seven_disk_format_helper():
+            return False, t("Le helper de formatage SevenOS est indisponible.", "The SevenOS format helper is unavailable.")
+        if not shutil.which("pkexec"):
+            return False, t("La demande administrateur graphique est indisponible.", "The graphical administrator prompt is unavailable.")
+        return True, ""
+
+    def show_format_protection_reason(device: str, mounted_path: str = "") -> None:
+        allowed, reason = can_offer_format(device, mounted_path)
+        info = device_format_info(device)
+        title = t("Formatage disponible", "Formatting Available") if allowed else t("Volume protégé", "Protected Volume")
+        subtitle = (
+            t("Ce volume peut être formaté depuis Seven Files.", "This volume can be formatted from Seven Files.")
+            if allowed
+            else reason or t("Seven Files bloque ce formatage pour protéger le système.", "Seven Files blocks this format to protect the system.")
+        )
+        dialog = Gtk.Dialog(title=title, transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
+        box = decorate_dialog(dialog, title, subtitle, "dialog-information-symbolic")
+        rows = [
+            (t("Périphérique", "Device"), device or t("Inconnu", "Unknown")),
+            (t("Type", "Type"), info.get("type") or t("Inconnu", "Unknown")),
+            (t("Taille", "Size"), info.get("size") or t("Inconnue", "Unknown")),
+            (t("Système de fichiers", "Filesystem"), info.get("fstype") or t("Aucun", "None")),
+            (t("Montage", "Mount"), info.get("mounts") or mounted_path or t("Non monté", "Not mounted")),
+        ]
+        for key, value in rows:
+            card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            card.get_style_context().add_class("inspector-card")
+            key_label = Gtk.Label(label=key)
+            key_label.set_xalign(0)
+            key_label.get_style_context().add_class("preview-heading")
+            value_label = Gtk.Label(label=value)
+            value_label.set_xalign(0)
+            value_label.set_line_wrap(True)
+            value_label.set_selectable(True)
+            value_label.get_style_context().add_class("preview-value")
+            card.pack_start(key_label, False, False, 0)
+            card.pack_start(value_label, False, False, 0)
+            box.pack_start(card, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+
+    def format_device_dialog(device: str, label: str = "", mounted_path: str = "") -> None:
+        if not device.startswith("/dev/"):
+            remember_drive_error(t("Formatage impossible", "Cannot format"), t("Ce volume n’a pas de chemin périphérique valide.", "This volume has no valid device path."), device)
+            return
+        allowed, reason = can_offer_format(device, mounted_path)
+        if not allowed:
+            remember_drive_error(t("Formatage bloqué", "Format blocked"), reason, device)
+            return
+        info = device_format_info(device)
+        current_label = label or info.get("label") or Path(device).name
+        dialog = Gtk.Dialog(title=t("Formater le volume", "Format Volume"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.set_default_size(460, 430)
+        dialog.add_button(t("Annuler", "Cancel"), Gtk.ResponseType.CANCEL)
+        dialog.add_button(t("Formater", "Format"), Gtk.ResponseType.OK)
+        dialog.set_response_sensitive(Gtk.ResponseType.OK, False)
+        box = decorate_dialog(
+            dialog,
+            t("Formater {name}", "Format {name}", name=current_label),
+            t("Cette action efface définitivement le contenu du volume sélectionné.", "This permanently erases the selected volume."),
+            "drive-removable-media-symbolic",
+        )
+
+        summary = Gtk.Label(label=f"{device} · {info.get('size', '')} · {info.get('fstype') or t('sans système de fichiers', 'no filesystem')}")
+        summary.set_xalign(0)
+        summary.set_line_wrap(True)
+        summary.get_style_context().add_class("preview-hint")
+        box.pack_start(summary, False, False, 0)
+
+        name_label = Gtk.Label(label=t("Nom du volume", "Volume Name"))
+        name_label.set_xalign(0)
+        box.pack_start(name_label, False, False, 0)
+        name_entry = Gtk.Entry()
+        name_entry.set_text(current_label[:32])
+        name_entry.set_placeholder_text("SevenOS")
+        box.pack_start(name_entry, False, False, 0)
+
+        fs_label = Gtk.Label(label=t("Format", "Format"))
+        fs_label.set_xalign(0)
+        box.pack_start(fs_label, False, False, 0)
+        fs_combo = Gtk.ComboBoxText()
+        formats = [
+            ("exfat", t("exFAT · recommandé pour USB Windows/macOS/Linux", "exFAT · recommended for USB Windows/macOS/Linux")),
+            ("fat32", t("FAT32 · compatibilité maximale, fichiers < 4 Go", "FAT32 · maximum compatibility, files < 4 GB")),
+            ("ext4", t("ext4 · Linux/SevenOS", "ext4 · Linux/SevenOS")),
+            ("ntfs", t("NTFS · Windows", "NTFS · Windows")),
+        ]
+        for key, text in formats:
+            fs_combo.append(key, text)
+        fs_combo.set_active_id("exfat")
+        box.pack_start(fs_combo, False, False, 0)
+
+        preview_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        preview_card.get_style_context().add_class("inspector-card")
+        preview_title = Gtk.Label(label=t("Aperçu de l'action", "Action Preview"))
+        preview_title.set_xalign(0)
+        preview_title.get_style_context().add_class("preview-heading")
+        preview_text = Gtk.Label()
+        preview_text.set_xalign(0)
+        preview_text.set_line_wrap(True)
+        preview_text.get_style_context().add_class("preview-value")
+        preview_card.pack_start(preview_title, False, False, 0)
+        preview_card.pack_start(preview_text, False, False, 0)
+        box.pack_start(preview_card, False, False, 0)
+
+        def update_format_preview(*_args) -> None:
+            selected_fs = fs_combo.get_active_id() or "exfat"
+            selected_label = name_entry.get_text().strip() or "SevenOS"
+            preview_text.set_text(
+                t(
+                    "{device} sera effacé, renommé « {label} » et recréé en {filesystem}.",
+                    "{device} will be erased, renamed “{label}” and recreated as {filesystem}.",
+                    device=device,
+                    label=selected_label,
+                    filesystem=selected_fs,
+                )
+            )
+
+        name_entry.connect("changed", update_format_preview)
+        fs_combo.connect("changed", update_format_preview)
+        update_format_preview()
+
+        warning = Gtk.Label(label=t("Vérifie bien le périphérique. Seven Files ne formate jamais /, /home, /boot ou /efi.", "Check the device carefully. Seven Files never formats /, /home, /boot or /efi."))
+        warning.set_xalign(0)
+        warning.set_line_wrap(True)
+        warning.get_style_context().add_class("preview-warning")
+        box.pack_start(warning, False, False, 0)
+
+        consent = Gtk.CheckButton(label=t("Je comprends que les fichiers de ce volume seront effacés.", "I understand files on this volume will be erased."))
+        consent.connect("toggled", lambda button: dialog.set_response_sensitive(Gtk.ResponseType.OK, button.get_active()))
+        box.pack_start(consent, False, False, 0)
+        dialog.show_all()
+        response = dialog.run()
+        filesystem = fs_combo.get_active_id() or "exfat"
+        new_label = name_entry.get_text().strip() or "SevenOS"
+        confirmed = consent.get_active()
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK:
+            return
+        if not confirmed:
+            remember_drive_error(t("Confirmation requise", "Confirmation required"), t("Coche la confirmation avant de formater.", "Check the confirmation before formatting."), device)
+            return
+        if not confirm_dialog(
+            t("Effacer définitivement ?", "Erase permanently?"),
+            t("Seven Files va formater {device} en {filesystem}. Tous les fichiers de ce volume seront perdus.", "Seven Files will format {device} as {filesystem}. All files on this volume will be lost.", device=device, filesystem=filesystem),
+            t("Effacer et formater", "Erase and Format"),
+        ):
+            return
+
+        set_status(t("Formatage de {name}...", "Formatting {name}...", name=current_label))
+
+        def worker() -> None:
+            start_polkit_agent()
+            ok, output = privileged_format_device(device, filesystem, new_label)
+
+            def finish() -> bool:
+                render_location_rows(True)
+                if ok:
+                    if mounted_path and str(current).startswith(str(Path(mounted_path))):
+                        navigate(Path.home())
+                    drive_error_state.update({"title": "", "message": "", "detail": ""})
+                    set_status(t("Volume formaté : {name}", "Formatted volume: {name}", name=new_label))
+                    notify_system(t("Formatage terminé", "Format complete"), f"{device} · {filesystem}")
+                else:
+                    remember_drive_error(t("Formatage échoué", "Format failed"), t("Le volume n’a pas été formaté.", "The volume was not formatted."), output or device)
+                return False
+
+            GLib.idle_add(finish)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def launch_with_app(path: Path, app) -> None:
         try:
@@ -5933,6 +6402,12 @@ def run_files(start_path: str) -> int:
                 add_menu_item(menu, tr_text("Unmount Volume"), lambda: unmount_device_and_refresh(device, label, mounted_path))
             if ejectable:
                 add_menu_item(menu, tr_text("Eject Volume"), lambda: eject_device_and_refresh(device, label, mounted_path))
+            menu.append(Gtk.SeparatorMenuItem())
+            format_allowed, _format_reason = can_offer_format(device, mounted_path)
+            if format_allowed:
+                add_menu_item(menu, t("Formater le volume…", "Format Volume…"), lambda: format_device_dialog(device, label, mounted_path))
+            else:
+                add_menu_item(menu, t("Pourquoi le formatage est bloqué", "Why Formatting Is Blocked"), lambda: show_format_protection_reason(device, mounted_path))
             add_menu_item(menu, tr_text("Copy Device Path"), lambda: copy_text(device))
         menu.append(Gtk.SeparatorMenuItem())
         add_menu_item(menu, tr_text("Refresh Volumes"), lambda: render_location_rows(True))
@@ -5955,8 +6430,10 @@ def run_files(start_path: str) -> int:
         if path.is_dir():
             add_menu_item(menu, t("Ouvrir dans un nouvel onglet", "Open in New Tab"), lambda: new_tab(path))
             add_menu_item(menu, t("Ouvrir en split", "Open in Split"), lambda: open_path_in_split(path))
-        if str(path).startswith(str(TRASH_FILES_DIR)):
+        trash_member = is_trash_member(path)
+        if trash_member:
             add_menu_item(menu, t("Restaurer depuis la corbeille", "Restore from Trash"), lambda: restore_from_trash(path))
+            add_menu_item(menu, t("Détruire définitivement", "Destroy Permanently"), lambda: secure_destroy_paths(active_paths))
         if path.is_file() and path.suffix.lower() in READER_SUFFIXES:
             add_menu_item(menu, t("Lire dans Seven Reader", "Read in Seven Reader"), lambda: open_in_reader(path))
         if path.is_file() and is_previewable(path):
@@ -6005,7 +6482,10 @@ def run_files(start_path: str) -> int:
         add_menu_item(menu, t("Ajouter aux favoris", "Add to Favorites"), lambda: add_favorite_path(path))
         if (path if path.is_dir() else path.parent) in favorite_paths():
             add_menu_item(menu, t("Retirer des favoris", "Remove from Favorites"), lambda: remove_favorite_path(path))
-        add_menu_item(menu, t("Mettre à la corbeille", "Move to Trash"), lambda: trash_selected())
+        if trash_member:
+            add_menu_item(menu, t("Vider la corbeille", "Empty Trash"), empty_trash_secure)
+        else:
+            add_menu_item(menu, t("Mettre à la corbeille", "Move to Trash"), lambda: trash_selected())
         if is_image(path):
             menu.append(Gtk.SeparatorMenuItem())
             add_menu_item(menu, t("Définir comme fond d’écran", "Set as Wallpaper"), lambda: set_wallpaper_from_file(path))
@@ -6782,7 +7262,7 @@ def run_files(start_path: str) -> int:
     def show_drive_panel() -> bool:
         render_location_rows(True)
         dialog = Gtk.Dialog(title=t("Disques", "Drives"), transient_for=window, modal=True)
-        dialog.set_default_size(460, 360)
+        dialog.set_default_size(620, 430)
         dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
         content = dialog.get_content_area()
         content.set_spacing(10)
@@ -6804,6 +7284,30 @@ def run_files(start_path: str) -> int:
         hint.get_style_context().add_class("dialog-subtitle")
         content.pack_start(title, False, False, 0)
         content.pack_start(hint, False, False, 0)
+        drive_locations = mounted_locations()
+        mounted_count = sum(1 for _label, _icon, target, _tooltip, _device, mounted_path, _ejectable in drive_locations if mounted_path and not str(target).startswith("seven://mount"))
+        unmounted_count = sum(1 for _label, _icon, target, _tooltip, _device, mounted_path, _ejectable in drive_locations if str(target).startswith("seven://mount") or not mounted_path)
+        formatable_count = sum(1 for _label, _icon, _target, _tooltip, device, mounted_path, _ejectable in drive_locations if device and can_offer_format(device, mounted_path)[0])
+        summary_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        summary_row.get_style_context().add_class("inspector-card")
+        summary_text = Gtk.Label(
+            label=t(
+                "{total} volume(s) · {mounted} monté(s) · {unmounted} non monté(s) · {formatable} formatable(s)",
+                "{total} volume(s) · {mounted} mounted · {unmounted} not mounted · {formatable} formatable",
+                total=len(drive_locations),
+                mounted=mounted_count,
+                unmounted=unmounted_count,
+                formatable=formatable_count,
+            )
+        )
+        summary_text.set_xalign(0)
+        summary_text.get_style_context().add_class("preview-value")
+        refresh_btn = Gtk.Button(label=t("Actualiser", "Refresh"))
+        refresh_btn.get_style_context().add_class("selection-action")
+        refresh_btn.connect("clicked", lambda *_: (dialog.destroy(), render_location_rows(True), show_drive_panel()))
+        summary_row.pack_start(summary_text, True, True, 0)
+        summary_row.pack_start(refresh_btn, False, False, 0)
+        content.pack_start(summary_row, False, False, 0)
         if drive_error_state.get("message"):
             error_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
             error_row.get_style_context().add_class("inspector-card")
@@ -6826,15 +7330,20 @@ def run_files(start_path: str) -> int:
             error_row.pack_start(error_text, True, True, 0)
             error_row.pack_start(details_btn, False, False, 0)
             content.pack_start(error_row, False, False, 0)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_min_content_height(220)
+        scroll.set_shadow_type(Gtk.ShadowType.NONE)
         rows = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        content.pack_start(rows, True, True, 4)
-        drive_locations = mounted_locations()
+        scroll.add(rows)
+        content.pack_start(scroll, True, True, 4)
         if not drive_locations:
             empty = Gtk.Label(label=t("Aucun volume externe détecté pour l'instant.", "No external volume detected yet."))
             empty.set_xalign(0)
             empty.get_style_context().add_class("preview-hint")
             rows.pack_start(empty, False, False, 12)
         for label, icon, target, tooltip, device, mounted_path, ejectable in drive_locations:
+            format_allowed, format_reason = can_offer_format(device, mounted_path) if device else (False, "")
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
             row.get_style_context().add_class("inspector-card")
             image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.MENU)
@@ -6847,8 +7356,17 @@ def run_files(start_path: str) -> int:
             detail.set_xalign(0)
             detail.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
             detail.get_style_context().add_class("preview-hint")
+            state_text = t("Prêt", "Ready") if mounted_path else t("Non monté", "Not mounted")
+            if device and not format_allowed:
+                state_text = f"{state_text} · {t('protégé', 'protected')}"
+            state = Gtk.Label(label=state_text)
+            state.set_xalign(0)
+            if device and format_reason:
+                state.set_tooltip_text(format_reason)
+            state.get_style_context().add_class("preview-hint")
             text_box.pack_start(name, False, False, 0)
             text_box.pack_start(detail, False, False, 0)
+            text_box.pack_start(state, False, False, 0)
             row.pack_start(image, False, False, 0)
             row.pack_start(text_box, True, True, 0)
 
@@ -6882,6 +7400,24 @@ def run_files(start_path: str) -> int:
                     ),
                 )
                 row.pack_start(eject_btn, False, False, 0)
+            if device and format_allowed:
+                format_btn = Gtk.Button(label=t("Formater…", "Format…"))
+                format_btn.get_style_context().add_class("selection-action")
+                format_btn.set_tooltip_text(t("Effacer et recréer le système de fichiers.", "Erase and recreate the filesystem."))
+                format_btn.connect(
+                    "clicked",
+                    lambda _button, dev=device, name_label=label, mount_path=mounted_path: (
+                        dialog.destroy(),
+                        format_device_dialog(dev, name_label, mount_path),
+                    ),
+                )
+                row.pack_start(format_btn, False, False, 0)
+            elif device:
+                why_btn = Gtk.Button(label=t("Pourquoi ?", "Why?"))
+                why_btn.get_style_context().add_class("selection-action")
+                why_btn.set_tooltip_text(format_reason or t("Voir pourquoi ce volume est protégé.", "See why this volume is protected."))
+                why_btn.connect("clicked", lambda _button, dev=device, mount_path=mounted_path: show_format_protection_reason(dev, mount_path))
+                row.pack_start(why_btn, False, False, 0)
             rows.pack_start(row, False, False, 0)
         dialog.show_all()
         dialog.run()
@@ -7120,7 +7656,11 @@ def run_files(start_path: str) -> int:
         add(t("Copier", "Copy"), t("Copier la sélection", "Copy selected item(s)"), copy_selected, bool(paths))
         add(t("Couper", "Cut"), t("Couper la sélection", "Cut selected item(s)"), cut_selected, bool(paths))
         add(t("Coller", "Paste"), t("Coller ici les éléments du presse-papiers", "Paste clipboard item(s) here"), paste_items)
-        add(t("Mettre à la corbeille", "Move to Trash"), t("Envoyer la sélection à la corbeille", "Send selected item(s) to Trash"), trash_selected, bool(paths))
+        if in_trash_view():
+            add(t("Détruire définitivement", "Destroy Permanently"), t("Écraser puis supprimer la sélection de la corbeille", "Overwrite then remove selected trash item(s)"), lambda: secure_destroy_paths(paths), bool(paths))
+            add(t("Vider la corbeille", "Empty Trash"), t("Détruire définitivement tous les éléments de la corbeille", "Permanently destroy all trash items"), empty_trash_secure)
+        else:
+            add(t("Mettre à la corbeille", "Move to Trash"), t("Envoyer la sélection à la corbeille", "Send selected item(s) to Trash"), trash_selected, bool(paths))
         add(t("Annuler dernière action", "Undo Last Action"), t("Annuler la dernière action compatible", "Reverse the last supported file action"), undo_last_action, bool(undo_stack))
         add(t("Aller", "Go"), t("Ouvrir récents, favoris et réseau", "Open recents, favorites and network places"), show_go_panel)
         add(t("Nouveau dossier", "New Folder"), t("Créer un dossier ici", "Create a folder in the current location"), create_folder)
@@ -7264,7 +7804,7 @@ def run_files(start_path: str) -> int:
             parts.append(format_size(total))
         if len(paths) == 1:
             parts.append(kind_label(paths[0]))
-        parts.append(t("actions dans ...", "actions in ..."))
+        parts.append(t("... pour plus d'actions", "... for more actions"))
         selection_label.set_text(" · ".join(parts))
         selection_bar.show()
         if len(paths) == 1 and paths[0].is_dir():

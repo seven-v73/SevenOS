@@ -1,0 +1,653 @@
+{
+  "schema": "sevenos.ai-agent-registry.v1",
+  "policy": {
+    "local_first": true,
+    "cloud_default": "disabled",
+    "execution_default": "preview",
+    "ledger": "required",
+    "confirmation_required_for": [
+      "system.write",
+      "packages.install",
+      "packages.remove",
+      "services.restart",
+      "network.change",
+      "profile.switch",
+      "files.delete",
+      "security.change",
+      "external.web",
+      "llm.cloud",
+      "personal.index",
+      "personal.snippet"
+    ]
+  },
+  "interaction_contracts": {
+    "schema": "sevenos.ai-interaction-contracts.v1",
+    "default_surface": "spotlight-chat",
+    "response_card": {
+      "schema": "sevenos.ai.response-card.v1",
+      "purpose": "Stable UI contract for conversational answers, action previews and quick actions.",
+      "required_fields": [
+        "title",
+        "answer",
+        "state",
+        "safety",
+        "controls"
+      ],
+      "optional_fields": [
+        "bullets",
+        "quick_actions",
+        "render"
+      ]
+    },
+    "decision_stack": {
+      "schema": "sevenos.ai.decision-stack.v1",
+      "purpose": "Ranked next-action contract for Spotlight, widgets and Settings.",
+      "ranking_order": [
+        "active mission continuation",
+        "real system risks: services, storage, network, memory",
+        "local memory and context",
+        "optional local model setup",
+        "user preferences and personalization"
+      ],
+      "ui_expectation": "Show one primary action, two alternatives and the reason for each action.",
+      "explain_command": "seven ai \"pourquoi cette action\" --json",
+      "safety": "Medium and high risk actions must remain preview/confirmation first."
+    },
+    "local_context": {
+      "default_scope": "metadata",
+      "content_scope": "opt-in",
+      "ranking": "name-title-snippet-recency",
+      "answer_mode": "compact conversational summary with quick actions",
+      "allowed": [
+        "system.state",
+        "apps.registry",
+        "window.context",
+        "local.index.metadata",
+        "habits.summary",
+        "mission.state"
+      ],
+      "requires_confirmation": [
+        "local.index.content",
+        "document.snippet",
+        "personal.fulltext.search",
+        "web.search",
+        "cloud.llm"
+      ],
+      "denied_by_default": [
+        "credentials.read",
+        "private.keys.read",
+        "browser.passwords.read",
+        "unapproved.fulltext.export"
+      ]
+    },
+    "local_memory": {
+      "schema": "sevenos.ai-local-memory-contract.v1",
+      "index_default": "metadata-only",
+      "content_index": "short-snippets-only-after-user-confirmation",
+      "profile_command": "seven ai \"ce que tu sais de moi\" --json",
+      "search_contract": "seven ai learning search <query> --json",
+      "scan_contract": "seven ai learning scan --json",
+      "snippet_contract": "seven ai learning scan --content --json",
+      "control_commands": [
+        "seven ai preferences --json",
+        "seven ai \"audit mémoire SevenAI\" --json",
+        "seven ai \"plan mémoire SevenAI\" --json",
+        "seven ai \"historique mémoire SevenAI\" --json",
+        "seven ai \"analyse ta mémoire\" --json",
+        "seven ai \"briefing mémoire\" --json",
+        "seven ai learning audit --json",
+        "seven ai learning history --json",
+        "seven ai learning insights --json",
+        "seven ai learning briefing --json",
+        "seven ai learning sources --json",
+        "seven ai \"montre tes sources\" --json",
+        "seven ai \"ajoute documents à ta mémoire\" --apply --json",
+        "seven ai \"retire downloads de ta mémoire\" --apply --json",
+        "seven ai \"état apprentissage local\" --json",
+        "seven ai \"active ton apprentissage\" --apply --json",
+        "seven ai \"scanne mes documents\" --apply --json",
+        "seven ai \"scanne avec extraits\" --apply --json",
+        "seven ai \"efface les extraits locaux\" --apply --json",
+        "seven ai \"efface ton index local\" --apply --json",
+        "seven ai learning disable --json",
+        "seven ai \"désactive ton apprentissage\" --apply --json",
+        "seven ai preferences clear --json"
+      ],
+      "ranking": [
+        "exact filename and title matches",
+        "snippet matches when content mode is enabled",
+        "document-friendly extensions",
+        "recently modified files"
+      ],
+      "ui_expectation": "Spotlight must show a short answer, top matches and safe open/scan actions instead of raw JSON.",
+      "privacy": [
+        "no cloud calls",
+        "no browser passwords",
+        "no private keys",
+        "no full-text export by default"
+      ]
+    },
+    "execution": {
+      "safe_read": "automatic",
+      "app_open": "automatic",
+      "system_write": "preview_then_confirm",
+      "destructive": "blocked_by_default",
+      "audit": "ledger_required"
+    },
+    "ui_controls": {
+      "submit": "Enter",
+      "newline": "Shift+Enter",
+      "close": "Esc",
+      "clear": "Ctrl+Backspace",
+      "confirm_action": "Ctrl+Enter"
+    },
+    "surfaces": [
+      "Spotlight",
+      "Settings",
+      "Doctor",
+      "Seven Files",
+      "Seven Store",
+      "Experience Center",
+      "Workspace Widgets"
+    ]
+  },
+  "agents": [
+    {
+      "id": "equinox.system",
+      "name": "Equinox System Steward",
+      "profile": "equinox",
+      "mission": "Coordinate SevenOS state, settings, updates, repair and recovery without opaque automation.",
+      "state": "ready",
+      "risk": "medium",
+      "permissions": [
+        "system.read",
+        "settings.preview",
+        "doctor.read",
+        "personal.habits.read",
+        "personal.index.preview",
+        "updates.preview",
+        "ledger.write"
+      ],
+      "requires_confirmation": [
+        "system.write",
+        "packages.install",
+        "services.restart",
+        "profile.switch",
+        "personal.index",
+        "personal.snippet",
+        "theme.apply"
+      ],
+      "denied_by_default": [
+        "files.delete",
+        "credentials.read",
+        "personal.fulltext.export",
+        "external.web",
+        "llm.cloud"
+      ],
+      "capabilities": [
+        "system-health",
+        "settings",
+        "updates",
+        "repair",
+        "profile-routing",
+        "first-run",
+        "local-memory"
+      ],
+      "handoff_triggers": [
+        "settings",
+        "réglages",
+        "paramètres",
+        "system status",
+        "état système",
+        "update",
+        "mise à jour",
+        "repair",
+        "réparer",
+        "machine slow",
+        "sevenos"
+      ],
+      "context_signals": [
+        "active_profile:equinox",
+        "app:seven-settings",
+        "app:seven-doctor",
+        "app:seven-spotlight",
+        "issue:health",
+        "issue:update"
+      ],
+      "surfaces": [
+        "Spotlight",
+        "Settings",
+        "Doctor",
+        "Experience Center"
+      ],
+      "status_command": "seven ai brain --json",
+      "tools": [
+        "seven health --json",
+        "seven doctor --json",
+        "seven update check",
+        "seven first-run verify --json"
+      ]
+    },
+    {
+      "id": "forge.dev",
+      "name": "Forge Development Agent",
+      "profile": "forge",
+      "mission": "Prepare development environments, explain build failures and route installations through SevenPkg.",
+      "state": "ready",
+      "risk": "medium",
+      "permissions": [
+        "system.read",
+        "projects.read",
+        "packages.preview",
+        "containers.preview",
+        "ledger.write"
+      ],
+      "requires_confirmation": [
+        "packages.install",
+        "containers.start",
+        "services.restart",
+        "files.write"
+      ],
+      "denied_by_default": [
+        "credentials.read",
+        "files.delete",
+        "external.web",
+        "llm.cloud"
+      ],
+      "capabilities": [
+        "code",
+        "builds",
+        "containers",
+        "dev-environments",
+        "git",
+        "sdk-routing",
+        "dev-package-routing"
+      ],
+      "handoff_triggers": [
+        "code",
+        "coder",
+        "compile",
+        "build",
+        "docker",
+        "podman",
+        "git",
+        "python",
+        "rust",
+        "node",
+        "vscode",
+        "forge"
+      ],
+      "context_signals": [
+        "active_profile:forge",
+        "app:code",
+        "app:codium",
+        "app:terminal",
+        "file:Cargo.toml",
+        "file:package.json",
+        "file:pyproject.toml"
+      ],
+      "surfaces": [
+        "Spotlight",
+        "Seven Store",
+        "Terminal",
+        "Forge Center"
+      ],
+      "status_command": "seven forge doctor --json",
+      "tools": [
+        "sevenpkg resolve <app> --json",
+        "seven forge doctor --json",
+        "docker ps",
+        "podman ps"
+      ]
+    },
+    {
+      "id": "shield.security",
+      "name": "Shield Security Agent",
+      "profile": "shield",
+      "mission": "Audit risks, explain alerts and run defensive checks with strict confirmation boundaries.",
+      "state": "ready",
+      "risk": "high",
+      "permissions": [
+        "system.read",
+        "network.read",
+        "security.audit",
+        "logs.read",
+        "ledger.write"
+      ],
+      "requires_confirmation": [
+        "security.change",
+        "network.change",
+        "services.restart",
+        "packages.install"
+      ],
+      "denied_by_default": [
+        "credentials.read",
+        "offensive.action",
+        "files.delete",
+        "external.web",
+        "llm.cloud"
+      ],
+      "capabilities": [
+        "security-audit",
+        "privacy",
+        "network-risk",
+        "failed-services",
+        "defensive-checks",
+        "forensics-preview"
+      ],
+      "handoff_triggers": [
+        "security",
+        "sécurité",
+        "audit",
+        "privacy",
+        "confidentialité",
+        "pare-feu",
+        "firewall",
+        "risk",
+        "malware",
+        "network scan",
+        "shield"
+      ],
+      "context_signals": [
+        "active_profile:shield",
+        "issue:failed-service",
+        "issue:network-risk",
+        "app:wireshark",
+        "app:burp",
+        "app:seven-doctor"
+      ],
+      "surfaces": [
+        "Spotlight",
+        "Shield Center",
+        "Doctor",
+        "Privacy Report"
+      ],
+      "status_command": "seven shield audit --json",
+      "tools": [
+        "seven shield audit --json",
+        "seven privacy-report --json",
+        "systemctl --failed --plain --no-legend"
+      ]
+    },
+    {
+      "id": "studio.creator",
+      "name": "Studio Creator Agent",
+      "profile": "studio",
+      "mission": "Guide creative workflows, media exports, device readiness and app routing without changing projects silently.",
+      "state": "ready",
+      "risk": "medium",
+      "permissions": [
+        "system.read",
+        "media.read",
+        "apps.preview",
+        "storage.read",
+        "ledger.write"
+      ],
+      "requires_confirmation": [
+        "packages.install",
+        "files.write",
+        "devices.change"
+      ],
+      "denied_by_default": [
+        "files.delete",
+        "credentials.read",
+        "external.web",
+        "llm.cloud"
+      ],
+      "capabilities": [
+        "creative-workflow",
+        "media-devices",
+        "rendering",
+        "audio-video",
+        "design-app-routing",
+        "storage-readiness"
+      ],
+      "handoff_triggers": [
+        "studio",
+        "blender",
+        "krita",
+        "gimp",
+        "kdenlive",
+        "obs",
+        "audio",
+        "video",
+        "montage",
+        "render",
+        "création",
+        "creation"
+      ],
+      "context_signals": [
+        "active_profile:studio",
+        "app:blender",
+        "app:krita",
+        "app:gimp",
+        "app:obs",
+        "file:mp4",
+        "file:blend"
+      ],
+      "surfaces": [
+        "Spotlight",
+        "Seven Store",
+        "Studio Center",
+        "Files"
+      ],
+      "status_command": "seven studio doctor --json",
+      "tools": [
+        "sevenpkg resolve blender --json",
+        "seven studio doctor --json",
+        "ffmpeg -version"
+      ]
+    },
+    {
+      "id": "pulse.gaming",
+      "name": "Pulse Gaming Agent",
+      "profile": "pulse",
+      "mission": "Prepare gaming sessions, performance mode, compatibility hints and Wine/Proton checks.",
+      "state": "ready",
+      "risk": "medium",
+      "permissions": [
+        "system.read",
+        "performance.read",
+        "apps.preview",
+        "compat.read",
+        "ledger.write"
+      ],
+      "requires_confirmation": [
+        "performance.change",
+        "packages.install",
+        "services.restart",
+        "wine.prefix.write"
+      ],
+      "denied_by_default": [
+        "files.delete",
+        "credentials.read",
+        "external.web",
+        "llm.cloud"
+      ],
+      "capabilities": [
+        "gaming-session",
+        "performance-mode",
+        "wine-compat",
+        "proton",
+        "streaming",
+        "controller-readiness"
+      ],
+      "handoff_triggers": [
+        "game",
+        "gaming",
+        "jeu",
+        "steam",
+        "lutris",
+        "heroic",
+        "proton",
+        "wine",
+        "bottles",
+        "fps",
+        "pulse"
+      ],
+      "context_signals": [
+        "active_profile:pulse",
+        "app:steam",
+        "app:lutris",
+        "app:bottles",
+        "file:exe",
+        "file:msi",
+        "issue:performance"
+      ],
+      "surfaces": [
+        "Spotlight",
+        "Pulse Center",
+        "Seven Files",
+        "Windows Apps"
+      ],
+      "status_command": "seven pulse doctor --json",
+      "tools": [
+        "seven pulse doctor --json",
+        "seven-wincompat doctor --json",
+        "powerprofilesctl get"
+      ]
+    },
+    {
+      "id": "atlas.research",
+      "name": "Atlas Knowledge Agent",
+      "profile": "atlas",
+      "mission": "Organize documents, OCR, maps, research memory and knowledge workflows with source awareness.",
+      "state": "ready",
+      "risk": "low",
+      "permissions": [
+        "system.read",
+        "documents.read",
+        "research.cache",
+        "apps.preview",
+        "ledger.write"
+      ],
+      "requires_confirmation": [
+        "external.web",
+        "files.write",
+        "packages.install"
+      ],
+      "denied_by_default": [
+        "files.delete",
+        "credentials.read",
+        "llm.cloud"
+      ],
+      "capabilities": [
+        "documents",
+        "ocr",
+        "maps",
+        "research",
+        "knowledge-base",
+        "reader",
+        "local-search"
+      ],
+      "handoff_triggers": [
+        "atlas",
+        "document",
+        "pdf",
+        "reader",
+        "ocr",
+        "recherche",
+        "research",
+        "carte",
+        "map",
+        "histoire",
+        "history",
+        "connaissance",
+        "knowledge"
+      ],
+      "context_signals": [
+        "active_profile:atlas",
+        "app:seven-reader",
+        "app:browser",
+        "file:pdf",
+        "file:epub",
+        "issue:local-index"
+      ],
+      "surfaces": [
+        "Spotlight",
+        "Seven Reader",
+        "Atlas Center",
+        "Files"
+      ],
+      "status_command": "seven atlas doctor --json",
+      "tools": [
+        "seven ai research <query> --json",
+        "seven atlas doctor --json",
+        "seven reader --json"
+      ]
+    },
+    {
+      "id": "baobab.culture",
+      "name": "Baobab Cultural Steward",
+      "profile": "baobab",
+      "mission": "Protect cultural context, sensitivity levels, community validation state and transmission workflows.",
+      "state": "ready",
+      "risk": "high",
+      "permissions": [
+        "system.read",
+        "baobab.public.read",
+        "culture.sensitivity.read",
+        "validation.status.read",
+        "ledger.write"
+      ],
+      "requires_confirmation": [
+        "baobab.content.write",
+        "external.web",
+        "files.write",
+        "packages.install"
+      ],
+      "denied_by_default": [
+        "sacred.publish",
+        "private.community.export",
+        "credentials.read",
+        "llm.cloud"
+      ],
+      "capabilities": [
+        "culture",
+        "languages",
+        "heritage",
+        "sensitivity",
+        "community-validation",
+        "archives",
+        "education"
+      ],
+      "handoff_triggers": [
+        "baobab",
+        "culture",
+        "afrique",
+        "africain",
+        "mali",
+        "empire",
+        "royaume",
+        "histoire",
+        "history",
+        "langue",
+        "heritage",
+        "patrimoine",
+        "rite",
+        "rituel",
+        "validation",
+        "sensible"
+      ],
+      "context_signals": [
+        "active_profile:baobab",
+        "app:baobab",
+        "issue:cultural-sensitivity",
+        "issue:community-validation",
+        "file:culture-pack"
+      ],
+      "surfaces": [
+        "Spotlight",
+        "Baobab Center",
+        "Reader",
+        "Files"
+      ],
+      "status_command": "seven baobab doctor --json",
+      "tools": [
+        "seven baobab doctor --json",
+        "seven baobab audit-packs --json",
+        "seven baobab sensitivity --json"
+      ]
+    }
+  ]
+}

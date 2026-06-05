@@ -154,6 +154,7 @@ channel.testing	System	Switch To Testing Channel	seven channel set testing	chang
 channel.stable	System	Switch To Stable Channel	seven channel set stable	changes	Mark the current workspace as stable when release gates are ready.
 apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS application library.
 spotlight.open	Desktop	Open Spotlight	seven-spotlight	safe	Open SevenOS Spotlight search and action surface.
+spotlight.ai	Desktop	Open Spotlight AI	seven-spotlight ai	safe	Open SevenAI inside Spotlight for app launching, machine questions and guided SevenOS actions.
 launchpad.open	Desktop	Open Launchpad	seven-launchpad-native	safe	Open the SevenOS profile-aware application grid.
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
 files.downloads	Desktop	Downloads	seven-files downloads	safe	Open Downloads for the active mini OS in Seven Files.
@@ -481,6 +482,7 @@ ai.focus	System	SevenAI Product Focus	seven ai focus	safe	Show the next product-
 ai.agent	System	SevenAI Agent	seven ai "open settings"	safe	Run the local SevenAI intent engine against a natural-language request.
 ai.apps	System	SevenAI App Registry	seven ai apps --json	safe	Show the app registry SevenAI uses before launching applications.
 ai.context	System	SevenAI Context	seven ai context --json	safe	Show SevenAI local system context from processes and Hyprland state.
+ai.brain	System	SevenAI Brain	seven ai brain --json	safe	Show the fast whole-system SevenOS map used by Spotlight AI and the manager.
 ai.memory	System	SevenAI Memory	seven ai memory --json	safe	Show the local-only SevenAI interaction memory log.
 ai.wifi	System	SevenAI Wi-Fi Repair Plan	seven ai "mon wifi ne marche pas"	safe	Let SevenAI diagnose a Wi-Fi repair intent before applying system changes.
 ai.theme.light	System	SevenAI Light Theme Plan	seven ai "mets le thème light"	safe	Let SevenAI understand and preview the SevenOS Light Mode switch.
@@ -488,10 +490,20 @@ ai.workspace	System	SevenAI Workspace Switch	seven ai "workspace 2"	safe	Switch 
 ai.shortcuts	System	SevenAI Shortcuts	seven ai shortcuts	safe	Show SevenOS keyboard shortcuts from the AI knowledge layer.
 ai.knowledge	System	SevenAI SevenOS Knowledge	seven ai knowledge	safe	Explain what SevenOS is, its surfaces and its daily workflow model.
 ai.llm	System	SevenAI LLM Contract	seven ai llm --json	safe	Show the provider-neutral local-first LLM and web architecture contract.
+ai.model_setup	System	SevenAI Local Model Setup	seven ai model-setup --apply --json	changes	Start Ollama, download the default local model if needed and persist SevenAI model config.
+ai.execution	System	SevenAI Execution Policy	seven ai execution --json	safe	Show how SevenAI separates auto, preview, confirmed and blocked system actions.
 ai.provider	System	SevenAI Local Provider	seven ai provider "mon wifi ne marche pas" --json	safe	Run the local-only SevenOS provider without tokens, accounts or external data flow.
 ai.diagnose	System	SevenAI Diagnostics	seven ai diagnose system --json	safe	Inspect local load, memory, disk, services, network and top processes.
 ai.playbook.wifi	System	SevenAI Wi-Fi Playbook	seven ai playbook wifi_repair --json	safe	Show the confirmed Wi-Fi repair playbook before applying changes.
 ai.research	System	SevenAI Research Cache	seven ai research "Hyprland" --json	safe	Show cached/offline-first research contract; web requires explicit --web.
+ai.runtime	System	SevenAI Agent Runtime	seven ai runtime --json	safe	Show the local-first SevenAI runtime, registry, ledger and execution policy.
+ai.agents	System	SevenAI Agent Registry	seven ai agents --json	safe	Show the seven domain agents mapped to Equinox and the mini OS spaces.
+ai.permissions	System	SevenAI Permission Graph	seven ai permissions --json	safe	Show which actions are allowed, denied or require confirmation before execution.
+ai.ledger	System	SevenAI Action Ledger	seven ai ledger --json	safe	Show the local action ledger used to explain what SevenAI planned or applied.
+ai.learning	System	SevenAI Local Learning	seven ai learning --json	safe	Show local learning status, approved folders, indexed documents and privacy mode.
+ai.learning.scan	System	SevenAI Learning Scan	seven ai learning scan --json	safe	Scan user-approved local folders into the local SevenAI metadata index.
+ai.habits	System	SevenAI Habits	seven ai habits --json	safe	Show local usage patterns learned from SevenAI memory without network access.
+ai.proactive	System	SevenAI Proactive Suggestions	seven ai proactive --json	safe	Show local-only proactive cards from approved files, habits and active Mini OS.
 store.open	Apps	SevenStore	seven store	safe	Browse SevenOS modules, Flatpak apps and safe OS actions from one catalog.
 store.modules	Apps	Store Modules	seven store modules	safe	Show installable SevenOS bundles with optional modules separated from required readiness.
 store.apps	Apps	Store Apps	seven store apps	safe	Show the Flatpak application catalog exposed through SevenStore.
