@@ -90,13 +90,22 @@ workspace_id_from_snapshot() {
   sed -nE 's/.*workspace=([^ ]+).*/\1/p' <<<"${1:-}" | head -n1
 }
 
-home_guard_enabled() {
+load_home_policy() {
   local prefs="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/workspace-home.env"
   if [[ -r "$prefs" ]]; then
     # shellcheck disable=SC1090
     source "$prefs"
   fi
+}
+
+home_guard_enabled() {
+  load_home_policy
   [[ "${SEVENOS_HOME_WORKSPACE_GUARD:-0}" == "1" ]]
+}
+
+home_workspace_id() {
+  load_home_policy
+  printf '%s' "${SEVENOS_HOME_WORKSPACE:-1}"
 }
 
 home_allowed_window() {
@@ -112,20 +121,71 @@ home_allowed_window() {
 
 home_target_workspace() {
   local text="$1"
+  load_home_policy
   case "$text" in
-    *firefox*|*Google-chrome*|*chromium*|*brave*|*zen*|*Web*|*Browser*) printf '3' ;;
-    *SevenReader*|*Foliate*|*Evince*|*zathura*|*calibre*|*LibreOffice*) printf '3' ;;
-    *vlc*|*mpv*|*Spotify*|*obs*|*kdenlive*) printf '4' ;;
-    *Wireshark*|*BurpSuite*|*burpsuite*|*Nmap*) printf '7' ;;
-    *) printf '2' ;;
+    *firefox*|*Google-chrome*|*chromium*|*brave*|*zen*|*Web*|*Browser*) printf '%s' "${SEVENOS_HOME_WEB_WORKSPACE:-3}" ;;
+    *SevenReader*|*Foliate*|*Evince*|*zathura*|*calibre*|*LibreOffice*) printf '%s' "${SEVENOS_HOME_WEB_WORKSPACE:-3}" ;;
+    *vlc*|*mpv*|*Spotify*|*obs*|*kdenlive*) printf '%s' "${SEVENOS_HOME_MEDIA_WORKSPACE:-4}" ;;
+    *Wireshark*|*BurpSuite*|*burpsuite*|*Nmap*) printf '%s' "${SEVENOS_HOME_SECURITY_WORKSPACE:-7}" ;;
+    *) printf '%s' "${SEVENOS_HOME_APPS_WORKSPACE:-2}" ;;
   esac
+}
+
+widgets_config_value() {
+  local key="$1" fallback="$2"
+  local config="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/widgets.json"
+  if [[ -r "$config" ]]; then
+    python - "$config" "$key" "$fallback" <<'PY' 2>/dev/null || printf '%s' "$fallback"
+import json
+import sys
+from pathlib import Path
+
+path, key, fallback = sys.argv[1:]
+try:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+value = data.get(key, fallback) if isinstance(data, dict) else fallback
+if isinstance(value, bool):
+    print("1" if value else "0")
+else:
+    print(value if value not in (None, "") else fallback)
+PY
+  else
+    printf '%s' "$fallback"
+  fi
+}
+
+widgets_visible() {
+  [[ "$(widgets_config_value visible 0)" == "1" ]]
+}
+
+close_home_widgets() {
+  pkill -f "[s]even-widgets-native desktop" >/dev/null 2>&1 || true
+  if command -v hyprctl >/dev/null 2>&1; then
+    hyprctl dispatch closewindow "title:^(Seven Widgets Desktop)$" >/dev/null 2>&1 || true
+  fi
+}
+
+sync_home_widgets() {
+  local snapshot="$1" workspace
+  workspace="$(workspace_id_from_snapshot "$snapshot")"
+  [[ -n "$workspace" ]] || return 0
+  if [[ "$workspace" == "$(home_workspace_id)" ]]; then
+    widgets_visible || return 0
+    pgrep -f "[s]even-widgets-native desktop" >/dev/null 2>&1 && return 0
+    if [[ -x "$ROOT_DIR/bin/seven-widgets-native" ]]; then
+      nohup "$ROOT_DIR/bin/seven-widgets-native" desktop >/dev/null 2>&1 &
+      write_event "home-widgets" "shown snapshot=$snapshot"
+    fi
+  fi
 }
 
 protect_home_workspace() {
   local event="$1" raw="$2" snapshot="$3"
   home_guard_enabled || return 0
-  [[ "$event" == "openwindow" || "$event" == "activewindow" ]] || return 0
-  [[ "$(workspace_id_from_snapshot "$snapshot")" == "1" ]] || return 0
+  [[ "$event" == "openwindow" ]] || return 0
+  [[ "$(workspace_id_from_snapshot "$snapshot")" == "$(home_workspace_id)" ]] || return 0
   local text="$raw $snapshot"
   home_allowed_window "$text" && return 0
   local target
@@ -133,7 +193,7 @@ protect_home_workspace() {
   if command -v hyprctl >/dev/null 2>&1; then
     hyprctl dispatch movetoworkspacesilent "$target" >/dev/null 2>&1 || true
     hyprctl dispatch workspace "$target" >/dev/null 2>&1 || true
-    write_event "home-guard" "moved-to=$target raw=$raw snapshot=$snapshot"
+    write_event "home-guard" "opened-on-home moved-to=$target raw=$raw snapshot=$snapshot"
   fi
 }
 
@@ -177,6 +237,9 @@ handle_event() {
       snapshot="$(snapshot_state 2>/dev/null || true)"
       write_event "$event" "$line"
       write_current_state "$event" "$line" "$snapshot"
+      if [[ "$event" == "workspace" || "$event" == "focusedmon" ]]; then
+        sync_home_widgets "$snapshot"
+      fi
       protect_home_workspace "$event" "$line" "$snapshot"
       ;;
   esac
@@ -239,6 +302,7 @@ poll_watch() {
     if [[ "$current" != "$previous" ]]; then
       write_event "state-change" "$current"
       write_current_state "state-change" "$current" "$current"
+      sync_home_widgets "$current"
       previous="$current"
     fi
     sleep "${SEVENOS_HYPR_LUA_EVENT_INTERVAL:-1}"

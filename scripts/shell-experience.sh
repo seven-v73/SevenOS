@@ -10,6 +10,7 @@ RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/sevenos"
 EXPERIENCE_DIR="$CONFIG_HOME/sevenos"
 EXPERIENCE_STATE="$EXPERIENCE_DIR/shell-experience.json"
 EXPERIENCE_EVENTS="$STATE_HOME/sevenos/shell-experience-events.jsonl"
+WORKSPACE_MEMORY="$STATE_HOME/sevenos/workspace-memory.json"
 EXPERIENCE_WARMUP_STAMP="$RUNTIME_DIR/shell-experience-warmup.stamp"
 
 usage() {
@@ -59,6 +60,19 @@ profile_role() {
     atlas) printf 'Atlas Explorer, documents, maps, OCR and references' ;;
     pulse) printf 'Games, captures, performance, low-latency focus' ;;
     *) printf 'Balanced SevenOS daily workspace' ;;
+  esac
+}
+
+profile_default_workspace() {
+  case "$1" in
+    equinox) printf '1' ;;
+    forge) printf '2' ;;
+    atlas) printf '3' ;;
+    studio) printf '4' ;;
+    pulse) printf '5' ;;
+    shield) printf '6' ;;
+    baobab) printf '7' ;;
+    *) printf '1' ;;
   esac
 }
 
@@ -153,6 +167,66 @@ write_state() {
   }
 }
 EOF
+}
+
+write_workspace_memory() {
+  local profile workspace now role
+  profile="$(active_profile)"
+  workspace="${1:-$(workspace_id)}"
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  role="$(profile_role "$profile")"
+  mkdir -p "$(dirname "$WORKSPACE_MEMORY")"
+  WORKSPACE_MEMORY="$WORKSPACE_MEMORY" PROFILE="$profile" WORKSPACE="$workspace" UPDATED_AT="$now" ROLE="$role" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ["WORKSPACE_MEMORY"])
+profile = os.environ.get("PROFILE", "equinox") or "equinox"
+workspace = os.environ.get("WORKSPACE", "1") or "1"
+updated_at = os.environ.get("UPDATED_AT", "")
+role = os.environ.get("ROLE", "SevenOS workspace")
+titles = {
+    "equinox": "Equinox",
+    "forge": "Forge",
+    "atlas": "Atlas",
+    "studio": "Studio",
+    "pulse": "Pulse",
+    "shield": "Shield",
+    "baobab": "Baobab",
+}
+data = {}
+if path.exists():
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            data = loaded
+    except Exception:
+        data = {}
+data.setdefault("schema", "sevenos.workspace-memory.v1")
+data.setdefault("created_at", updated_at)
+data["updated_at"] = updated_at
+data["source"] = "seven experience workspace"
+profiles = data.setdefault("profiles", {})
+entry = profiles.setdefault(profile, {})
+entry.update({
+    "title": titles.get(profile, profile.title()),
+    "intent": role,
+    "workspace": str(workspace),
+    "last_context": f"{titles.get(profile, profile.title())} on workspace {workspace}",
+})
+entry.setdefault("resume", [])
+path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+print(json.dumps({
+    "schema": "sevenos.workspace-memory.update.v1",
+    "state": "ready",
+    "path": str(path),
+    "profile": profile,
+    "workspace": str(workspace),
+    "profiles": len(profiles),
+    "updated_at": updated_at,
+}, ensure_ascii=False, indent=2))
+PY
 }
 
 recent_events_json() {
@@ -349,6 +423,11 @@ workspace_feedback() {
   fi
   event_log workspace "$id" "switched"
   write_state
+  if [[ "${2:-}" == "--json" || "${SEVENOS_JSON:-0}" == "1" ]]; then
+    write_workspace_memory "$id"
+  else
+    write_workspace_memory "$id" >/dev/null
+  fi
 }
 
 apply_experience() {
@@ -492,7 +571,11 @@ case "$action" in
     focus_feedback "${*:-Window}"
     ;;
   workspace)
-    workspace_feedback "${2:-$(workspace_id)}"
+    workspace_id_arg="${2:-$(workspace_id)}"
+    if [[ "$workspace_id_arg" == "--json" ]]; then
+      workspace_id_arg="$(profile_default_workspace "$(active_profile)")"
+    fi
+    workspace_feedback "$workspace_id_arg" "${3:-${2:-}}"
     ;;
   notify)
     notify_user "${2:-SevenOS}" "${3:-}"

@@ -2,230 +2,8 @@
   "schema": "sevenos.app-catalog.v1",
   "apps": [
     {
-      "id": "blender",
-      "name": "Blender",
-      "domain": "studio",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "org.blender.Blender"}
-      ],
-      "size": "large",
-      "risk": "low",
-      "permissions": ["files", "gpu"],
-      "summary": "3D creation, animation and rendering for Studio."
-    },
-    {
-      "id": "krita",
-      "name": "Krita",
-      "domain": "studio",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "org.kde.krita"}
-      ],
-      "size": "medium",
-      "risk": "low",
-      "permissions": ["files", "tablet"],
-      "summary": "Digital painting and illustration for Studio."
-    },
-    {
-      "id": "kdenlive",
-      "name": "Kdenlive",
-      "domain": "studio",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "org.kde.kdenlive"}
-      ],
-      "size": "large",
-      "risk": "low",
-      "permissions": ["files", "gpu", "audio"],
-      "summary": "Video editing and export pipeline for Studio."
-    },
-    {
-      "id": "obs-studio",
-      "name": "OBS Studio",
-      "domain": "studio",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "com.obsproject.Studio"}
-      ],
-      "size": "large",
-      "risk": "medium",
-      "permissions": ["screen-capture", "audio", "camera"],
-      "summary": "Recording and streaming surface for Studio."
-    },
-    {
-      "id": "code",
-      "name": "Visual Studio Code",
-      "domain": "forge",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "aur", "id": "visual-studio-code-bin"},
-        {"source": "pacman", "id": "vscodium"}
-      ],
-      "size": "medium",
-      "risk": "medium",
-      "permissions": ["files", "network", "extensions"],
-      "summary": "Code editor for Forge development workflows."
-    },
-    {
-      "id": "docker",
-      "name": "Docker",
-      "domain": "forge",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "pacman", "id": "podman"}
-      ],
-      "size": "medium",
-      "risk": "medium",
-      "permissions": ["containers", "network", "services"],
-      "summary": "Container runtime for Forge services and builds."
-    },
-    {
-      "id": "git",
-      "name": "Git",
-      "domain": "forge",
-      "recommended_source": "pacman",
-      "alternatives": [],
-      "size": "small",
-      "risk": "low",
-      "permissions": ["files", "network"],
-      "summary": "Version control foundation for Forge."
-    },
-    {
-      "id": "wireshark-qt",
-      "name": "Wireshark",
-      "domain": "shield",
-      "recommended_source": "pacman",
-      "alternatives": [],
-      "size": "medium",
-      "risk": "high",
-      "permissions": ["network-capture", "admin"],
-      "summary": "Network analysis for authorized Shield workflows."
-    },
-    {
-      "id": "nmap",
-      "name": "Nmap",
-      "domain": "shield",
-      "recommended_source": "pacman",
-      "alternatives": [],
-      "size": "small",
-      "risk": "high",
-      "permissions": ["network-scan", "authorized-scope"],
-      "summary": "Network discovery for authorized Shield audits."
-    },
-    {
-      "id": "hashcat",
-      "name": "Hashcat",
-      "domain": "shield",
-      "recommended_source": "pacman",
-      "alternatives": [],
-      "size": "medium",
-      "risk": "high",
-      "permissions": ["gpu", "authorized-scope"],
-      "summary": "Password recovery tool for scoped defensive work."
-    },
-    {
-      "id": "calibre",
-      "name": "Calibre",
-      "domain": "atlas",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "com.calibre_ebook.calibre"}
-      ],
-      "size": "medium",
-      "risk": "low",
-      "permissions": ["files", "library"],
-      "summary": "Library and ebook management for Atlas."
-    },
-    {
-      "id": "ocrmypdf",
-      "name": "OCRmyPDF",
-      "domain": "atlas",
-      "recommended_source": "aur",
-      "alternatives": [],
-      "size": "medium",
-      "risk": "medium",
-      "permissions": ["files", "ocr"],
-      "summary": "Searchable PDF generation for Atlas scans."
-    },
-    {
-      "id": "zotero-bin",
-      "name": "Zotero",
-      "domain": "atlas",
-      "recommended_source": "aur",
-      "alternatives": [],
-      "size": "medium",
-      "risk": "medium",
-      "permissions": ["files", "network", "references"],
-      "summary": "Research references and bibliography management for Atlas."
-    },
-    {
-      "id": "foliate",
-      "name": "Foliate",
-      "domain": "baobab",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "com.github.johnfactotum.Foliate"}
-      ],
-      "size": "small",
-      "risk": "low",
-      "permissions": ["files", "reading"],
-      "summary": "Reading surface for Baobab cultural documents."
-    },
-    {
-      "id": "anki",
-      "name": "Anki",
-      "domain": "baobab",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "net.ankiweb.Anki"}
-      ],
-      "size": "medium",
-      "risk": "low",
-      "permissions": ["files", "learning"],
-      "summary": "Spaced repetition for languages and cultural learning."
-    },
-    {
-      "id": "steam",
-      "name": "Steam",
-      "domain": "pulse",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "com.valvesoftware.Steam"}
-      ],
-      "size": "large",
-      "risk": "medium",
-      "permissions": ["network", "gpu", "controllers", "multilib"],
-      "summary": "Gaming library and Proton runtime for Pulse."
-    },
-    {
-      "id": "lutris",
-      "name": "Lutris",
-      "domain": "pulse",
-      "recommended_source": "pacman",
-      "alternatives": [
-        {"source": "flatpak", "id": "net.lutris.Lutris"}
-      ],
-      "size": "medium",
-      "risk": "medium",
-      "permissions": ["network", "wine", "games"],
-      "summary": "Game launcher and compatibility manager for Pulse."
-    },
-    {
-      "id": "heroic-games-launcher-bin",
-      "name": "Heroic Games Launcher",
-      "domain": "pulse",
-      "recommended_source": "aur",
-      "alternatives": [
-        {"source": "flatpak", "id": "com.heroicgameslauncher.hgl"}
-      ],
-      "size": "medium",
-      "risk": "medium",
-      "permissions": ["network", "games"],
-      "summary": "Epic, GOG and Amazon game library launcher for Pulse."
-    },
-    {
       "id": "firefox",
+      "aliases": ["browser", "web", "navigateur"],
       "name": "Firefox",
       "domain": "equinox",
       "recommended_source": "pacman",
@@ -239,6 +17,7 @@
     },
     {
       "id": "bottles",
+      "aliases": ["windows apps", "wine manager", "compat windows"],
       "name": "Bottles",
       "domain": "equinox",
       "recommended_source": "flatpak",
@@ -249,6 +28,599 @@
       "risk": "medium",
       "permissions": ["windows-compat", "files", "network"],
       "summary": "Windows app compatibility manager for SevenOS."
+    },
+    {
+      "id": "kitty",
+      "aliases": ["terminal", "console"],
+      "name": "Kitty",
+      "domain": "equinox",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["shell"],
+      "summary": "Fast terminal for Equinox and system maintenance."
+    },
+    {
+      "id": "code",
+      "aliases": ["vscode", "vs code", "visual studio code", "editor", "editeur"],
+      "name": "Visual Studio Code",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "aur", "id": "visual-studio-code-bin"},
+        {"source": "pacman", "id": "vscodium"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["files", "network", "extensions"],
+      "summary": "Code editor for Forge development workflows."
+    },
+    {
+      "id": "git",
+      "aliases": ["version control", "git client"],
+      "name": "Git",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files", "network"],
+      "summary": "Version control foundation for Forge."
+    },
+    {
+      "id": "docker",
+      "aliases": ["containers", "container", "devops"],
+      "name": "Docker",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "pacman", "id": "podman"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["containers", "network", "services"],
+      "summary": "Container runtime for Forge services and builds."
+    },
+    {
+      "id": "podman",
+      "aliases": ["rootless containers", "conteneurs"],
+      "name": "Podman",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "pacman", "id": "docker"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["containers", "network"],
+      "summary": "Rootless-friendly container runtime for Forge."
+    },
+    {
+      "id": "nodejs",
+      "aliases": ["node", "javascript", "npm"],
+      "name": "Node.js",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files", "network"],
+      "summary": "JavaScript runtime for Forge projects."
+    },
+    {
+      "id": "python",
+      "aliases": ["python3", "py"],
+      "name": "Python",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files"],
+      "summary": "Python runtime and scripting foundation for Forge."
+    },
+    {
+      "id": "lazygit",
+      "aliases": ["git tui", "git ui"],
+      "name": "Lazygit",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files", "network"],
+      "summary": "Terminal Git interface for Forge."
+    },
+    {
+      "id": "blender",
+      "aliases": ["3d", "render", "animation"],
+      "name": "Blender",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.blender.Blender"}
+      ],
+      "size": "large",
+      "risk": "low",
+      "permissions": ["files", "gpu"],
+      "summary": "3D creation, animation and rendering for Studio."
+    },
+    {
+      "id": "krita",
+      "aliases": ["paint", "drawing", "illustration"],
+      "name": "Krita",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.kde.krita"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "tablet"],
+      "summary": "Digital painting and illustration for Studio."
+    },
+    {
+      "id": "gimp",
+      "aliases": ["image editor", "photo editor", "retouche"],
+      "name": "GIMP",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.gimp.GIMP"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files"],
+      "summary": "Image editing and retouching for Studio."
+    },
+    {
+      "id": "inkscape",
+      "aliases": ["vector", "svg", "logo"],
+      "name": "Inkscape",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.inkscape.Inkscape"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files"],
+      "summary": "Vector graphics, logos and SVG production for Studio."
+    },
+    {
+      "id": "kdenlive",
+      "aliases": ["video editor", "montage video"],
+      "name": "Kdenlive",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.kde.kdenlive"}
+      ],
+      "size": "large",
+      "risk": "low",
+      "permissions": ["files", "gpu", "audio"],
+      "summary": "Video editing and export pipeline for Studio."
+    },
+    {
+      "id": "obs-studio",
+      "aliases": ["obs", "screen recorder", "streaming", "capture"],
+      "name": "OBS Studio",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.obsproject.Studio"}
+      ],
+      "size": "large",
+      "risk": "medium",
+      "permissions": ["screen-capture", "audio", "camera"],
+      "summary": "Recording and streaming surface for Studio."
+    },
+    {
+      "id": "audacity",
+      "aliases": ["audio editor", "sound editor", "audio"],
+      "name": "Audacity",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.audacityteam.Audacity"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["audio", "files"],
+      "summary": "Audio recording and editing for Studio."
+    },
+    {
+      "id": "ardour",
+      "aliases": ["daw", "music production", "production audio"],
+      "name": "Ardour",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.ardour.Ardour"}
+      ],
+      "size": "large",
+      "risk": "low",
+      "permissions": ["audio", "files"],
+      "summary": "Digital audio workstation for Studio."
+    },
+    {
+      "id": "wireshark-qt",
+      "aliases": ["wireshark", "packet capture", "network analyzer"],
+      "name": "Wireshark",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "high",
+      "permissions": ["network-capture", "admin"],
+      "summary": "Network analysis for authorized Shield workflows."
+    },
+    {
+      "id": "nmap",
+      "aliases": ["port scan", "network scan", "scanner reseau"],
+      "name": "Nmap",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "high",
+      "permissions": ["network-scan", "authorized-scope"],
+      "summary": "Network discovery for authorized Shield audits."
+    },
+    {
+      "id": "zaproxy",
+      "aliases": ["owasp zap", "zap", "web security"],
+      "name": "OWASP ZAP",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "large",
+      "risk": "high",
+      "permissions": ["network-scan", "authorized-scope"],
+      "summary": "Web application security testing for authorized Shield work."
+    },
+    {
+      "id": "metasploit",
+      "aliases": ["msfconsole", "pentest framework"],
+      "name": "Metasploit",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "large",
+      "risk": "high",
+      "permissions": ["authorized-scope", "network"],
+      "summary": "Security testing framework for scoped Shield labs."
+    },
+    {
+      "id": "sqlmap",
+      "aliases": ["sql injection", "web audit"],
+      "name": "sqlmap",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "high",
+      "permissions": ["authorized-scope", "network"],
+      "summary": "SQL injection auditing tool for authorized Shield work."
+    },
+    {
+      "id": "hashcat",
+      "aliases": ["password recovery", "gpu cracking"],
+      "name": "Hashcat",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "high",
+      "permissions": ["gpu", "authorized-scope"],
+      "summary": "Password recovery tool for scoped defensive work."
+    },
+    {
+      "id": "trivy",
+      "aliases": ["container scan", "vulnerability scan"],
+      "name": "Trivy",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["files", "network"],
+      "summary": "Container and dependency vulnerability scanning for Shield."
+    },
+    {
+      "id": "evince",
+      "aliases": ["pdf viewer", "pdf", "document viewer"],
+      "name": "Evince",
+      "domain": "atlas",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.gnome.Evince"}
+      ],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files", "reading"],
+      "summary": "PDF and document viewing for Atlas."
+    },
+    {
+      "id": "calibre",
+      "aliases": ["ebook", "library", "bibliotheque"],
+      "name": "Calibre",
+      "domain": "atlas",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.calibre_ebook.calibre"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "library"],
+      "summary": "Library and ebook management for Atlas."
+    },
+    {
+      "id": "xournalpp",
+      "aliases": ["notes pdf", "annotate pdf", "annotation"],
+      "name": "Xournal++",
+      "domain": "atlas",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.github.xournalpp.xournalpp"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "tablet"],
+      "summary": "PDF annotation and handwriting for Atlas."
+    },
+    {
+      "id": "pdfarranger",
+      "aliases": ["merge pdf", "split pdf", "organize pdf"],
+      "name": "PDF Arranger",
+      "domain": "atlas",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.github.jeromerobert.pdfarranger"}
+      ],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files"],
+      "summary": "Merge, split and reorder PDFs in Atlas."
+    },
+    {
+      "id": "tesseract",
+      "aliases": ["ocr", "text recognition", "scan text"],
+      "name": "Tesseract OCR",
+      "domain": "atlas",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "ocr"],
+      "summary": "OCR engine for Atlas scan and document workflows."
+    },
+    {
+      "id": "ocrmypdf",
+      "aliases": ["searchable pdf", "ocr pdf"],
+      "name": "OCRmyPDF",
+      "domain": "atlas",
+      "recommended_source": "aur",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["files", "ocr"],
+      "summary": "Searchable PDF generation for Atlas scans."
+    },
+    {
+      "id": "marble",
+      "aliases": ["maps", "map", "cartes"],
+      "name": "Marble",
+      "domain": "atlas",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["network", "location"],
+      "summary": "Map and globe exploration for Atlas."
+    },
+    {
+      "id": "recoll",
+      "aliases": ["local search", "document search", "recherche locale"],
+      "name": "Recoll",
+      "domain": "atlas",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "indexing"],
+      "summary": "Local document search for Atlas knowledge work."
+    },
+    {
+      "id": "zotero-bin",
+      "aliases": ["zotero", "bibliography", "references"],
+      "name": "Zotero",
+      "domain": "atlas",
+      "recommended_source": "aur",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["files", "network", "references"],
+      "summary": "Research references and bibliography management for Atlas."
+    },
+    {
+      "id": "foliate",
+      "aliases": ["reader", "ebook reader", "lecture"],
+      "name": "Foliate",
+      "domain": "baobab",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.github.johnfactotum.Foliate"}
+      ],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files", "reading"],
+      "summary": "Reading surface for Baobab cultural documents."
+    },
+    {
+      "id": "anki",
+      "aliases": ["flashcards", "learning cards", "apprentissage"],
+      "name": "Anki",
+      "domain": "baobab",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "net.ankiweb.Anki"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "learning"],
+      "summary": "Spaced repetition for languages and cultural learning."
+    },
+    {
+      "id": "kiwix-desktop",
+      "aliases": ["kiwix", "offline wiki", "offline knowledge"],
+      "name": "Kiwix",
+      "domain": "baobab",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "offline-content"],
+      "summary": "Offline knowledge archives for Baobab."
+    },
+    {
+      "id": "translate-shell",
+      "aliases": ["translate", "translation", "traduction"],
+      "name": "Translate Shell",
+      "domain": "baobab",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["network", "language"],
+      "summary": "Translation helper for language and heritage workflows."
+    },
+    {
+      "id": "espeak-ng",
+      "aliases": ["tts", "speech", "voice"],
+      "name": "eSpeak NG",
+      "domain": "baobab",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["audio", "language"],
+      "summary": "Text-to-speech foundation for Baobab language learning."
+    },
+    {
+      "id": "goldendict",
+      "aliases": ["dictionary", "dictionnaire"],
+      "name": "GoldenDict",
+      "domain": "baobab",
+      "recommended_source": "aur",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["files", "language"],
+      "summary": "Dictionary surface for Baobab language packs."
+    },
+    {
+      "id": "steam",
+      "aliases": ["games", "gaming", "proton"],
+      "name": "Steam",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.valvesoftware.Steam"}
+      ],
+      "size": "large",
+      "risk": "medium",
+      "permissions": ["network", "gpu", "controllers", "multilib"],
+      "summary": "Gaming library and Proton runtime for Pulse."
+    },
+    {
+      "id": "lutris",
+      "aliases": ["game launcher", "launcher jeux"],
+      "name": "Lutris",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "net.lutris.Lutris"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["network", "wine", "games"],
+      "summary": "Game launcher and compatibility manager for Pulse."
+    },
+    {
+      "id": "heroic-games-launcher-bin",
+      "aliases": ["heroic", "epic games", "gog"],
+      "name": "Heroic Games Launcher",
+      "domain": "pulse",
+      "recommended_source": "aur",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.heroicgameslauncher.hgl"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["network", "games"],
+      "summary": "Epic, GOG and Amazon game library launcher for Pulse."
+    },
+    {
+      "id": "gamescope",
+      "aliases": ["game compositor", "fullscreen gaming"],
+      "name": "Gamescope",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["gpu", "display"],
+      "summary": "Gaming compositor for fullscreen and scaling control in Pulse."
+    },
+    {
+      "id": "mangohud",
+      "aliases": ["fps overlay", "hud", "performance overlay"],
+      "name": "MangoHud",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["gpu", "metrics"],
+      "summary": "FPS and performance overlay for Pulse."
+    },
+    {
+      "id": "goverlay",
+      "aliases": ["mangohud gui", "hud settings"],
+      "name": "GOverlay",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["gpu", "settings"],
+      "summary": "Graphical configuration for MangoHud and gaming overlays."
+    },
+    {
+      "id": "wine",
+      "aliases": ["windows runtime", "windows compatibility"],
+      "name": "Wine",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "large",
+      "risk": "medium",
+      "permissions": ["windows-compat", "files"],
+      "summary": "Windows compatibility runtime for Pulse gaming and selected apps."
+    },
+    {
+      "id": "protontricks",
+      "aliases": ["proton tweaks", "steam proton tools"],
+      "name": "Protontricks",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "medium",
+      "permissions": ["games", "wine"],
+      "summary": "Per-game Proton tweaks for Pulse."
     }
   ]
 }

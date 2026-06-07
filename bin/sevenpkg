@@ -291,6 +291,10 @@ def app_catalog_map():
         app_id = str(item.get("id", "")).strip()
         if app_id:
             mapping[app_id] = item
+        for alias in item.get("aliases", []) or []:
+            alias_id = normalize_name(str(alias).strip())
+            if alias_id:
+                mapping.setdefault(alias_id, item)
         for alternative in item.get("alternatives", []) or []:
             alt_id = str(alternative.get("id", "")).strip() if isinstance(alternative, dict) else ""
             if alt_id:

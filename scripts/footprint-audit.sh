@@ -28,15 +28,150 @@ Usage:
   seven footprint
   seven footprint --json
   seven footprint plan
+  seven footprint cleanup
   seven footprint record
   seven footprint compare
   seven footprint trend
   seven footprint guard
-  scripts/footprint-audit.sh [status|json|plan|record|evidence|compare|trend|guard]
+  scripts/footprint-audit.sh [status|json|plan|cleanup|record|evidence|compare|trend|guard]
 
-This audit does not delete anything. It explains where SevenOS is heavy and
-which cleanup actions are safe to review before a public ISO freeze.
+The audit is read-only. The cleanup action removes only reconstructible caches
+and build work directories; it never removes notes, rootfs, Windows prefixes,
+VMs or user documents.
 EOF
+}
+
+human_bytes() {
+  python - "$1" <<'PY'
+import sys
+value = int(sys.argv[1] or 0)
+units = ["B", "KiB", "MiB", "GiB", "TiB"]
+size = float(value)
+unit = units[0]
+for unit in units:
+    if size < 1024 or unit == units[-1]:
+        break
+    size /= 1024
+if unit == "B":
+    print(f"{int(size)} {unit}")
+else:
+    print(f"{size:.1f} {unit}")
+PY
+}
+
+path_bytes() {
+  local path="$1"
+  [[ -e "$path" ]] || { printf '0\n'; return 0; }
+  du -sb "$path" 2>/dev/null | awk '{print $1}'
+}
+
+remove_user_path() {
+  local path="$1"
+  [[ -e "$path" ]] || return 0
+  rm -rf -- "$path" 2>/dev/null || return 1
+}
+
+remove_admin_path() {
+  local path="$1"
+  [[ -e "$path" ]] || return 0
+  if [[ "$(id -u)" == "0" ]]; then
+    rm -rf -- "$path"
+    return $?
+  fi
+  if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+    sudo rm -rf -- "$path"
+    return $?
+  fi
+  return 77
+}
+
+cleanup_json() {
+  local before after before_path after_path reclaimed=0 blocked=0 failed=0
+  local -a records=()
+  local path status bytes_after bytes_before
+
+  before="$(df -B1 "$HOME" | awk 'NR==2 {print $4}')"
+
+  for path in \
+    "$HOME/.cache/yay" \
+    "$HOME/.cache/ms-playwright" \
+    "$HOME/.cache/sevenos/aur" \
+    "$HOME/.cache/sevenos/file-thumbnails" \
+    "$HOME/.cache/sevenos/reader" \
+    "$HOME/.cache/go-build" \
+    "$HOME/.cache/pip/http-v2"
+  do
+    bytes_before="$(path_bytes "$path")"
+    status="missing"
+    if [[ "$bytes_before" -gt 0 ]]; then
+      if remove_user_path "$path"; then
+        status="removed"
+      else
+        status="failed"
+        failed=$((failed + 1))
+      fi
+    fi
+    bytes_after="$(path_bytes "$path")"
+    reclaimed=$((reclaimed + bytes_before - bytes_after))
+    records+=("{\"path\":\"$path\",\"scope\":\"user-cache\",\"state\":\"$status\",\"reclaimed_bytes\":$((bytes_before - bytes_after))}")
+  done
+
+  local state_dir="$HOME/.local/state/sevenos"
+  local removed_help=0 removed_events=0 before_state after_state
+  if [[ -d "$state_dir" ]]; then
+    shopt -s nullglob
+    local -a help_files=("$state_dir"/help-center-*.md)
+    local -a event_backups=("$state_dir"/events.jsonl.*.bak)
+    shopt -u nullglob
+
+    for path in "${help_files[@]}"; do
+      before_state="$(path_bytes "$path")"
+      rm -f -- "$path" 2>/dev/null || true
+      after_state="$(path_bytes "$path")"
+      removed_help=$((removed_help + before_state - after_state))
+    done
+    for path in "${event_backups[@]}"; do
+      before_state="$(path_bytes "$path")"
+      rm -f -- "$path" 2>/dev/null || true
+      after_state="$(path_bytes "$path")"
+      removed_events=$((removed_events + before_state - after_state))
+    done
+  fi
+  reclaimed=$((reclaimed + removed_help + removed_events))
+  records+=("{\"path\":\"$HOME/.local/state/sevenos/help-center-*.md\",\"scope\":\"state-cache\",\"state\":\"trimmed\",\"reclaimed_bytes\":$removed_help}")
+  records+=("{\"path\":\"$HOME/.local/state/sevenos/events.jsonl.*.bak\",\"scope\":\"state-cache\",\"state\":\"trimmed\",\"reclaimed_bytes\":$removed_events}")
+
+  for path in "$ROOT_DIR/out/archiso" "$ROOT_DIR/out/calamares-aur" "$RUNTIME_ROOT/out/archiso" "$RUNTIME_ROOT/out/calamares-aur"
+  do
+    bytes_before="$(path_bytes "$path")"
+    status="missing"
+    if [[ "$bytes_before" -gt 0 ]]; then
+      if remove_admin_path "$path"; then
+        status="removed"
+      else
+        code=$?
+        if [[ "$code" == 77 ]]; then
+          status="admin-required"
+          blocked=$((blocked + 1))
+        else
+          status="failed"
+          failed=$((failed + 1))
+        fi
+      fi
+    fi
+    bytes_after="$(path_bytes "$path")"
+    reclaimed=$((reclaimed + bytes_before - bytes_after))
+    records+=("{\"path\":\"$path\",\"scope\":\"admin-build-cache\",\"state\":\"$status\",\"reclaimed_bytes\":$((bytes_before - bytes_after))}")
+  done
+
+  after="$(df -B1 "$HOME" | awk 'NR==2 {print $4}')"
+  local state="cleaned"
+  [[ "$blocked" -gt 0 ]] && state="admin-required"
+  [[ "$failed" -gt 0 ]] && state="attention"
+  printf '{"schema":"sevenos.footprint-cleanup.v1","state":"%s","reclaimed_bytes":%s,"reclaimed":"%s","free_before":"%s","free_after":"%s","blocked":%s,"failed":%s,"items":[%s],"admin_command":"sudo rm -rf %q %q %q %q","policy":"Only reconstructible caches and build work directories are touched. Rootfs, VMs, Windows prefixes, notes and user documents are preserved."}\n' \
+    "$state" "$reclaimed" "$(human_bytes "$reclaimed")" "$(human_bytes "$before")" "$(human_bytes "$after")" "$blocked" "$failed" \
+    "$(IFS=,; printf '%s' "${records[*]}")" \
+    "$ROOT_DIR/out/archiso" "$ROOT_DIR/out/calamares-aur" "$RUNTIME_ROOT/out/archiso" "$RUNTIME_ROOT/out/calamares-aur"
 }
 
 latest_iso_in() {
@@ -790,6 +925,30 @@ PY
 }
 
 case "$ACTION" in
+  cleanup)
+    payload="$(cleanup_json)"
+    if [[ "$JSON" == 1 ]]; then
+      printf '%s\n' "$payload"
+    else
+      printf 'SevenOS Footprint Cleanup\n'
+      printf '=========================\n'
+      PAYLOAD="$payload" python - <<'PY'
+import json, os
+data = json.loads(os.environ.get("PAYLOAD", "{}"))
+print(f"State: {data.get('state', 'unknown')}")
+print(f"Reclaimed: {data.get('reclaimed', '0 B')}")
+print(f"Free: {data.get('free_before', 'unknown')} -> {data.get('free_after', 'unknown')}")
+for item in data.get("items", []):
+    state = item.get("state", "unknown")
+    reclaimed = item.get("reclaimed_bytes", 0)
+    print(f"- {state}: {item.get('path')} ({reclaimed} bytes)")
+if data.get("blocked"):
+    print("")
+    print("Admin cleanup still needed:")
+    print(data.get("admin_command"))
+PY
+    fi
+    ;;
   status|json|plan)
     payload="$(collect_json)"
     if [[ "$JSON" == 1 || "$ACTION" == "json" ]]; then

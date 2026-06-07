@@ -2577,7 +2577,7 @@ def main():
     production_parser.add_argument("--json", action="store_true", help="print machine-readable production readiness contract")
     production_parser.add_argument("--full", action="store_true", help="run the older deep script audit instead of the fast native contract")
     footprint_parser = subparsers.add_parser("footprint", help="audit SevenOS size, ISO evidence and cleanup readiness")
-    footprint_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "plan", "record", "evidence", "compare", "trend", "guard"))
+    footprint_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "plan", "cleanup", "record", "evidence", "compare", "trend", "guard"))
     footprint_parser.add_argument("--json", action="store_true", help="print machine-readable footprint audit")
     beta_parser = subparsers.add_parser("beta", help="alias for SevenOS public beta readiness")
     beta_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json", "validate"))

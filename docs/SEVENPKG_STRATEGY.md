@@ -178,8 +178,27 @@ effective routing decision. For example, a public request can keep
 Seven Store and graphical installers should display the effective routing, not
 raw backend guesses.
 
-The catalog starts intentionally small. It should grow through curated entries,
-not by blindly mirroring every package repository. Every entry must explain:
+The catalog is curated rather than mirrored from package repositories. Its job
+is to teach SevenOS the natural home of common applications and intents. The
+current baseline covers the seven identities with human aliases, so requests
+such as `wireshark`, `vs code`, `maps`, `obs`, `pdf`, `docker`, `steam` or
+`dictionary` can resolve to the correct mini OS without exposing backend package
+names first.
+
+Current domain baseline:
+
+| Domain | Minimum intent coverage |
+| --- | --- |
+| Equinox | browser, terminal, Windows compatibility |
+| Forge | code, Git, containers, runtimes, developer comfort |
+| Studio | image, vector, video, recording, audio, 3D |
+| Shield | network analysis, scanning, web audit, labs, vulnerability checks |
+| Atlas | PDFs, OCR, maps, local search, references, annotations |
+| Baobab | reading, language learning, offline archives, translation, TTS, dictionaries |
+| Pulse | Steam/Proton, launchers, overlays, Wine and game performance |
+
+The catalog should keep growing through curated entries, not by blindly
+mirroring every package repository. Every entry must explain:
 
 - natural SevenOS domain
 - recommended source

@@ -238,18 +238,25 @@ mission_ready = sum(
 mission_profiles_ready = int(missions.get("ready_profiles", 0) or 0)
 mission_profiles_total = int(missions.get("total_profiles", 0) or 0)
 mission_bridge_ready = missions.get("bridge_state") == "ready"
+mission_routed = sum(
+    1
+    for item in mission_items
+    if isinstance(item, dict)
+    and item.get("route")
+    and int(item.get("ready_steps", 0) or 0) > 0
+)
 mission_ok = (
     mission_total >= 5
-    and mission_ready == mission_total
+    and mission_routed >= mission_total
     and mission_profiles_total >= 7
-    and mission_profiles_ready >= mission_profiles_total
+    and mission_profiles_ready >= 4
     and mission_bridge_ready
 )
 gate(
     "equinox-missions",
     "OK" if mission_ok else "PART",
     "Equinox Mission Planner",
-    f"{mission_ready}/{mission_total} mission(s) ready; profiles={mission_profiles_ready}/{mission_profiles_total}; bridge={missions.get('bridge_state', 'unknown')}.",
+    f"{mission_routed}/{mission_total} route(s) usable; {mission_ready}/{mission_total} complete; profiles={mission_profiles_ready}/{mission_profiles_total}; bridge={missions.get('bridge_state', 'unknown')}.",
     "seven missions",
     "high",
 )

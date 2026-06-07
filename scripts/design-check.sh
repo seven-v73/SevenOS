@@ -615,6 +615,10 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    grep -q '"battery"' "$ROOT_DIR/bin/seven-widgets-native" &&
    grep -q '"media"' "$ROOT_DIR/bin/seven-widgets-native" &&
    grep -q '"tasks"' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q '"ai"' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q '"updates"' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q '"recent"' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q '"apps"' "$ROOT_DIR/bin/seven-widgets-native" &&
    grep -q 'WIDGET_CATEGORIES' "$ROOT_DIR/bin/seven-widgets-native" &&
    grep -q 'widget_category_title' "$ROOT_DIR/bin/seven-widgets-native" &&
    grep -q 'widget_search_text' "$ROOT_DIR/bin/seven-widgets-native" &&
@@ -645,6 +649,16 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    grep -q 'focus-stack' "$ROOT_DIR/bin/seven-widgets-native" &&
    grep -q 'tasks_widget_card' "$ROOT_DIR/bin/seven-widgets-native" &&
    grep -q 'mini_os_widget_card' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'ai_widget_card' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'recent_widget_card' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'apps_widget_card' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'HOME_PREFS_FILE' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'set_home_guard' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q '"home_guard": True' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'guard_home_workspace' "$ROOT_DIR/bin/seven-widgets-native" &&
+   grep -q 'SEVENOS_HOME_WORKSPACE_GUARD' "$ROOT_DIR/scripts/hypr-lua-events.sh" &&
+   grep -q 'home_target_workspace' "$ROOT_DIR/scripts/hypr-lua-events.sh" &&
+   grep -q 'sync_home_widgets_for_workspace' "$ROOT_DIR/bin/seven-workspace" &&
    grep -q '"categories": categories' "$ROOT_DIR/scripts/tools.sh" &&
    grep -q 'sevenos.tools.detail.v1' "$ROOT_DIR/scripts/tools.sh" &&
    grep -q 'tools.detail.files' "$ROOT_DIR/scripts/actions.sh" &&

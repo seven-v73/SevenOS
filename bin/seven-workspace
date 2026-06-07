@@ -3,6 +3,9 @@ set -Eeuo pipefail
 
 WORKSPACE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/workspace"
 WORKSPACE_STATE_FILE="$WORKSPACE_STATE_DIR/current.json"
+SEVENOS_ROOT="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+WIDGET_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/widgets.json"
+HOME_POLICY="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/workspace-home.env"
 
 workspace_title() {
   case "$1" in
@@ -68,6 +71,61 @@ current_workspace_id() {
   fi
 }
 
+json_config_value() {
+  local key="$1" fallback="$2"
+  if [[ -r "$WIDGET_CONFIG" ]]; then
+    python - "$WIDGET_CONFIG" "$key" "$fallback" <<'PY' 2>/dev/null || printf '%s' "$fallback"
+import json
+import sys
+from pathlib import Path
+
+path, key, fallback = sys.argv[1:]
+try:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+value = data.get(key, fallback) if isinstance(data, dict) else fallback
+if isinstance(value, bool):
+    print("1" if value else "0")
+else:
+    print(value if value not in (None, "") else fallback)
+PY
+  else
+    printf '%s' "$fallback"
+  fi
+}
+
+home_workspace_id() {
+  if [[ -r "$HOME_POLICY" ]]; then
+    # shellcheck disable=SC1090
+    source "$HOME_POLICY"
+  fi
+  printf '%s' "${SEVENOS_HOME_WORKSPACE:-$(json_config_value home_workspace 1)}"
+}
+
+widgets_visible() {
+  [[ "$(json_config_value visible 0)" == "1" ]]
+}
+
+close_home_widgets() {
+  pkill -f "[s]even-widgets-native desktop" >/dev/null 2>&1 || true
+  if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    hyprctl dispatch closewindow "title:^(Seven Widgets Desktop)$" >/dev/null 2>&1 || true
+  fi
+}
+
+sync_home_widgets_for_workspace() {
+  local id="$1" home
+  home="$(home_workspace_id)"
+  if [[ "$id" == "$home" ]]; then
+    widgets_visible || return 0
+    pgrep -f "[s]even-widgets-native desktop" >/dev/null 2>&1 && return 0
+    if [[ -x "$SEVENOS_ROOT/bin/seven-widgets-native" ]]; then
+      nohup "$SEVENOS_ROOT/bin/seven-widgets-native" desktop >/dev/null 2>&1 &
+    fi
+  fi
+}
+
 write_state() {
   local id="$1"
   mkdir -p "$WORKSPACE_STATE_DIR"
@@ -102,7 +160,7 @@ notify_workspace() {
 experience_workspace() {
   local id="$1"
   local root
-  root="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+  root="$SEVENOS_ROOT"
   if [[ -x "$root/scripts/shell-experience.sh" ]]; then
     "$root/scripts/shell-experience.sh" workspace "$id" >/dev/null 2>&1 || true
   fi
@@ -117,6 +175,7 @@ dispatch_workspace() {
   local id
   id="$(current_workspace_id)"
   write_state "$id"
+  sync_home_widgets_for_workspace "$id"
   notify_workspace "$id"
   experience_workspace "$id"
 }
