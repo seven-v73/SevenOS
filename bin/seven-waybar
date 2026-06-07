@@ -173,6 +173,129 @@ print(json.dumps({
 PY
 }
 
+performance_json() {
+  WAYBAR_PIDS="$(pgrep -u "$USER" -x waybar 2>/dev/null | tr '\n' ' ' || true)" \
+  CONTEXT_PIDS="$(pgrep -u "$USER" -f '(^|/| )seven-waybar-context daemon( |$)' 2>/dev/null | tr '\n' ' ' || true)" \
+  python - <<'PY'
+import json
+import os
+import subprocess
+
+
+def process_rows(pids_text):
+    pids = [pid for pid in str(pids_text or "").split() if pid.isdigit()]
+    if not pids:
+        return []
+    try:
+        out = subprocess.run(
+            ["ps", "-o", "pid=,pcpu=,pmem=,rss=,etimes=,comm=", "-p", ",".join(pids)],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=1.0,
+        ).stdout
+    except Exception:
+        return []
+    rows = []
+    for line in out.splitlines():
+        parts = line.split(None, 5)
+        if len(parts) < 6:
+            continue
+        try:
+            rows.append({
+                "pid": int(parts[0]),
+                "cpu_percent": float(parts[1]),
+                "mem_percent": float(parts[2]),
+                "rss_kib": int(parts[3]),
+                "elapsed_seconds": int(parts[4]),
+                "command": parts[5],
+            })
+        except ValueError:
+            continue
+    return rows
+
+
+waybar = process_rows(os.environ.get("WAYBAR_PIDS"))
+context = process_rows(os.environ.get("CONTEXT_PIDS"))
+waybar_cpu = sum(row["cpu_percent"] for row in waybar)
+context_cpu = sum(row["cpu_percent"] for row in context)
+waybar_rss = sum(row["rss_kib"] for row in waybar)
+context_rss = sum(row["rss_kib"] for row in context)
+checks = [
+    {
+        "id": "single-waybar-process",
+        "state": "OK" if len(waybar) == 1 else "WARN",
+        "detail": f"{len(waybar)} waybar process(es)",
+        "limit": "1",
+    },
+    {
+        "id": "waybar-cpu-budget",
+        "state": "OK" if waybar_cpu <= 8.0 else "WARN",
+        "detail": f"{waybar_cpu:.1f}% average CPU",
+        "limit": "<=8%",
+    },
+    {
+        "id": "waybar-memory-budget",
+        "state": "OK" if waybar_rss <= 200 * 1024 else "WARN",
+        "detail": f"{round(waybar_rss / 1024, 1)} MiB RSS",
+        "limit": "<=200 MiB",
+    },
+    {
+        "id": "single-context-daemon",
+        "state": "OK" if len(context) == 1 else "WARN",
+        "detail": f"{len(context)} context daemon(s)",
+        "limit": "1",
+    },
+    {
+        "id": "context-cpu-budget",
+        "state": "OK" if context_cpu <= 4.0 else "WARN",
+        "detail": f"{context_cpu:.1f}% average CPU",
+        "limit": "<=4%",
+    },
+]
+state = "OK" if all(check["state"] == "OK" for check in checks) else "WARN"
+print(json.dumps({
+    "schema": "sevenos.waybar.performance.v1",
+    "state": state,
+    "summary": {
+        "waybar_cpu_percent": round(waybar_cpu, 2),
+        "waybar_rss_kib": waybar_rss,
+        "context_cpu_percent": round(context_cpu, 2),
+        "context_rss_kib": context_rss,
+    },
+    "processes": {
+        "waybar": waybar,
+        "context": context,
+    },
+    "checks": checks,
+}, ensure_ascii=False))
+PY
+}
+
+performance_human() {
+  local payload
+  payload="$(performance_json)"
+  PAYLOAD="$payload" python - <<'PY'
+import json
+import os
+
+
+def mib(kib):
+    return round(int(kib or 0) / 1024, 1)
+
+
+data = json.loads(os.environ.get("PAYLOAD") or "{}")
+summary = data.get("summary") or {}
+print("SevenOS Waybar Performance")
+print(f"State: {data.get('state')}")
+print(f"Waybar: CPU {summary.get('waybar_cpu_percent', 0)}% · RSS {mib(summary.get('waybar_rss_kib'))} MiB")
+print(f"Context: CPU {summary.get('context_cpu_percent', 0)}% · RSS {mib(summary.get('context_rss_kib'))} MiB")
+for check in data.get("checks", []):
+    marker = "OK" if check.get("state") == "OK" else "WARN"
+    print(f"[{marker}] {check.get('id')}: {check.get('detail')} · limit: {check.get('limit')}")
+PY
+}
+
 limits_json() {
   local source_config source_style
   source_config="$CONFIG"
@@ -241,12 +364,30 @@ def add(identifier, ok, detail, limit=""):
     })
 
 
+def effective_min_width(selector):
+    matches = re.findall(rf"{re.escape(selector)}\s*\{{[^}}]*min-width:\s*(\d+)px", style, re.S)
+    if not matches:
+        return None
+    try:
+        return int(matches[-1])
+    except Exception:
+        return None
+
+
 try:
     config = json.loads(strip_jsonc(config_path.read_text(encoding="utf-8")))
 except Exception:
     config = {}
 style = style_path.read_text(encoding="utf-8", errors="ignore") if style_path.exists() else ""
 is_baobab_waybar = config.get("schema") == "sevenos.baobab.waybar.v1"
+style_lines = len(style.splitlines())
+prefs_path = Path(os.environ.get("HOME", "")) / ".config/sevenos/waybar.conf"
+prefs_text = prefs_path.read_text(encoding="utf-8", errors="ignore") if prefs_path.exists() else ""
+prefs_keys = {
+    line.split("=", 1)[0].strip()
+    for line in prefs_text.splitlines()
+    if line.strip() and not line.strip().startswith("#") and "=" in line
+}
 
 left = config.get("modules-left", [])
 center = config.get("modules-center", [])
@@ -257,8 +398,10 @@ add("left-menu-density", len(left) <= 12, f"{len(left)} left module slots", "<=1
 add("right-control-density", len(right) <= 9, f"{len(right)} right module slots", "<=9")
 height_limit = 40 if is_baobab_waybar else 30
 spacing_limit = 10 if is_baobab_waybar else 4
+style_line_limit = 1800 if is_baobab_waybar else 1500
 add("height", int(config.get("height") or 0) <= height_limit, f"height={config.get('height')}", f"<={height_limit}")
 add("spacing", int(config.get("spacing") or 0) <= spacing_limit, f"spacing={config.get('spacing')}", f"<={spacing_limit}")
+add("style-line-budget", style_lines <= style_line_limit, f"{style_lines} active CSS lines", f"<={style_line_limit}")
 if is_baobab_waybar and "hyprland/window" not in config:
     add("window-max-length", True, "not used in Baobab ritual bar", "n/a")
 else:
@@ -268,6 +411,9 @@ dynamic_modules = {
     key: value for key, value in config.items()
     if isinstance(key, str) and key.startswith("custom/") and isinstance(value, dict) and value.get("exec")
 }
+visible_modules = [module for module in left + center + right if isinstance(module, str)]
+visible_custom_modules = [module for module in visible_modules if module.startswith("custom/")]
+visible_app_slots = {module for module in visible_custom_modules if module.startswith("custom/app-")}
 too_fast = []
 for key, value in dynamic_modules.items():
     interval = value.get("interval")
@@ -292,11 +438,21 @@ add("polling-budget", not too_fast, ", ".join(too_fast) if too_fast else "pollin
 
 json_missing = [key for key, value in dynamic_modules.items() if value.get("return-type") != "json"]
 add("json-contracts", not json_missing, ", ".join(json_missing) if json_missing else "dynamic modules return JSON", "all dynamic custom modules")
+custom_definitions = [key for key in config if isinstance(key, str) and key.startswith("custom/")]
+definition_limit = len(visible_custom_modules) + 2
+add(
+    "custom-definition-budget",
+    is_baobab_waybar or len(custom_definitions) <= definition_limit,
+    f"{len(custom_definitions)} custom definitions for {len(visible_custom_modules)} visible custom modules",
+    f"<={definition_limit}",
+)
 
 add("no-min-width-transition", "min-width 180ms" not in style, "min-width is not animated" if "min-width 180ms" not in style else "min-width transition can cause layout swim", "avoid width animation")
 add("recorder-fixed-width", True if is_baobab_waybar else bool(re.search(r"#custom-recorder\.idle\s*\{[^}]*min-width:\s*24px", style, re.S)), "not used in Baobab ritual bar" if is_baobab_waybar else "recorder idle slot is fixed", "n/a" if is_baobab_waybar else "24px")
 add("workspace-fixed-width", bool(re.search(r"#workspaces button\s*\{[^}]*min-width:\s*24px", style, re.S)) or is_baobab_waybar, "workspace buttons keep stable width" if not is_baobab_waybar else "Baobab workspaces are compact and bounded", "24px")
-add("profile-fixed-width", True if is_baobab_waybar else bool(re.search(r"#custom-profile\s*\{[^}]*min-width:\s*58px", style, re.S)), "not used in Baobab ritual bar" if is_baobab_waybar else "profile capsule has stable width", "n/a" if is_baobab_waybar else ">=58px")
+profile_min_width = effective_min_width("#custom-profile")
+add("profile-fixed-width", True if is_baobab_waybar else bool(profile_min_width and profile_min_width >= 58), "not used in Baobab ritual bar" if is_baobab_waybar else f"profile capsule width={profile_min_width or 'missing'}px", "n/a" if is_baobab_waybar else ">=58px")
+legacy_app_slots_visible = bool(visible_app_slots & {"custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra"})
 stable_app_slots = all(
     re.search(pattern, style, re.S)
     for pattern in (
@@ -306,10 +462,11 @@ stable_app_slots = all(
         r"#custom-app-extra\s*\{[^}]*min-width:\s*62px",
     )
 )
-add("app-menu-fixed-slots", stable_app_slots or is_baobab_waybar, "not used in Baobab ritual bar" if is_baobab_waybar else "active app menu slots keep stable width", "n/a" if is_baobab_waybar else "file/edit/view/extra fixed")
-add("app-menu-hidden-collapse", is_baobab_waybar or ("#custom-app-extra.hidden" in style and "#custom-app-tools.hidden" in style), "not used in Baobab ritual bar" if is_baobab_waybar else "compact app menus collapse cleanly", "n/a" if is_baobab_waybar else "hidden app menu slots")
-add("hidden-collapse-contained", is_baobab_waybar or ("#custom-app-more.hidden" in style and "#custom-system-status.hidden" in style), "not used in Baobab ritual bar" if is_baobab_waybar else "hidden dynamic modules collapse intentionally", "n/a" if is_baobab_waybar else "explicit hidden rules")
-add("context-signal-throttle", "signal_min_interval" in (Path(os.environ.get("HOME", "")) / ".config/sevenos/waybar.conf").read_text(encoding="utf-8", errors="ignore") if (Path(os.environ.get("HOME", "")) / ".config/sevenos/waybar.conf").exists() else True, "context signal throttle supported", ">=1.2s dynamic")
+add("app-menu-fixed-slots", stable_app_slots or is_baobab_waybar or not legacy_app_slots_visible, "single app-menu capsule is visible" if not legacy_app_slots_visible and not is_baobab_waybar else ("not used in Baobab ritual bar" if is_baobab_waybar else "active app menu slots keep stable width"), "n/a" if is_baobab_waybar or not legacy_app_slots_visible else "file/edit/view/extra fixed")
+add("app-menu-hidden-collapse", is_baobab_waybar or not legacy_app_slots_visible or ("#custom-app-extra.hidden" in style and "#custom-app-tools.hidden" in style), "single app-menu capsule is visible" if not legacy_app_slots_visible and not is_baobab_waybar else ("not used in Baobab ritual bar" if is_baobab_waybar else "compact app menus collapse cleanly"), "n/a" if is_baobab_waybar or not legacy_app_slots_visible else "hidden app menu slots")
+add("hidden-collapse-contained", is_baobab_waybar or ("custom/app-more" not in visible_custom_modules and "#custom-system-status.hidden" in style) or ("#custom-app-more.hidden" in style and "#custom-system-status.hidden" in style), "hidden dynamic modules collapse intentionally", "explicit hidden rules")
+add("context-prefs-complete", {"context", "signal_min_interval", "density", "waybar"}.issubset(prefs_keys) if prefs_path.exists() else True, "context preferences are complete" if not prefs_path.exists() or {"context", "signal_min_interval", "density", "waybar"}.issubset(prefs_keys) else f"missing {sorted({'context', 'signal_min_interval', 'density', 'waybar'} - prefs_keys)}", "context + signal + density + waybar")
+add("context-signal-throttle", "signal_min_interval" in prefs_keys if prefs_path.exists() else True, "context signal throttle supported", ">=1.2s dynamic")
 
 state = "OK" if all(item["state"] == "OK" for item in checks) else "WARN"
 print(json.dumps({
@@ -323,7 +480,8 @@ print(json.dumps({
         "center": len(center),
         "right": len(right),
         "dynamic_custom_modules": len(dynamic_modules),
-        "visible_custom_modules": len([module for module in left + center + right if isinstance(module, str) and module.startswith("custom/")]),
+        "visible_custom_modules": len(visible_custom_modules),
+        "style_lines": style_lines,
     },
     "checks": checks,
     "modes": {
@@ -336,10 +494,11 @@ PY
 }
 
 doctor_json() {
-  local status limits
+  local status limits performance
   status="$(status_json)"
   limits="$(limits_json)"
-  STATUS_JSON="$status" LIMITS_JSON="$limits" python - <<'PY'
+  performance="$(performance_json)"
+  STATUS_JSON="$status" LIMITS_JSON="$limits" PERFORMANCE_JSON="$performance" python - <<'PY'
 import json
 import os
 
@@ -351,19 +510,26 @@ try:
     limits = json.loads(os.environ.get("LIMITS_JSON") or "{}")
 except Exception:
     limits = {}
+try:
+    performance = json.loads(os.environ.get("PERFORMANCE_JSON") or "{}")
+except Exception:
+    performance = {}
 
-states = [status.get("state"), limits.get("state")]
+states = [status.get("state"), limits.get("state"), performance.get("state")]
 ok = all(state == "OK" for state in states)
 recommendations = []
 if status.get("state") != "OK":
     recommendations.append("seven-waybar repair")
 if limits.get("state") != "OK":
     recommendations.append("seven-waybar limits")
+if performance.get("state") != "OK":
+    recommendations.append("seven-waybar optimize")
 print(json.dumps({
     "schema": "sevenos.waybar.doctor.v1",
     "state": "OK" if ok else "WARN",
     "status": status,
     "limits": limits,
+    "performance": performance,
     "recommendations": recommendations,
 }, ensure_ascii=False))
 PY
@@ -379,14 +545,20 @@ import os
 data = json.loads(os.environ.get("PAYLOAD") or "{}")
 status = data.get("status") or {}
 limits = data.get("limits") or {}
+performance = data.get("performance") or {}
 summary = limits.get("summary") or {}
+perf_summary = performance.get("summary") or {}
 waybar = status.get("waybar") or {}
 context = status.get("context") or {}
 print("SevenOS Waybar Doctor")
 print(f"State: {data.get('state')}")
 print(f"Runtime: waybar={waybar.get('instances', 0)} context={context.get('instances', 0)}")
 print(f"Limits: modules={summary.get('modules')} left={summary.get('left')} center={summary.get('center')} right={summary.get('right')}")
+print(f"Perf: waybar_cpu={perf_summary.get('waybar_cpu_percent', 0)}% waybar_rss={round(int(perf_summary.get('waybar_rss_kib') or 0)/1024, 1)} MiB")
 for check in limits.get("checks", []):
+    if check.get("state") != "OK":
+        print(f"[WARN] {check.get('id')}: {check.get('detail')}")
+for check in performance.get("checks", []):
     if check.get("state") != "OK":
         print(f"[WARN] {check.get('id')}: {check.get('detail')}")
 recommendations = data.get("recommendations") or []
@@ -395,6 +567,120 @@ if recommendations:
 else:
     print("Repair: none")
 PY
+}
+
+footprint_json() {
+  WAYBAR_CACHE="$HOST_HOME/.cache/waybar" \
+  WAYBAR_STATUS_CACHE="$HOST_HOME/.cache/sevenos/waybar-status" \
+  CONFIG_DIR="$CONFIG_HOME/waybar" \
+  python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+
+def size_bytes(path: Path) -> int:
+    if not path.exists():
+        return 0
+    if path.is_file():
+        try:
+            return path.stat().st_size
+        except OSError:
+            return 0
+    total = 0
+    for item in path.rglob("*"):
+        try:
+            if item.is_file():
+                total += item.stat().st_size
+        except OSError:
+            pass
+    return total
+
+
+def count_backups(path: Path) -> int:
+    if not path.exists():
+        return 0
+    return sum(1 for item in path.iterdir() if item.name.startswith("waybar.sevenos.bak."))
+
+
+config_dir = Path(os.environ.get("CONFIG_DIR", ""))
+payload = {
+    "schema": "sevenos.waybar.footprint.v1",
+    "cache": {
+        "waybar_bytes": size_bytes(Path(os.environ.get("WAYBAR_CACHE", ""))),
+        "status_bytes": size_bytes(Path(os.environ.get("WAYBAR_STATUS_CACHE", ""))),
+    },
+    "backups": {
+        "directory": str(config_dir),
+        "count": count_backups(config_dir),
+    },
+}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+}
+
+footprint_human() {
+  local payload
+  payload="$(footprint_json)"
+  PAYLOAD="$payload" python - <<'PY'
+import json
+import os
+
+
+def human(value):
+    value = int(value or 0)
+    units = ["B", "KiB", "MiB", "GiB"]
+    amount = float(value)
+    for unit in units:
+        if amount < 1024 or unit == units[-1]:
+            return f"{amount:.1f} {unit}" if unit != "B" else f"{value} B"
+        amount /= 1024
+
+
+data = json.loads(os.environ.get("PAYLOAD") or "{}")
+cache = data.get("cache") or {}
+backups = data.get("backups") or {}
+print("SevenOS Waybar Footprint")
+print(f"Waybar cache: {human(cache.get('waybar_bytes'))}")
+print(f"Status cache: {human(cache.get('status_bytes'))}")
+print(f"Backups: {backups.get('count', 0)}")
+PY
+}
+
+optimize_waybar() {
+  local config_dir status_cache waybar_cache removed_backups removed_status removed_waybar
+  config_dir="$CONFIG_HOME/waybar"
+  status_cache="$HOST_HOME/.cache/sevenos/waybar-status"
+  waybar_cache="$HOST_HOME/.cache/waybar"
+  removed_backups=0
+  removed_status=0
+  removed_waybar=0
+
+  if [[ -d "$config_dir" ]]; then
+    while IFS= read -r -d '' backup; do
+      rm -f -- "$backup" && removed_backups=$((removed_backups + 1))
+    done < <(find "$config_dir" -maxdepth 1 -type f -name 'waybar.sevenos.bak.*' -print0 2>/dev/null)
+  fi
+  if [[ -d "$status_cache" ]]; then
+    rm -rf -- "$status_cache"
+    removed_status=1
+  fi
+  if [[ -d "$waybar_cache" ]]; then
+    rm -rf -- "$waybar_cache"
+    removed_waybar=1
+  fi
+
+  mkdir -p "$(dirname -- "$PREFS")"
+  {
+    printf 'context=stable\n'
+    printf 'signal_min_interval=3.0\n'
+    printf 'density=compact\n'
+    printf 'waybar=system-compact\n'
+  } > "$PREFS"
+
+  start_waybar
+  wait_for_waybar || true
+  printf 'SevenOS Waybar optimized: %s backup(s), status-cache=%s, render-cache=%s\n' "$removed_backups" "$removed_status" "$removed_waybar"
 }
 
 limits_human() {
@@ -434,12 +720,16 @@ set_context_mode() {
       {
         printf 'context=stable\n'
         printf 'signal_min_interval=3.0\n'
+        printf 'density=compact\n'
+        printf 'waybar=system-compact\n'
       } > "$PREFS"
       ;;
     dynamic)
       {
         printf 'context=dynamic\n'
         printf 'signal_min_interval=1.2\n'
+        printf 'density=normal\n'
+        printf 'waybar=system-full\n'
       } > "$PREFS"
       ;;
     *)
@@ -450,6 +740,7 @@ set_context_mode() {
   if systemctl --user list-unit-files sevenos-waybar-context.service >/dev/null 2>&1; then
     systemctl --user restart sevenos-waybar-context.service >/dev/null 2>&1 || true
   fi
+  context_repair
   printf 'SevenOS Waybar context: %s\n' "$mode"
 }
 
@@ -529,6 +820,13 @@ case "${1:-status}" in
       doctor_human
     fi
     ;;
+  performance|perf)
+    if [[ "${2:-}" == "--json" || "${2:-}" == "json" ]]; then
+      performance_json
+    else
+      performance_human
+    fi
+    ;;
   start|restart)
     start_waybar
     wait_for_waybar || true
@@ -541,6 +839,16 @@ case "${1:-status}" in
     printf 'SevenOS Waybar: %s instance(s)\n' "$(count_waybar)"
     printf 'SevenOS Waybar Context: %s instance(s)\n' "$(count_waybar_context)"
     context_doctor
+    ;;
+  footprint)
+    if [[ "${2:-}" == "--json" || "${2:-}" == "json" ]]; then
+      footprint_json
+    else
+      footprint_human
+    fi
+    ;;
+  optimize)
+    optimize_waybar
     ;;
   stable)
     set_context_mode stable
@@ -555,7 +863,7 @@ case "${1:-status}" in
     printf 'SevenOS Waybar: stopped\n'
     ;;
   *)
-    printf 'Usage: seven-waybar [run|status [--json]|limits [--json]|doctor [--json]|start|restart|repair|stable|dynamic|stop]\n' >&2
+    printf 'Usage: seven-waybar [run|status [--json]|limits [--json]|performance [--json]|doctor [--json]|footprint [--json]|start|restart|repair|optimize|stable|dynamic|stop]\n' >&2
     exit 2
     ;;
 esac

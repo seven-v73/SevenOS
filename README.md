@@ -105,6 +105,7 @@ sevenpkg forge helper paru
 sevenpkg forge install code --source pacman
 sevenpkg studio packages --query blender
 seven footprint
+seven footprint --fast --json
 seven footprint plan
 seven footprint evidence
 seven footprint compare

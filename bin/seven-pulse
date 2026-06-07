@@ -143,6 +143,33 @@ def driver_hints(vendors: list[str], multilib: bool) -> list[dict]:
     return hints
 
 
+def command_state(binary: str) -> bool:
+    return bool(shutil.which(binary) or (PROFILE_ROOT / "usr/bin" / binary).exists())
+
+
+def pulse_modes() -> list[dict]:
+    return [
+        {
+            "id": "balanced",
+            "title": "Balanced gaming",
+            "summary": "Normal desktop rhythm with game launchers ready.",
+            "command": "seven profile activate pulse",
+        },
+        {
+            "id": "performance",
+            "title": "Performance session",
+            "summary": "Use GameMode, MangoHud and Gamescope when available.",
+            "command": "seven pulse performance",
+        },
+        {
+            "id": "stream",
+            "title": "Streaming and capture",
+            "summary": "Open recording controls and keep audio routes visible.",
+            "command": "seven-recorder panel",
+        },
+    ]
+
+
 def action_plan(data: dict) -> list[dict]:
     actions = []
     if data["missing"]["required"]:
@@ -204,9 +231,10 @@ def payload() -> dict:
     private = rootfs_packages()
     effective = installed | private
     missing_required = [pkg for pkg in required if pkg not in installed]
-    missing_optional = [pkg for pkg in optional if pkg not in installed]
+    missing_optional = [pkg for pkg in optional if pkg not in effective]
     missing_required_effective = [pkg for pkg in required if pkg not in effective]
-    host_runtime_missing = [pkg for pkg in required if pkg not in installed and pkg in private]
+    host_level_required = {"pipewire", "pipewire-pulse", "wireplumber", "xdg-desktop-portal-hyprland"}
+    host_runtime_missing = [pkg for pkg in required if pkg in host_level_required and pkg not in installed]
     vendors = gpu_vendors()
     multilib = multilib_enabled()
     ready_rootfs = rootfs_ready()
@@ -215,9 +243,21 @@ def payload() -> dict:
         "lutris": "lutris" in private,
         "gamescope": "gamescope" in private,
         "mangohud": "mangohud" in private,
+        "goverlay": "goverlay" in private,
         "heroic": "heroic-games-launcher-bin" in private or "heroic" in private,
         "paru": "paru" in private,
         "yay": "yay" in private,
+    }
+    tool_status = {
+        "gamemoderun": command_state("gamemoderun"),
+        "gamescope": command_state("gamescope"),
+        "mangohud": command_state("mangohud"),
+        "goverlay": command_state("goverlay"),
+        "steam": command_state("steam"),
+        "lutris": command_state("lutris"),
+        "heroic": command_state("heroic") or command_state("heroic-games-launcher"),
+        "aplay": command_state("aplay"),
+        "pactl": command_state("pactl"),
     }
     blockers = []
     warnings = []
@@ -252,6 +292,7 @@ def payload() -> dict:
             "package_count": len(private),
         },
         "private_packages": private_status,
+        "tools": tool_status,
         "missing": {
             "required": missing_required_effective,
             "host_runtime": host_runtime_missing,
@@ -271,9 +312,12 @@ def payload() -> dict:
             "install_steam_private": "sevenpkg pulse install steam --source pacman",
             "install_lutris_private": "sevenpkg pulse install lutris --source pacman",
             "install_heroic_private": "sevenpkg pulse install heroic-games-launcher-bin --source paru",
-            "install_mangohud_private": "sevenpkg pulse install mangohud gamescope --source pacman",
+            "install_mangohud_private": "sevenpkg pulse install mangohud gamescope goverlay --source pacman",
             "install_launchers": "seven-pulse launchers",
             "install_hud": "seven-pulse hud",
+            "performance": "seven pulse performance",
+            "audio": "seven pulse audio",
+            "center": "seven-mini-os-center pulse",
             "prepare_aur_helper": "sevenpkg pulse helper paru",
             "packages": "sevenpkg pulse packages",
             "limits": "sevenpkg pulse limits",
@@ -283,6 +327,7 @@ def payload() -> dict:
             "GPU drivers, kernel modules, Mesa and multilib are host-level Equinox responsibilities because the kernel and GPU stack are shared.",
             "Pulse stays gaming-only: no dev, cyber, cloud or creator stacks are required.",
         ],
+        "modes": pulse_modes(),
     }
     data["plan"] = action_plan(data)
     return data
@@ -299,6 +344,9 @@ def print_human(data: dict) -> None:
     print(f"Pulse private packages: {data['rootfs']['package_count']}")
     print(f"Multilib: {'enabled' if summary['multilib_enabled'] else 'disabled or unavailable'}")
     print(f"GPU: {', '.join(summary['gpu_vendors']) if summary['gpu_vendors'] else 'unknown'}")
+    print(f"HUD: {'ready' if data['tools'].get('mangohud') else 'not installed'}")
+    print(f"Gamescope: {'ready' if data['tools'].get('gamescope') else 'not installed'}")
+    print(f"Audio CLI: {'ready' if data['tools'].get('aplay') else 'missing'}")
     if data["missing"]["required"]:
         print()
         print("Missing essentials:")
@@ -316,7 +364,7 @@ def print_human(data: dict) -> None:
             print(f"- {item['label']}: {item['command']}")
         print()
     print("Guided actions:")
-    for label in ("install_required", "prepare_rootfs", "install_launchers", "install_hud", "prepare_aur_helper"):
+    for label in ("center", "install_required", "prepare_rootfs", "install_launchers", "install_hud", "performance", "audio", "prepare_aur_helper"):
         print(f"- {data['commands'][label]}")
 
 
@@ -329,7 +377,7 @@ def run(command: list[str], dry_run: bool) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="seven-pulse")
-    parser.add_argument("action", nargs="?", default="doctor", choices=("status", "doctor", "json", "plan", "open", "activate", "install", "optional", "rootfs", "launchers", "steam", "lutris", "heroic", "hud", "helper", "multilib", "limits", "packages"))
+    parser.add_argument("action", nargs="?", default="doctor", choices=("status", "doctor", "json", "plan", "center", "open", "activate", "install", "optional", "rootfs", "launchers", "steam", "lutris", "heroic", "hud", "performance", "audio", "helper", "multilib", "limits", "packages"))
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -351,7 +399,7 @@ def main() -> int:
         return 0
     if args.action == "install":
         return run([str(ROOT / "bin/seven"), "profile", "requirements", "pulse", "--apply", "--yes"], args.dry_run)
-    if args.action == "open":
+    if args.action in {"open", "center"}:
         return run([str(ROOT / "bin/seven-mini-os-center"), "pulse"], args.dry_run)
     if args.action == "activate":
         return run([str(ROOT / "bin/seven"), "profile", "activate", "pulse"], args.dry_run)
@@ -368,7 +416,32 @@ def main() -> int:
     if args.action == "heroic":
         return run([str(ROOT / "bin/sevenpkg"), "pulse", "install", "heroic-games-launcher-bin", "--source", "paru"], args.dry_run)
     if args.action == "hud":
-        return run([str(ROOT / "bin/sevenpkg"), "pulse", "install", "mangohud", "gamescope", "--source", "pacman"], args.dry_run)
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "install", "mangohud", "gamescope", "goverlay", "--source", "pacman"], args.dry_run)
+    if args.action == "performance":
+        data = payload()
+        print("SevenOS Pulse Performance")
+        print("=========================")
+        print(f"GameMode: {'ready' if data['tools'].get('gamemoderun') else 'missing'}")
+        print(f"MangoHud: {'ready' if data['tools'].get('mangohud') else 'missing'}")
+        print(f"Gamescope: {'ready' if data['tools'].get('gamescope') else 'missing'}")
+        print(f"GOverlay: {'ready' if data['tools'].get('goverlay') else 'missing'}")
+        print()
+        print("Suggested route:")
+        print(f"  {data['commands']['install_hud']}")
+        return 0
+    if args.action == "audio":
+        data = payload()
+        print("SevenOS Pulse Audio")
+        print("===================")
+        print(f"PipeWire: {'ready' if data['tools'].get('pactl') else 'check needed'}")
+        print(f"ALSA tools: {'ready' if data['tools'].get('aplay') else 'missing'}")
+        if data["missing"]["host_runtime"]:
+            print()
+            print("Host runtime missing:")
+            for item in data["missing"]["host_runtime"]:
+                print(f"- {item}")
+            print(f"Route: {data['commands']['install_required']}")
+        return 0
     if args.action == "helper":
         return run([str(ROOT / "bin/sevenpkg"), "pulse", "helper", "paru"], args.dry_run)
     if args.action == "multilib":

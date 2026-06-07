@@ -16,6 +16,8 @@ when the workflow grows.
 
 ```bash
 seven mini-doctor
+seven mini-doctor all guide
+seven mini-doctor all guide --refresh --json
 seven mini-doctor forge
 seven mini-doctor studio
 seven mini-doctor baobab
@@ -49,15 +51,23 @@ sevenpkg pulse install steam lutris --source pacman
 
 ## Public User Flow
 
-1. Open the mini OS center.
-2. Choose `Verifier` to see what is missing.
-3. Choose `Preparer` to install the required baseline.
-4. Add optional tools only when the user asks for that workflow.
-5. Use `sevenpkg <profile> install` for profile-private apps.
+1. Start with `seven mini-doctor all guide`.
+2. Open the mini OS center for the profile that needs attention.
+3. Choose `Verifier` to see what is missing.
+4. Choose `Preparer` only when the required baseline is missing.
+5. Add optional tools only when the user asks for that workflow.
+6. Use `sevenpkg <profile> install` for profile-private apps.
+
+The guide is intentionally more product-oriented than the raw doctors. It keeps
+Baobab light by default, reminds Shield to declare scope before audits, and
+shows the next safe action for each mini OS without forcing optional heavy
+packages.
 
 For Atlas, the public path is `seven atlas status` and
 `seven atlas install --yes`. It prepares the native document, map, OCR and
 reference baseline without reintroducing a Windows/VM dependency.
+For the complete Atlas contract, use `seven atlas` or see
+`docs/ATLAS_MINI_OS.md`.
 
 Baobab/Atlas boundary:
 - Baobab owns culture, oral memory, African languages, storytelling, local

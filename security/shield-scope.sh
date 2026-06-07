@@ -126,6 +126,29 @@ else:
     data["state"] = "ACTIVE" if data["active"] else data.get("state", "DRAFT")
 data["target_count"] = len(data.get("targets") or [])
 data["path"] = str(path)
+missing = []
+if not data.get("owner"):
+    missing.append("owner")
+if not data.get("engagement"):
+    missing.append("engagement")
+if not data.get("time_window"):
+    missing.append("time_window")
+if not data.get("targets"):
+    missing.append("targets")
+data["readiness"] = "authorized" if data.get("active") and not missing else "needs-scope"
+data["missing"] = missing
+data["next"] = [
+    {
+        "label": "Draft authorized scope",
+        "command": 'seven shield scope create --owner "Name" --engagement "Lab" --window "Today" --target 127.0.0.1',
+        "reason": "Declare owner, engagement, time window and targets before Shield audit actions.",
+    },
+    {
+        "label": "Activate scope",
+        "command": "seven shield scope activate",
+        "reason": "Only activate after the target list is explicit and authorized.",
+    },
+]
 print(json.dumps(data, indent=2))
 PY
 }
@@ -266,6 +289,13 @@ if not data.get("targets"):
     print("  no target yet")
 print()
 print("Activate only when owner, engagement, time window and targets are explicit.")
+if data.get("missing"):
+    print()
+    print("Missing:")
+    for item in data["missing"]:
+        print(f"  - {item}")
+    print()
+    print('Draft route: seven shield scope create --owner "Name" --engagement "Lab" --window "Today" --target 127.0.0.1')
 PY
 }
 

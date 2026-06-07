@@ -85,6 +85,8 @@ quality.production_plan	System	Production Hardening Plan	seven production plan	s
 experience.permissions	System	Permissions Center	seven experience-center permissions	safe	Show portals, Flatpak, microphone, camera and privacy routes.
 experience.journeys	Desktop	Focus Journeys	seven experience-center journeys	safe	Show profile-aware journeys for code, creation, study, gaming, culture and security.
 startup.audit	Desktop	Startup Performance Audit	./scripts/startup-audit.sh	safe	Check that public SevenOS apps open from cache and do not block on deep audits.
+footprint.fast	System	Fast Footprint State	seven footprint --fast --json	safe	Show the bounded SevenOS footprint state for Settings, Doctor, SevenAI and Spotlight.
+footprint.plan	System	Footprint Maintenance Plan	seven footprint plan	safe	Show source, runtime, rootfs, VM and cache footprint guidance without deleting user data.
 hub.status	Desktop	Hub Status	seven hub status	safe	Show whether Seven Hub is ready as the default product control surface.
 hub.plan	Desktop	Hub Product Plan	seven hub plan	safe	Show missing Hub productization work before changing the desktop.
 about.status	System	About SevenOS	seven about	safe	Show the public SevenOS identity, edition, active mini OS, channel and distribution state.
@@ -291,6 +293,8 @@ profile.rootfs.status	Profiles	Profile RootFS Status	seven profile-rootfs status
 profile.rootfs.audit	Profiles	Profile RootFS Audit	seven profile-rootfs audit all	safe	Test rootfs execution, profile marker, isolation mode, runtime sockets, GPU/dev and network posture.
 profile.rootfs.seal	Profiles	Seal Profile RootFS	seven profile-rootfs seal all --apply --yes	safe	Write local rootfs fingerprints for drift detection.
 profile.rootfs.verify	Profiles	Verify Profile RootFS	seven profile-rootfs verify all	safe	Compare current rootfs package/os fingerprints against the last seal.
+mini.guide	Profiles	Mini OS Guide	seven mini-doctor all guide	safe	Show the unified mini OS guidance layer with readiness, rootfs state, optional scope and next actions.
+mini.guide.refresh	Profiles	Refresh Mini OS Guide	seven mini-doctor all guide --refresh	safe	Refresh the unified mini OS guide without using cached doctor state.
 profile.rootfs.prepare	Profiles	Prepare Profile RootFS	seven profile-rootfs prepare --apply --yes	safe	Create rootfs directories, manifests and package lists for the active mini OS.
 profile.rootfs.build	Profiles	Build Profile RootFS	seven profile-rootfs build --apply --yes	root	Build the active mini OS rootfs with its own package set when pacstrap is available.
 profile.rootfs.shell	Profiles	Profile RootFS Shell	seven profile exec $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --rootfs sh	root	Open a shell inside the active mini OS rootfs when it is ready.
@@ -338,6 +342,7 @@ runtime.doctor	Profiles	Runtime Doctor	seven runtime doctor	safe	Check cgroups, 
 profile.equinox	Profiles	Install Equinox	seven profile install equinox	packages	Install the balanced global SevenOS profile.
 profile.baobab	Profiles	Install Baobab	seven profile install baobab	packages	Install the cultural SevenOS profile.
 baobab.status	Baobab	Baobab Status	seven baobab	safe	Show the Baobab cultural mini OS contract.
+baobab.guide	Baobab	Baobab Guide	seven baobab guide	safe	Show a concise Baobab guidance layer: packs, validation, optional scope and next safe actions.
 baobab.bootstrap	Baobab	Bootstrap Baobab	seven baobab bootstrap	safe	Create the Baobab offline workspace, manifest and module directories.
 baobab.install_core	Baobab	Install Baobab Core	seven baobab install-core	packages	Install the lightweight Baobab core package set including fonts and MPV.
 baobab.install_optional	Baobab	Install Baobab Optional	seven baobab install-optional	packages	Install optional Baobab repo packages and AUR/community candidates when a helper is available.
@@ -431,17 +436,41 @@ security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an 
 security.lab.forensics	Security	Open Forensics Lab	seven shield lab --preset forensics	safe	Open an offline evidence-safe forensics lab.
 security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset reversing	safe	Open an offline reversing lab.
 atlas.status	Atlas	État Atlas	seven atlas status	safe	Vérifier si Atlas Explorer est prêt dans SevenOS.
-atlas.open	Atlas	Ouvrir Atlas	seven-mini-os-center atlas	safe	Ouvrir le centre Atlas avec readiness, documents, scans, cartes, références et actions.
+atlas.open	Atlas	Ouvrir Atlas	seven atlas open	safe	Ouvrir le centre Atlas avec readiness, documents, scans, cartes, références et actions.
+atlas.center	Atlas	Atlas Center	seven atlas	safe	Afficher le contrat Atlas complet : readiness, apps, workspace, OCR, recherche et prochaines actions.
 atlas.activate	Atlas	Activer Atlas	seven profile activate atlas	changes	Basculer vers le mini OS Atlas Explorer.
 atlas.install	Atlas	Installer Atlas	seven atlas install --yes	packages	Installer les paquets Atlas pour documents, scans, cartes, OCR, archives et recherche.
-atlas.optional	Atlas	Installer les extensions Atlas	seven-profile-requirements install atlas --optional --apply --yes	packages	Ajouter les outils Atlas avancés quand ils sont disponibles.
+atlas.optional	Atlas	Installer les extensions Atlas	seven atlas optional	packages	Ajouter les outils Atlas avancés quand ils sont disponibles.
 mini.boundaries	Profiles	Frontières Mini OS	seven mini-boundaries --open	safe	Vérifier visuellement que Baobab garde la culture et qu'Atlas garde documents, scans, cartes et OCR sans chevauchement non revu.
 atlas.files	Atlas	Fichiers Atlas	seven profile open atlas	safe	Ouvrir l’espace Atlas dans Seven Files.
-atlas.documents	Atlas	Documents Atlas	seven profile open-folder atlas Documents	safe	Ouvrir les PDF, office, ebooks, notes et documents Atlas.
-atlas.maps	Atlas	Cartes Atlas	seven profile open-folder atlas Maps	safe	Ouvrir les cartes, trajets et GPX Atlas.
-atlas.scans	Atlas	Scans Atlas	seven profile open-folder atlas Scans	safe	Ouvrir les scans et documents OCR Atlas.
-atlas.apps	Atlas	Applications Atlas	seven profile apps atlas	safe	Ouvrir les applications liées à Atlas.
-atlas.rootfs	Atlas	Vérifier Atlas rootfs	seven-profile-rootfs audit atlas	safe	Vérifier que le rootfs Atlas est cohérent.
+atlas.workspace	Atlas	Espace Atlas	seven atlas workspace	changes	Créer les dossiers Atlas stables pour documents, scans, cartes, références, recherche et exports.
+atlas.documents	Atlas	Documents Atlas	seven atlas documents	safe	Ouvrir les PDF, office, ebooks, notes et documents Atlas.
+atlas.maps	Atlas	Cartes Atlas	seven atlas maps	safe	Ouvrir les cartes, trajets et GPX Atlas.
+atlas.scans	Atlas	Scans Atlas	seven atlas scans	safe	Ouvrir les scans et documents OCR Atlas.
+atlas.references	Atlas	Références Atlas	seven atlas references	safe	Ouvrir les références, bibliographies et sources de recherche Atlas.
+atlas.research	Atlas	Recherche Atlas	seven atlas research	safe	Ouvrir les dossiers de veille, notes longues et dossiers de recherche Atlas.
+atlas.exports	Atlas	Exports Atlas	seven atlas exports	safe	Ouvrir les documents générés, PDF OCR et exports Atlas.
+atlas.search	Atlas	Recherche locale Atlas	seven atlas search	safe	Afficher le workflow de recherche locale Atlas ou lancer une recherche si une requête est fournie.
+atlas.ocr	Atlas	OCR Atlas	seven atlas ocr	safe	Afficher le workflow OCR Atlas ou générer un PDF OCR quand un fichier est fourni.
+atlas.apps	Atlas	Applications Atlas	seven atlas apps	safe	Ouvrir les applications liées à Atlas.
+atlas.rootfs	Atlas	Vérifier Atlas rootfs	seven atlas rootfs	safe	Vérifier que le rootfs Atlas est cohérent.
+studio.center	Studio	Studio Center	seven studio	safe	Show Studio readiness, workspace, creator apps, catalog and next actions.
+studio.open	Studio	Open Studio Center	seven studio open	safe	Open the Studio mini OS center for creation workflows.
+studio.workspace	Studio	Prepare Studio Workspace	seven studio workspace	changes	Create stable Studio folders for projects, assets, captures, renders and exports.
+studio.assets	Studio	Studio Assets	seven studio assets	safe	Open Studio assets in Seven Files.
+studio.captures	Studio	Studio Captures	seven studio captures	safe	Open Studio captures in Seven Files.
+studio.exports	Studio	Studio Exports	seven studio exports	safe	Open Studio exports in Seven Files.
+studio.record	Studio	Studio Recording	seven studio record	safe	Open Seven Recorder for Studio capture and streaming workflows.
+studio.catalog	Studio	Studio Catalog	seven studio apps	safe	Show Studio application routes from SevenPkg.
+studio.optional	Studio	Install Studio Extensions	seven studio optional	packages	Install optional Studio creator tools only when the user wants the heavier toolset.
+pulse.center	Pulse	Pulse Center	seven pulse center	safe	Open the Pulse gaming mini OS center.
+pulse.status	Pulse	Pulse Status	seven pulse doctor	safe	Show Pulse gaming readiness, audio, GPU, HUD and launcher state.
+pulse.launchers	Pulse	Game Launchers	seven pulse launchers	packages	Install Steam and Lutris inside the Pulse profile package view.
+pulse.hud	Pulse	Gaming HUD	seven pulse hud	packages	Install MangoHud, Gamescope and GOverlay for performance visibility.
+pulse.performance	Pulse	Performance Mode	seven pulse performance	safe	Show GameMode, MangoHud, Gamescope and GOverlay readiness.
+pulse.audio	Pulse	Pulse Audio Check	seven pulse audio	safe	Show ALSA and PipeWire readiness for gaming.
+pulse.optional	Pulse	Install Pulse Extensions	seven pulse optional	packages	Install optional Pulse gaming tools through the SevenOS package route.
+pulse.packages	Pulse	Pulse Packages	seven pulse packages	safe	Show Pulse packages and private rootfs state.
 server.status	Server	Server Status	seven server status	safe	Check the local SevenOS API service.
 server.plan	Server	Server Plan	seven server plan	safe	Show prioritized Seven Server backend actions.
 server.install	Server	Install Server Service	seven server install-user-service	changes	Install the local SevenOS API user service.
@@ -464,6 +493,20 @@ deploy.rollback	Server	Rollback Hosted App	seven deploy rollback .	changes	Forge
 deploy.remove	Server	Remove Hosted App	seven deploy remove .	changes	Forge only: stop a hosted project and remove its SevenOS deploy snapshots.
 deploy.services	Server	Hosting Services	seven deploy services	safe	Forge only: show active SevenOS hosted services.
 deploy.panel	Server	Hosting Panel	seven deploy panel	safe	Forge only: show the local deployment management panel contract.
+forge.center	Profiles	Forge Project Center	seven forge	safe	Show Forge project, services, catalog, memory and next development actions.
+forge.center.open	Profiles	Open Forge Center	seven forge open	safe	Open the native Forge Project Center with project, services, ports, editor setup and SevenAI actions.
+forge.project	Profiles	Inspect Forge Project	seven forge project .	safe	Detect the current project stack, commands, tools and next development actions.
+forge.readiness	Profiles	Forge Project Readiness	seven forge readiness .	safe	Check missing tools, relevant services, editor setup, .env policy and Git state for the current Forge project.
+forge.tasks	Profiles	Forge Project Tasks	seven forge tasks .	safe	Show detected development tasks, natural commands and environment keys without exposing secret values.
+forge.services	Profiles	Forge Services	seven forge services	safe	Show Docker, PostgreSQL, Valkey and Caddy service states for Forge.
+forge.ports	Profiles	Forge Local Ports	seven forge ports	safe	Show local development ports detected from the Forge project center contract.
+forge.catalog	Profiles	Forge Catalog	seven forge catalog	safe	Show the Forge application and tool routes known by SevenPkg.
+forge.remember	Profiles	Remember Forge Project	seven forge remember .	changes	Store the current project in Forge project memory for faster continuity.
+forge.config	Profiles	Forge Developer Config	seven forge config	safe	Show which Equinox developer settings can be safely imported into Forge.
+forge.config.import	Profiles	Import Forge Developer Config	seven forge config import --apply	changes	Copy safe VS Code settings, keybindings, locale, snippets and extension manifests from Equinox into Forge.
+forge.extensions	Profiles	Forge Editor Extensions	seven forge extensions	safe	Show the VS Code extension manifest captured for Forge without duplicating extension folders.
+forge.ai	Profiles	Forge SevenAI Actions	seven forge ai .	safe	Show SevenAI prompts for explaining project, build failures, ports and relevant files.
+forge.comfort	Profiles	Install Forge Comfort Tools	seven profile requirements forge --optional --apply --yes	packages	Install optional Forge comfort tools such as Lazygit and Poetry.
 installer.status	Installer	Installer Status	seven installer status	safe	Check Calamares and ISO foundations.
 installer.gui	Installer	Graphical Installer Portal	seven-installer gui	safe	Open the SevenOS graphical installation portal for normal users.
 installer.plan	Installer	Installer Plan	seven installer plan	safe	Show prioritized installer and ISO actions.
@@ -680,13 +723,13 @@ for raw in os.environ.get("ACTION_ROWS", "").splitlines():
     categories[category].append(action_id)
 
 quick_actions = {
-    "equinox": ["spotlight.open", "files.profile", "settings.open", "experience.recommend"],
-    "baobab": ["baobab.open", "baobab.entry", "baobab.veillee", "baobab.session", "baobab.sessions", "baobab.carnet", "baobab.constellation", "baobab.media", "baobab.today", "baobab.compass", "baobab.trail", "baobab.ritual", "baobab.route", "baobab.ambiance", "baobab.shell", "baobab.journal", "baobab.immersions", "baobab.protocols", "baobab.protocol_doctor", "baobab.evidence_packs", "baobab.validation_kit", "baobab.validation_doctor", "reader.open", "bridge.switch.baobab", "mini.boundaries"],
-    "forge": ["terminal.forge", "files.code", "deploy.plan", "profile.strict.forge"],
-    "shield": ["security.dashboard", "security.scope", "security.lab.forensics", "profile.strict.shield_ephemeral"],
-    "studio": ["files.pictures", "files.videos", "recorder.area", "profile.strict.studio"],
-    "atlas": ["atlas.open", "atlas.documents", "atlas.maps", "mini.boundaries"],
-    "pulse": ["files.videos", "files.music", "recorder.full", "motion.reduced"],
+    "equinox": ["spotlight.open", "files.profile", "settings.open", "mini.guide", "experience.recommend"],
+    "baobab": ["baobab.guide", "baobab.open", "baobab.today", "baobab.entry", "baobab.veillee", "baobab.session", "baobab.carnet", "baobab.constellation", "baobab.media", "baobab.compass", "baobab.trail", "baobab.ritual", "baobab.route", "baobab.ambiance", "baobab.protocols", "baobab.protocol_doctor", "baobab.evidence_packs", "baobab.validation_kit", "baobab.validation_doctor", "reader.open", "bridge.switch.baobab", "mini.boundaries"],
+    "forge": ["forge.center.open", "terminal.forge", "forge.center", "forge.project", "forge.readiness", "forge.tasks", "forge.services", "forge.ports", "forge.extensions", "forge.ai", "deploy.plan", "profile.strict.forge"],
+    "shield": ["security.dashboard", "security.scope", "security.lab.forensics", "security.report", "profile.strict.shield_ephemeral"],
+    "studio": ["studio.center", "studio.workspace", "studio.assets", "studio.record", "studio.exports", "profile.strict.studio"],
+    "atlas": ["atlas.center", "atlas.workspace", "atlas.documents", "atlas.scans", "atlas.maps", "atlas.search", "atlas.ocr", "mini.boundaries"],
+    "pulse": ["pulse.center", "pulse.status", "pulse.performance", "pulse.audio", "pulse.hud", "pulse.launchers"],
 }
 
 print(json.dumps({

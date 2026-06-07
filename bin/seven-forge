@@ -1,0 +1,1080 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and Path(env_root, "install.sh").is_file():
+        return Path(env_root).resolve()
+    script_dir = Path(__file__).resolve().parent
+    candidate = script_dir.parent
+    if Path(candidate, "install.sh").is_file():
+        return candidate
+    for path in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if Path(path, "install.sh").is_file():
+            return path
+    print("seven-forge: could not find SevenOS root", file=sys.stderr)
+    raise SystemExit(1)
+
+
+ROOT = resolve_root()
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
+FORGE_MEMORY = STATE_DIR / "forge-project-memory.json"
+SAFE_CODE_USER_FILES = ("settings.json", "keybindings.json", "locale.json")
+SAFE_CODE_USER_DIRS = ("snippets",)
+CODE_CONFIGS = (
+    ("code-oss", "Code - OSS"),
+    ("code", "Code"),
+    ("vscodium", "VSCodium"),
+)
+SERVICES = {
+    "docker.service": {
+        "title": "Docker",
+        "role": "Containers",
+        "binary": "docker",
+        "package": "docker",
+        "start": "systemctl start docker.service",
+        "stop": "systemctl stop docker.service",
+        "restart": "systemctl restart docker.service",
+        "enable": "systemctl enable docker.service",
+    },
+    "postgresql.service": {
+        "title": "PostgreSQL",
+        "role": "Database",
+        "binary": "postgres",
+        "package": "postgresql",
+        "start": "systemctl start postgresql.service",
+        "stop": "systemctl stop postgresql.service",
+        "restart": "systemctl restart postgresql.service",
+        "enable": "systemctl enable postgresql.service",
+    },
+    "valkey.service": {
+        "title": "Valkey",
+        "role": "Cache",
+        "binary": "valkey-server",
+        "package": "valkey",
+        "start": "systemctl start valkey.service",
+        "stop": "systemctl stop valkey.service",
+        "restart": "systemctl restart valkey.service",
+        "enable": "systemctl enable valkey.service",
+    },
+    "caddy.service": {
+        "title": "Caddy",
+        "role": "Reverse proxy",
+        "binary": "caddy",
+        "package": "caddy",
+        "start": "systemctl start caddy.service",
+        "stop": "systemctl stop caddy.service",
+        "restart": "systemctl restart caddy.service",
+        "enable": "systemctl enable caddy.service",
+    },
+}
+TOOL_PACKAGE_MAP = {
+    "cargo": "rust",
+    "rustc": "rust",
+    "node": "nodejs",
+    "npm": "nodejs",
+    "python": "python",
+    "go": "go",
+    "flutter": "flutter",
+    "dart": "flutter",
+    "docker": "docker",
+    "make": "base-devel",
+}
+SERVICE_HINTS = {
+    "compose": ("docker.service", "Docker Compose project detected."),
+    "docker": ("docker.service", "Container workflow detected."),
+}
+
+
+def host_home() -> Path:
+    if os.environ.get("SEVENOS_HOST_HOME"):
+        return Path(os.environ["SEVENOS_HOST_HOME"]).expanduser()
+    raw = Path(os.environ.get("HOME", str(Path.home()))).expanduser()
+    marker = "/.local/share/sevenos/profile-containers/"
+    raw_s = str(raw)
+    if marker in raw_s:
+        return Path(raw_s.split(marker, 1)[0])
+    return raw
+
+
+def profile_home(profile: str) -> Path:
+    return host_home() / ".local/share/sevenos/profile-containers" / profile / "home"
+
+
+def run_json(command: list[str], fallback: dict, *, env: dict | None = None, cwd: Path | None = None) -> dict:
+    result = subprocess.run(
+        command,
+        cwd=str(cwd or ROOT),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return fallback
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return fallback
+
+
+def run_text(command: list[str]) -> str:
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    text = result.stdout.strip()
+    if text:
+        return text
+    return "unknown"
+
+
+def active_profile() -> str:
+    for env_key in ("SEVENOS_PROFILE_CONTAINER", "SEVENOS_EXEC_PROFILE"):
+        env_profile = os.environ.get(env_key)
+        if env_profile:
+            return "forge" if env_profile == "horizon" else env_profile
+    env_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/profile.env"
+    try:
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("SEVENOS_ACTIVE_PROFILE="):
+                return line.split("=", 1)[1].strip().strip("\"'") or "equinox"
+    except OSError:
+        pass
+    isolation_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/profile-isolation.env"
+    try:
+        for line in isolation_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("SEVENOS_ISOLATION_PRIMARY="):
+                return line.split("=", 1)[1].strip().strip("\"'") or "equinox"
+    except OSError:
+        pass
+    env_profile = os.environ.get("SEVENOS_ACTIVE_PROFILE")
+    if env_profile:
+        return "forge" if env_profile == "horizon" else env_profile
+    return "equinox"
+
+
+def service_state(name: str) -> dict:
+    enabled_raw = run_text(["systemctl", "is-enabled", name])
+    active_raw = run_text(["systemctl", "is-active", name])
+    installed = enabled_raw != "unknown" or active_raw not in {"unknown", ""}
+    enabled = enabled_raw if installed else "not-installed"
+    active = active_raw if active_raw in {"active", "inactive", "failed", "activating", "deactivating"} else "inactive"
+    meta = SERVICES[name]
+    binary = meta.get("binary", "")
+    binary_path = shutil.which(binary) if binary else None
+    ok = active_raw == "active"
+    if ok:
+        state = "running"
+    elif enabled in {"enabled", "static", "disabled", "indirect"}:
+        state = "manual"
+    else:
+        state = "not-installed"
+    return {
+        "name": name,
+        "title": meta["title"],
+        "role": meta["role"],
+        "enabled": enabled,
+        "active": active,
+        "state": state,
+        "installed": bool(binary_path) or state != "not-installed",
+        "binary": binary,
+        "binary_path": binary_path or "",
+        "package": meta.get("package", ""),
+        "commands": {
+            "start": meta["start"],
+            "stop": meta["stop"],
+            "restart": meta["restart"],
+            "enable": meta["enable"],
+            "status": f"systemctl status {name}",
+            "logs": f"journalctl -u {name} -n 80 --no-pager",
+            "install": f"sevenpkg forge install {meta.get('package', name.split('.')[0])}",
+        },
+    }
+
+
+def forge_env() -> dict:
+    env = os.environ.copy()
+    env["SEVENOS_ACTIVE_PROFILE"] = "forge"
+    return env
+
+
+def project_payload(project: str) -> dict:
+    project_path = Path(project).expanduser()
+    if not project_path.is_absolute():
+        project_path = (Path.cwd() / project_path).resolve()
+    if not project_path.exists():
+        return {
+            "state": "missing",
+            "path": str(project_path),
+            "summary": "Project path does not exist.",
+            "commands": {"open": f"seven files {project_path.parent}"},
+        }
+    inspect = run_json(
+        [str(ROOT / "server/seven-deploy.sh"), "inspect", str(project_path), "--json"],
+        {"state": "unknown", "path": str(project_path), "stacks": [], "commands": {}, "tools": [], "missing": []},
+        env=forge_env(),
+        cwd=project_path if project_path.is_dir() else project_path.parent,
+    )
+    native = native_project_payload(project_path)
+    stacks = inspect.get("stacks") or ([inspect.get("stack")] if inspect.get("stack") else [])
+    if not stacks:
+        stacks = native.get("stacks", [])
+    commands = inspect.get("commands") if isinstance(inspect.get("commands"), dict) else {}
+    if not commands:
+        commands = native.get("commands", {})
+    tools = inspect.get("tools", []) or native.get("tools", [])
+    missing = inspect.get("missing", []) or native.get("missing", [])
+    stack = inspect.get("stack") if inspect.get("stack") not in {"", "unknown", None} else native.get("stack", "unknown")
+    state = inspect.get("state", "unknown")
+    if state in {"", "unknown", "FORBIDDEN", None}:
+        state = native.get("state", "unknown")
+    return {
+        "state": state,
+        "name": inspect.get("project") or project_path.name,
+        "path": inspect.get("path", str(project_path)),
+        "stack": stack,
+        "stacks": stacks,
+        "package_manager": inspect.get("package_manager", ""),
+        "scripts": inspect.get("package_scripts", []),
+        "commands": commands,
+        "tools": tools,
+        "missing": missing,
+        "next": inspect.get("next", []),
+        "files": native.get("files", []),
+        "env": native.get("env", {}),
+        "tasks": native.get("tasks", []),
+        "git": git_payload(project_path),
+    }
+
+
+def find_project_files(project_path: Path) -> list[Path]:
+    base = project_path if project_path.is_dir() else project_path.parent
+    names = {
+        "package.json", "Cargo.toml", "go.mod", "pyproject.toml", "requirements.txt",
+        "Makefile", "docker-compose.yml", "compose.yml", "Containerfile", "Dockerfile",
+        "pubspec.yaml", "pom.xml", "build.gradle", "gradlew", ".env", ".env.example",
+    }
+    found: list[Path] = []
+    for root, dirs, files in os.walk(base):
+        root_path = Path(root)
+        rel_parts = root_path.relative_to(base).parts if root_path != base else ()
+        if len(rel_parts) > 3:
+            dirs[:] = []
+            continue
+        dirs[:] = [d for d in dirs if d not in {".git", "node_modules", "target", "dist", "build", ".venv", "__pycache__"}]
+        for file_name in files:
+            if file_name in names:
+                found.append(root_path / file_name)
+    return sorted(found)
+
+
+def native_project_payload(project_path: Path) -> dict:
+    base = project_path if project_path.is_dir() else project_path.parent
+    files = find_project_files(project_path)
+    rels = [str(path.relative_to(base)) for path in files]
+    stacks: list[str] = []
+    tools: list[str] = []
+    tasks: list[dict] = []
+    commands: dict[str, str] = {}
+
+    def has(name: str) -> bool:
+        return any(path.name == name for path in files)
+
+    def first(name: str) -> Path | None:
+        return next((path for path in files if path.name == name), None)
+
+    if has("package.json"):
+        stacks.append("node")
+        tools.extend(["node", "npm"])
+        pkg = first("package.json")
+        if pkg:
+            scripts = package_scripts(pkg)
+            for script in ("dev", "start", "build", "test", "preview"):
+                if script in scripts:
+                    cmd = f"cd {shell_quote(str(pkg.parent))} && npm run {script}"
+                    commands.setdefault(script, cmd)
+                    tasks.append({"name": script, "command": cmd, "source": str(pkg.relative_to(base))})
+    if has("Cargo.toml"):
+        stacks.append("rust")
+        tools.extend(["cargo", "rustc"])
+        cargo = first("Cargo.toml")
+        if cargo:
+            commands.setdefault("build", f"cd {shell_quote(str(cargo.parent))} && cargo build")
+            commands.setdefault("test", f"cd {shell_quote(str(cargo.parent))} && cargo test")
+            tasks.extend([
+                {"name": "cargo build", "command": commands["build"], "source": str(cargo.relative_to(base))},
+                {"name": "cargo test", "command": commands["test"], "source": str(cargo.relative_to(base))},
+            ])
+    if has("pyproject.toml") or has("requirements.txt"):
+        stacks.append("python")
+        tools.append("python")
+        py = first("pyproject.toml") or first("requirements.txt")
+        if py:
+            commands.setdefault("test", f"cd {shell_quote(str(py.parent))} && python -m pytest")
+            tasks.append({"name": "python tests", "command": commands["test"], "source": str(py.relative_to(base))})
+    if has("go.mod"):
+        stacks.append("go")
+        tools.append("go")
+        gomod = first("go.mod")
+        if gomod:
+            commands.setdefault("build", f"cd {shell_quote(str(gomod.parent))} && go build ./...")
+            commands.setdefault("test", f"cd {shell_quote(str(gomod.parent))} && go test ./...")
+    if has("pubspec.yaml"):
+        stacks.append("flutter")
+        tools.extend(["flutter", "dart"])
+        pub = first("pubspec.yaml")
+        if pub:
+            commands.setdefault("dev", f"cd {shell_quote(str(pub.parent))} && flutter run")
+            commands.setdefault("test", f"cd {shell_quote(str(pub.parent))} && flutter test")
+    if has("docker-compose.yml") or has("compose.yml"):
+        stacks.append("compose")
+        tools.append("docker compose")
+        comp = first("docker-compose.yml") or first("compose.yml")
+        if comp:
+            commands.setdefault("services", f"cd {shell_quote(str(comp.parent))} && docker compose up")
+            tasks.append({"name": "compose up", "command": commands["services"], "source": str(comp.relative_to(base))})
+    if has("Makefile"):
+        tools.append("make")
+        makefile = first("Makefile")
+        if makefile:
+            commands.setdefault("make", f"cd {shell_quote(str(makefile.parent))} && make")
+    env = env_payload(files, base)
+    missing = [tool for tool in sorted(set(t.split()[0] for t in tools)) if not shutil.which(tool)]
+    return {
+        "state": "detected" if stacks or files else "unknown",
+        "stack": "+".join(dict.fromkeys(stacks)) if stacks else "unknown",
+        "stacks": list(dict.fromkeys(stacks)),
+        "tools": sorted(set(tools)),
+        "missing": missing,
+        "commands": commands,
+        "tasks": tasks[:16],
+        "files": rels[:40],
+        "env": env,
+    }
+
+
+def shell_quote(value: str) -> str:
+    return "'" + value.replace("'", "'\"'\"'") + "'"
+
+
+def package_scripts(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        scripts = data.get("scripts", {})
+        return scripts if isinstance(scripts, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def env_payload(files: list[Path], base: Path) -> dict:
+    env_files = [path for path in files if path.name in {".env", ".env.example"}]
+    keys: set[str] = set()
+    has_private = False
+    for path in env_files:
+        if path.name == ".env":
+            has_private = True
+        try:
+            for line in path.read_text(encoding="utf-8", errors="ignore").splitlines()[:120]:
+                if not line or line.lstrip().startswith("#") or "=" not in line:
+                    continue
+                key = line.split("=", 1)[0].strip()
+                if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                    keys.add(key)
+        except OSError:
+            continue
+    return {
+        "files": [str(path.relative_to(base)) for path in env_files],
+        "keys": sorted(keys)[:40],
+        "private_env_present": has_private,
+        "policy": "keys-only; values are never copied into Forge contracts",
+    }
+
+
+def git_payload(project_path: Path) -> dict:
+    cwd = project_path if project_path.is_dir() else project_path.parent
+    if not (cwd / ".git").exists():
+        probe = subprocess.run(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False)
+        if probe.returncode != 0:
+            return {"state": "not-a-repo"}
+    branch = run_text(["git", "-C", str(cwd), "branch", "--show-current"])
+    status = subprocess.run(["git", "-C", str(cwd), "status", "--short"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False)
+    lines = [line for line in status.stdout.splitlines() if line.strip()] if status.returncode == 0 else []
+    return {
+        "state": "dirty" if lines else "clean",
+        "branch": branch,
+        "changed": len(lines),
+        "sample": lines[:10],
+        "commands": {
+            "status": f"git -C {cwd} status --short",
+            "log": f"git -C {cwd} log --oneline -n 8",
+        },
+    }
+
+
+def ports_payload() -> dict:
+    result = subprocess.run(["ss", "-ltnp"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False)
+    listeners = []
+    if result.returncode == 0:
+        for line in result.stdout.splitlines()[1:]:
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            local = parts[3]
+            port = local.rsplit(":", 1)[-1] if ":" in local else local
+            process = " ".join(parts[5:]) if len(parts) > 5 else ""
+            if port.isdigit():
+                listeners.append({"port": int(port), "local": local, "process": process})
+    listeners = sorted(listeners, key=lambda item: item["port"])
+    return {
+        "schema": "sevenos.forge.ports.v1",
+        "count": len(listeners),
+        "items": listeners[:24],
+        "truncated": len(listeners) > 24,
+    }
+
+
+def read_memory() -> dict:
+    try:
+        data = json.loads(FORGE_MEMORY.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def write_memory(project: dict) -> dict:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    memory = read_memory()
+    recent = [item for item in memory.get("recent_projects", []) if isinstance(item, dict)]
+    path = project.get("path", "")
+    recent = [item for item in recent if item.get("path") != path]
+    recent.insert(0, {
+        "name": project.get("name", Path(path).name),
+        "path": path,
+        "stack": project.get("stack", "unknown"),
+        "commands": project.get("commands", {}),
+        "tools": project.get("tools", []),
+        "missing": project.get("missing", []),
+        "git": project.get("git", {}),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    })
+    memory = {
+        "schema": "sevenos.forge.memory.v1",
+        "last_project": path,
+        "recent_projects": recent[:8],
+    }
+    FORGE_MEMORY.write_text(json.dumps(memory, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return memory
+
+
+def catalog_payload() -> dict:
+    data = run_json([str(ROOT / "bin/sevenpkg"), "catalog", "--json"], {"items": []})
+    items = [item for item in data.get("items", []) if item.get("domain") == "forge"]
+    return {
+        "count": len(items),
+        "items": [
+            {
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "source": item.get("recommended_source"),
+                "size": item.get("size"),
+                "risk": item.get("risk"),
+                "summary": item.get("summary"),
+            }
+            for item in items
+        ],
+    }
+
+
+def code_user_sources(config_name: str) -> list[Path]:
+    home = host_home()
+    equinox = profile_home("equinox")
+    return [
+        home / ".config" / config_name / "User",
+        equinox / ".config" / config_name / "User",
+    ]
+
+
+def existing_code_user_source(config_name: str) -> Path | None:
+    for candidate in code_user_sources(config_name):
+        if candidate.is_dir():
+            return candidate
+    return None
+
+
+def copy_file_or_dir(source: Path, target: Path, *, apply: bool) -> dict:
+    record = {
+        "source": str(source),
+        "target": str(target),
+        "kind": "directory" if source.is_dir() else "file",
+        "state": "planned",
+    }
+    if not source.exists():
+        record["state"] = "missing"
+        return record
+    if apply:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if source.is_dir():
+            shutil.copytree(source, target, dirs_exist_ok=True)
+        else:
+            shutil.copy2(source, target)
+        record["state"] = "copied"
+    return record
+
+
+def extension_ids_from_dir(path: Path) -> list[str]:
+    ids: set[str] = set()
+    manifest = path / "extensions.json"
+    if manifest.is_file():
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            for item in data:
+                identifier = (item.get("identifier") or {}) if isinstance(item, dict) else {}
+                value = identifier.get("id") or item.get("id") if isinstance(item, dict) else None
+                if value:
+                    ids.add(str(value).lower())
+        except (OSError, json.JSONDecodeError):
+            pass
+    if path.is_dir():
+        for item in path.iterdir():
+            if not item.is_dir() or item.name.startswith("."):
+                continue
+            name = re.sub(r"-\d[\w.\-+]*$", "", item.name)
+            if "." in name:
+                ids.add(name.lower())
+    return sorted(ids)
+
+
+def dev_config_payload(mode: str, *, apply: bool = False) -> dict:
+    mode = "status" if mode in {"", ".", "status"} else mode
+    if mode not in {"status", "import", "sync"}:
+        mode = "status"
+    forge = profile_home("forge")
+    target_config = forge / ".config"
+    records: list[dict] = []
+    detected: list[dict] = []
+    for key, config_name in CODE_CONFIGS:
+        source = existing_code_user_source(config_name)
+        item = {
+            "id": key,
+            "name": config_name,
+            "source": str(source) if source else "",
+            "target": str(target_config / config_name / "User"),
+            "state": "source-found" if source else "not-found",
+        }
+        detected.append(item)
+        if not source:
+            continue
+        target_user = target_config / config_name / "User"
+        for file_name in SAFE_CODE_USER_FILES:
+            file_source = source / file_name
+            if file_source.exists():
+                records.append(copy_file_or_dir(file_source, target_user / file_name, apply=apply and mode in {"import", "sync"}))
+        for dir_name in SAFE_CODE_USER_DIRS:
+            dir_source = source / dir_name
+            if dir_source.exists():
+                records.append(copy_file_or_dir(dir_source, target_user / dir_name, apply=apply and mode in {"import", "sync"}))
+
+    extension_sources = [
+        host_home() / ".vscode/extensions",
+        profile_home("equinox") / ".vscode/extensions",
+    ]
+    extensions: set[str] = set()
+    for source in extension_sources:
+        extensions.update(extension_ids_from_dir(source))
+    manifest = {
+        "schema": "sevenos.forge.dev-config.extensions.v1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source_profile": "equinox",
+        "target_profile": "forge",
+        "policy": "manifest-only; extension folders stay outside the safe import by default",
+        "extensions": sorted(extensions),
+        "install_hint": "xargs -n1 code --install-extension < extensions.txt",
+    }
+    manifest_target = forge / ".config/sevenos/forge-dev-config.json"
+    txt_target = forge / ".config/sevenos/forge-vscode-extensions.txt"
+    if apply and mode in {"import", "sync"}:
+        manifest_target.parent.mkdir(parents=True, exist_ok=True)
+        manifest_target.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        txt_target.write_text("\n".join(manifest["extensions"]) + ("\n" if manifest["extensions"] else ""), encoding="utf-8")
+    state = "imported" if apply and mode in {"import", "sync"} else "planned" if mode in {"import", "sync"} else "ready"
+    return {
+        "schema": "sevenos.forge.dev-config.v1",
+        "state": state,
+        "mode": mode,
+        "apply": apply,
+        "source_profile": "equinox",
+        "target_profile": "forge",
+        "target_home": str(forge),
+        "detected": detected,
+        "safe_import": {
+            "files": list(SAFE_CODE_USER_FILES),
+            "directories": list(SAFE_CODE_USER_DIRS),
+            "excluded": ["globalStorage", "workspaceStorage", "History", "Cache", "CachedData", "logs", "tokens", "secrets"],
+        },
+        "copies": records,
+        "extensions": {
+            "count": len(manifest["extensions"]),
+            "manifest": str(manifest_target),
+            "list": str(txt_target),
+            "items": manifest["extensions"][:80],
+            "truncated": len(manifest["extensions"]) > 80,
+        },
+    }
+
+
+def extension_plan_payload() -> dict:
+    config = dev_config_payload("status", apply=False)
+    ext = config.get("extensions", {})
+    list_path = Path(ext.get("list", ""))
+    install_command = f"while read -r ext; do code --install-extension \"$ext\"; done < {list_path}" if list_path else ""
+    return {
+        "schema": "sevenos.forge.extensions.v1",
+        "state": "ready" if ext.get("count", 0) else "empty",
+        "count": ext.get("count", 0),
+        "manifest": ext.get("manifest", ""),
+        "list": ext.get("list", ""),
+        "install_command": install_command,
+        "policy": "manual-confirmation; extensions are installed into Forge only when the user asks",
+        "items": ext.get("items", []),
+    }
+
+
+def ai_payload(project: str = ".") -> dict:
+    project_state = project_payload(project)
+    path = project_state.get("path", str(Path(project).resolve()))
+    prompts = [
+        {
+            "title": "Explain project",
+            "prompt": f"explique le projet Forge {path}, sa stack, ses commandes et les prochaines actions",
+        },
+        {
+            "title": "Explain build failure",
+            "prompt": f"analyse la dernière erreur de build/test dans {path} et propose une correction sûre",
+        },
+        {
+            "title": "Find port",
+            "prompt": f"quel service Forge écoute sur mes ports locaux et lequel correspond au projet {path}",
+        },
+        {
+            "title": "Open relevant files",
+            "prompt": f"trouve les fichiers importants du projet {path} et propose quoi ouvrir dans Code",
+        },
+    ]
+    return {
+        "schema": "sevenos.forge.ai.v1",
+        "state": "ready",
+        "project": project_state,
+        "prompts": prompts,
+        "commands": [{"title": item["title"], "command": f"seven ai {json.dumps(item['prompt'], ensure_ascii=False)}"} for item in prompts],
+    }
+
+
+def readiness_payload(project: dict, services: list[dict], extensions: dict, profile: str) -> dict:
+    issues: list[dict] = []
+    actions: list[dict] = []
+    stacks = set(project.get("stacks") or [])
+    tools = set(str(tool).split()[0] for tool in project.get("tools", []) if tool)
+    missing = sorted(set(project.get("missing") or []))
+    env = project.get("env") if isinstance(project.get("env"), dict) else {}
+    env_keys = set(env.get("keys") or [])
+    git = project.get("git") if isinstance(project.get("git"), dict) else {}
+    service_by_name = {item.get("name"): item for item in services}
+
+    if profile != "forge":
+        issues.append({"level": "attention", "id": "profile", "title": "Forge is not active", "detail": "Project actions should run inside the Forge mini OS."})
+        actions.append({"title": "Enter Forge", "command": "seven profile activate forge", "impact": "profile-switch"})
+
+    for tool in missing:
+        package = TOOL_PACKAGE_MAP.get(tool, tool)
+        issues.append({"level": "warning", "id": f"missing-tool:{tool}", "title": f"{tool} missing", "detail": "A detected project tool is not available in the current runtime."})
+        actions.append({"title": f"Install {package}", "command": f"sevenpkg forge install {package}", "impact": "packages"})
+
+    wanted_services: dict[str, str] = {}
+    if "compose" in stacks or "docker" in tools:
+        wanted_services["docker.service"] = "Container or Compose workflow detected."
+    if {"DATABASE_URL", "POSTGRES_URL", "POSTGRES_HOST", "PGDATABASE"} & env_keys:
+        wanted_services["postgresql.service"] = "Database environment keys detected."
+    if {"REDIS_URL", "VALKEY_URL", "REDIS_HOST", "CACHE_URL"} & env_keys:
+        wanted_services["valkey.service"] = "Cache environment keys detected."
+    if {"DOMAIN", "PUBLIC_HOST", "CADDY_HOST"} & env_keys:
+        wanted_services["caddy.service"] = "Public host/domain environment keys detected."
+
+    for service_name, reason in wanted_services.items():
+        service = service_by_name.get(service_name, {})
+        title = service.get("title", service_name)
+        if not service.get("installed"):
+            issues.append({"level": "attention", "id": f"service-missing:{service_name}", "title": f"{title} not installed", "detail": reason})
+            actions.append({"title": f"Install {title}", "command": service.get("commands", {}).get("install", f"sevenpkg forge install {service.get('package', title.lower())}"), "impact": "packages"})
+        elif service.get("active") != "active":
+            issues.append({"level": "info", "id": f"service-manual:{service_name}", "title": f"{title} is available", "detail": f"{reason} Start it only if this project needs it."})
+            actions.append({"title": f"Start {title}", "command": service.get("commands", {}).get("start", f"systemctl start {service_name}"), "impact": "service"})
+
+    if env.get("private_env_present"):
+        issues.append({"level": "info", "id": "env-private", "title": ".env detected", "detail": "Forge reads keys only; values stay private."})
+    elif ".env.example" in set(project.get("files") or []):
+        actions.append({"title": "Create local env file", "command": f"touch {shell_quote(str(Path(project.get('path', '.')) / '.env'))}", "impact": "project"})
+
+    if git.get("state") == "dirty":
+        changed = git.get("changed", 0)
+        issues.append({"level": "info", "id": "git-dirty", "title": f"{changed} changed file(s)", "detail": "Review changes before publishing or deploying."})
+        actions.append({"title": "Review Git status", "command": git.get("commands", {}).get("status", "git status --short"), "impact": "safe"})
+
+    if extensions.get("count", 0) and extensions.get("state") == "ready":
+        actions.append({"title": "Install editor extensions", "command": extensions.get("install_command", ""), "impact": "user-confirmed"})
+
+    score = 100
+    score -= 10 if profile != "forge" else 0
+    score -= min(len(missing) * 8, 32)
+    score -= sum(10 for item in issues if str(item.get("id", "")).startswith("service-missing:"))
+    score -= sum(4 for item in issues if str(item.get("id", "")).startswith("service-manual:"))
+    score -= 4 if git.get("state") == "dirty" else 0
+    score = max(score, 0)
+    state = "ready" if score >= 90 else "needs-attention" if score >= 70 else "partial"
+    return {
+        "schema": "sevenos.forge.readiness.v1",
+        "state": state,
+        "score": score,
+        "project": {"name": project.get("name"), "path": project.get("path"), "stack": project.get("stack"), "stacks": project.get("stacks", [])},
+        "summary": {
+            "missing_tools": missing,
+            "wanted_services": sorted(wanted_services),
+            "private_env_present": bool(env.get("private_env_present")),
+            "git_state": git.get("state", "unknown"),
+        },
+        "issues": issues[:12],
+        "actions": [item for item in actions if item.get("command")][:12],
+        "policy": "preview-only; Forge readiness never starts services or installs packages without explicit user action",
+    }
+
+
+def doctor_payload(project: str = ".") -> dict:
+    profile = active_profile()
+    mini = run_json([str(ROOT / "bin/seven-mini-doctor"), "forge", "--json"], {"ready": False, "summary": {}, "missing": {}})
+    rootfs = run_json([str(ROOT / "bin/seven-profile-rootfs"), "audit", "forge", "--json"], {"summary": {}})
+    project_state = project_payload(project)
+    services = [service_state(name) for name in SERVICES]
+    catalog = catalog_payload()
+    memory = read_memory()
+    ports = ports_payload()
+    extensions = extension_plan_payload()
+    ai = ai_payload(project)
+    readiness = readiness_payload(project_state, services, extensions, profile)
+    optional_missing = (mini.get("missing") or {}).get("optional", [])
+    running_services = sum(1 for item in services if item["active"] == "active")
+    issues = []
+    if profile != "forge":
+        issues.append("forge-not-active")
+    if optional_missing:
+        issues.append("optional-dev-comfort-missing")
+    if not running_services:
+        issues.append("no-devops-service-running")
+    if catalog.get("count", 0) < 14:
+        issues.append("forge-catalog-thin")
+    score = 100
+    if profile != "forge":
+        score -= 12
+    if optional_missing:
+        score -= 6
+    if not running_services:
+        score -= 6
+    if catalog.get("count", 0) < 14:
+        score -= 8
+    state = "ready" if score >= 90 else "needs-attention" if score >= 70 else "partial"
+    return {
+        "schema": "sevenos.forge.center.v1",
+        "state": state,
+        "score": max(score, 0),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "profile": {
+            "active": profile,
+            "required": "forge",
+            "ready": bool(mini.get("ready")),
+            "rootfs": (rootfs.get("summary") or {}),
+            "activate": "seven profile activate forge",
+        },
+        "project": project_state,
+        "services": {
+            "running": running_services,
+            "total": len(services),
+            "items": services,
+        },
+        "ports": ports,
+        "comfort": {
+            "required_missing": (mini.get("missing") or {}).get("required", []),
+            "optional_missing": optional_missing,
+            "install_optional": "seven profile requirements forge --optional --apply --yes",
+        },
+        "extensions": extensions,
+        "readiness": readiness,
+        "ai": ai,
+        "catalog": catalog,
+        "memory": memory,
+        "issues": issues,
+        "next": next_actions(profile, project_state, optional_missing, running_services, readiness),
+    }
+
+
+def next_actions(profile: str, project: dict, optional_missing: list, running_services: int, readiness: dict | None = None) -> list[dict]:
+    actions = []
+    if readiness:
+        for item in readiness.get("actions", [])[:4]:
+            actions.append({
+                "title": item.get("title", "Forge action"),
+                "detail": item.get("impact", "safe"),
+                "command": item.get("command", ""),
+                "impact": item.get("impact", "safe"),
+            })
+    if profile != "forge":
+        actions.append({
+            "title": "Enter Forge",
+            "detail": "Activate the development mini OS before running project actions.",
+            "command": "seven profile activate forge",
+            "impact": "profile-switch",
+        })
+    actions.append({
+        "title": "Remember this project",
+        "detail": "Pin the current project in Forge project memory.",
+        "command": f"seven forge remember {project.get('path', '.')}",
+        "impact": "safe",
+    })
+    if optional_missing:
+        actions.append({
+            "title": "Install Forge comfort tools",
+            "detail": ", ".join(optional_missing),
+            "command": "seven profile requirements forge --optional --apply --yes",
+            "impact": "packages",
+        })
+    if running_services == 0:
+        actions.append({
+            "title": "Start Docker",
+            "detail": "Use the container runtime only when the project needs it.",
+            "command": "systemctl start docker.service",
+            "impact": "service",
+        })
+    commands = project.get("commands") if isinstance(project.get("commands"), dict) else {}
+    for key in ("dev", "build", "preview"):
+        value = commands.get(key)
+        if isinstance(value, list) and value:
+            actions.append({
+                "title": f"Run {key}",
+                "detail": value[0],
+                "command": value[0],
+                "impact": "project",
+            })
+        elif isinstance(value, str) and value:
+            actions.append({
+                "title": f"Run {key}",
+                "detail": value,
+                "command": value,
+                "impact": "project",
+            })
+    actions.append({
+        "title": "Inspect deployment",
+        "detail": "Show stack, tools, commands and deploy plan.",
+        "command": f"seven deploy inspect {project.get('path', '.')}",
+        "impact": "safe",
+    })
+    unique = []
+    seen = set()
+    for action in actions:
+        key = action.get("command") or action.get("title")
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(action)
+    return unique[:8]
+
+
+def print_human(payload: dict) -> None:
+    profile = payload["profile"]
+    project = payload["project"]
+    services = payload["services"]
+    comfort = payload["comfort"]
+    print("Forge Project Center")
+    print("====================")
+    print(f"State: {payload['state']} · score {payload['score']}")
+    print(f"Profile: {profile['active']} → required forge")
+    print(f"Project: {project.get('name', 'unknown')} · {project.get('stack', 'unknown')}")
+    print(f"Path: {project.get('path', '')}")
+    print(f"Services: {services['running']}/{services['total']} running")
+    readiness = payload.get("readiness", {})
+    if readiness:
+        print(f"Readiness: {readiness.get('state', 'unknown')} · score {readiness.get('score', 0)}")
+    print(f"Catalog: {payload['catalog']['count']} Forge route(s)")
+    if comfort.get("optional_missing"):
+        print(f"Comfort missing: {', '.join(comfort['optional_missing'])}")
+    print()
+    if project.get("commands"):
+        print("Project commands:")
+        for key, value in project["commands"].items():
+            if isinstance(value, list):
+                if value:
+                    print(f"- {key}: {value[0]}")
+            elif value:
+                print(f"- {key}: {value}")
+        print()
+    print("Services:")
+    for item in services["items"]:
+        print(f"- {item['title']}: {item['active']} · {item['enabled']} · {item['role']}")
+    print()
+    print("Next:")
+    for item in payload.get("next", []):
+        print(f"- {item['title']}: {item['command']}")
+        print(f"  {item['detail']}")
+
+
+def print_readiness_human(payload: dict) -> None:
+    print("Forge Project Readiness")
+    print("=======================")
+    print(f"State: {payload.get('state', 'unknown')} · score {payload.get('score', 0)}")
+    project = payload.get("project", {})
+    print(f"Project: {project.get('name', 'unknown')} · {project.get('stack', 'unknown')}")
+    print()
+    issues = payload.get("issues", [])
+    if issues:
+        print("Signals:")
+        for item in issues:
+            print(f"- {item.get('title')}: {item.get('detail')}")
+    else:
+        print("Signals: no issue detected.")
+    actions = payload.get("actions", [])
+    if actions:
+        print()
+        print("Actions:")
+        for item in actions:
+            print(f"- {item.get('title')}: {item.get('command')}")
+
+
+def print_config_human(payload: dict) -> None:
+    print("Forge Developer Config")
+    print("======================")
+    print(f"State: {payload['state']} · target {payload['target_home']}")
+    print("Safe import: settings, keybindings, locale and snippets only.")
+    print("Excluded: globalStorage, workspaceStorage, History, caches and secrets.")
+    print()
+    print("Detected editors:")
+    for item in payload.get("detected", []):
+        marker = "OK" if item.get("state") == "source-found" else "MISS"
+        print(f"- {marker} {item['name']}: {item.get('source') or 'no Equinox source'}")
+    print()
+    if payload.get("copies"):
+        print("Config files:")
+        for item in payload["copies"]:
+            print(f"- {item['state']}: {Path(item['source']).name} -> {item['target']}")
+    else:
+        print("Config files: no safe VS Code user config found yet.")
+    extensions = payload.get("extensions", {})
+    print()
+    print(f"Extensions: {extensions.get('count', 0)} captured as manifest")
+    if extensions.get("manifest"):
+        print(f"Manifest: {extensions['manifest']}")
+    if payload.get("state") != "imported":
+        print()
+        print("Apply with: seven forge config import --apply")
+
+
+def launch_native(project: str = ".") -> int:
+    candidates = [
+        ROOT / "bin/seven-forge-native",
+        Path("/opt/SevenOS/bin/seven-forge-native"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            subprocess.Popen([str(candidate), project], cwd=str(ROOT), start_new_session=True)
+            return 0
+    print("seven-forge: native Project Center is not installed yet", file=sys.stderr)
+    return 1
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="SevenOS Forge Project Center")
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "project", "services", "catalog", "remember", "config", "ports", "extensions", "ai", "tasks", "readiness", "open"))
+    parser.add_argument("project", nargs="?", default=".")
+    parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+
+    if args.action == "open":
+        return launch_native(args.project)
+    if args.action in {"status", "doctor", "project"}:
+        payload = doctor_payload(args.project)
+    elif args.action == "services":
+        payload = {"schema": "sevenos.forge.services.v1", "items": [service_state(name) for name in SERVICES]}
+    elif args.action == "ports":
+        payload = ports_payload()
+    elif args.action == "extensions":
+        payload = extension_plan_payload()
+    elif args.action == "ai":
+        payload = ai_payload(args.project)
+    elif args.action == "readiness":
+        project = project_payload(args.project)
+        services = [service_state(name) for name in SERVICES]
+        extensions = extension_plan_payload()
+        payload = readiness_payload(project, services, extensions, active_profile())
+    elif args.action == "tasks":
+        project = project_payload(args.project)
+        payload = {
+            "schema": "sevenos.forge.tasks.v1",
+            "state": project.get("state", "unknown"),
+            "project": {"name": project.get("name"), "path": project.get("path"), "stack": project.get("stack")},
+            "commands": project.get("commands", {}),
+            "tasks": project.get("tasks", []),
+            "env": project.get("env", {}),
+        }
+    elif args.action == "catalog":
+        payload = {"schema": "sevenos.forge.catalog.v1", **catalog_payload()}
+    elif args.action == "remember":
+        project = project_payload(args.project)
+        payload = {"schema": "sevenos.forge.remember.v1", "project": project, "memory": write_memory(project)}
+    elif args.action == "config":
+        payload = dev_config_payload(args.project, apply=args.apply)
+    else:
+        payload = doctor_payload(args.project)
+
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    elif args.action == "remember":
+        print(f"Forge remembered: {payload['project'].get('name')} · {payload['project'].get('path')}")
+    elif args.action == "services":
+        for item in payload["items"]:
+            print(f"{item['title']}: {item['active']} · {item['enabled']} · {item['role']}")
+    elif args.action == "catalog":
+        for item in payload["items"]:
+            print(f"{item['id']}: {item['name']} · {item['source']} · {item['summary']}")
+    elif args.action == "config":
+        print_config_human(payload)
+    elif args.action == "ports":
+        for item in payload.get("items", []):
+            print(f":{item['port']} · {item['local']} · {item.get('process', '')}")
+    elif args.action == "extensions":
+        print(f"Forge extensions: {payload.get('count', 0)}")
+        print(payload.get("install_command", ""))
+    elif args.action == "ai":
+        for item in payload.get("commands", []):
+            print(f"{item['title']}: {item['command']}")
+    elif args.action == "readiness":
+        print_readiness_human(payload)
+    elif args.action == "tasks":
+        for item in payload.get("tasks", []):
+            print(f"{item.get('name')}: {item.get('command')}")
+    else:
+        print_human(payload)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

@@ -226,7 +226,112 @@ def set_payload(profiles: list[str]) -> dict:
     }
 
 
+def guide_payload(profiles: list[str]) -> dict:
+    set_data = set_payload(profiles)
+    items = set_data["profiles"]
+    cards = []
+    for profile, item in items.items():
+        summary = item["summary"]
+        plan = item.get("plan", [])
+        required_missing = int(summary.get("required_missing", 0) or 0)
+        optional_missing = int(summary.get("optional_missing", 0) or 0)
+        rootfs_ready_value = bool(summary.get("rootfs_ready"))
+        private_count = int(summary.get("private_package_count", 0) or 0)
+        if required_missing or not rootfs_ready_value:
+            state = "needs-setup"
+        elif profile == "baobab" and optional_missing:
+            state = "ready-light-cultural"
+        elif optional_missing:
+            state = "ready-with-options"
+        else:
+            state = "ready"
+        next_action = None
+        if required_missing:
+            next_action = next((action for action in plan if ".install.required" in action.get("id", "")), None)
+        if next_action is None and not rootfs_ready_value:
+            next_action = next((action for action in plan if ".rootfs.prepare" in action.get("id", "")), None)
+        if next_action is None and optional_missing:
+            next_action = next((action for action in plan if "optional" in action.get("id", "") or "packs" in action.get("id", "")), None)
+        if profile == "baobab" and optional_missing:
+            next_action = {
+                "id": "baobab.guide",
+                "label": "Lire le guide Baobab",
+                "command": "seven baobab guide",
+                "scope": "safe",
+                "reason": "Baobab should stay light by default; immersive and community tools must be chosen deliberately.",
+            }
+        if profile == "shield":
+            next_action = {
+                "id": "shield.scope",
+                "label": "Vérifier le scope Shield",
+                "command": "seven shield scope",
+                "scope": "safe",
+                "reason": "Shield must not look audit-ready until an explicit authorized scope exists.",
+            }
+        if next_action is None:
+            next_action = {
+                "id": f"{profile}.open",
+                "label": f"Ouvrir {profile.title()}",
+                "command": f"seven-mini-os-center {profile}",
+                "scope": "safe",
+                "reason": "The mini OS is ready; open its center when needed.",
+            }
+        cards.append({
+            "profile": profile,
+            "title": item.get("title", profile.title()),
+            "state": state,
+            "ready": bool(item.get("ready")),
+            "required_missing": required_missing,
+            "optional_missing": optional_missing,
+            "rootfs_ready": rootfs_ready_value,
+            "private_package_count": private_count,
+            "key_tools_ready": sum(1 for ok in (item.get("key_tools") or {}).values() if ok),
+            "key_tools_total": len(item.get("key_tools") or {}),
+            "next": next_action,
+        })
+    score = 100
+    score -= sum(15 for card in cards if card["state"] == "needs-setup")
+    score -= min(20, sum(2 for card in cards if card["state"].startswith("ready-with")))
+    score = max(0, score)
+    return {
+        "schema": "sevenos.mini-os.guide.v1",
+        "generated_at": int(time.time()),
+        "state": "ready" if all(card["state"] != "needs-setup" for card in cards) else "needs-setup",
+        "score": score,
+        "summary": {
+            "profiles": len(cards),
+            "ready": sum(1 for card in cards if card["ready"]),
+            "rootfs_ready": sum(1 for card in cards if card["rootfs_ready"]),
+            "required_missing": sum(card["required_missing"] for card in cards),
+            "optional_missing": sum(card["optional_missing"] for card in cards),
+            "private_package_count": sum(card["private_package_count"] for card in cards),
+        },
+        "profiles": cards,
+        "policy": {
+            "host": "Equinox stays minimal; domain tools belong in their natural mini OS.",
+            "optional": "Optional heavy tools remain opt-in to keep SevenOS light and stable.",
+            "scope": "Shield scope and Baobab community validation stay explicit; SevenOS must not fake readiness.",
+        },
+    }
+
+
 def print_human(data: dict) -> None:
+    if data.get("schema") == "sevenos.mini-os.guide.v1":
+        print("SevenOS Mini OS Guide")
+        print("=====================")
+        print(f"State: {data['state']} · score {data['score']}")
+        summary = data["summary"]
+        print(f"Ready: {summary['ready']}/{summary['profiles']} · rootfs {summary['rootfs_ready']}/{summary['profiles']} · private packages {summary['private_package_count']}")
+        print()
+        for card in data["profiles"]:
+            next_action = card.get("next") or {}
+            print(f"{card['profile']}: {card['state']} · required missing {card['required_missing']} · optional missing {card['optional_missing']} · tools {card['key_tools_ready']}/{card['key_tools_total']}")
+            print(f"  next: {next_action.get('label')} · {next_action.get('command')}")
+        print()
+        print("Policy:")
+        for value in data["policy"].values():
+            print(f"- {value}")
+        return
     if data.get("schema") == "sevenos.mini-os.doctor-set.v1":
         print("SevenOS Mini OS Doctor")
         print("======================")
@@ -305,15 +410,27 @@ def cached_payload(profile_key: str, action: str, refresh: bool, builder) -> dic
 def main() -> int:
     parser = argparse.ArgumentParser(prog="seven-mini-doctor")
     parser.add_argument("profile", nargs="?", default="all", choices=("all", *PROFILES))
-    parser.add_argument("action", nargs="?", default="doctor", choices=("doctor", "status", "json", "plan", "install", "optional", "rootfs", "open", "activate", "packages", "limits"))
+    parser.add_argument("action", nargs="?", default="doctor", choices=("doctor", "status", "json", "guide", "plan", "install", "optional", "rootfs", "open", "activate", "packages", "limits"))
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--refresh", "--no-cache", action="store_true", dest="refresh")
     args = parser.parse_args()
 
     profiles = list(PROFILES) if args.profile == "all" else [args.profile]
-    if args.action in {"doctor", "status", "json", "plan"}:
+    if args.action in {"doctor", "status", "json", "guide", "plan"}:
         profile_key = "all" if len(profiles) > 1 else profiles[0]
+        if args.action == "guide":
+            data = cached_payload(
+                profile_key,
+                "guide",
+                args.refresh,
+                lambda: guide_payload(profiles),
+            )
+            if args.json:
+                print(json.dumps(data, indent=2))
+            else:
+                print_human(data)
+            return 0
         data = cached_payload(
             profile_key,
             args.action,

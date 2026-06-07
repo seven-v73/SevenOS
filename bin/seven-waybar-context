@@ -51,6 +51,13 @@ def stable_context() -> bool:
     return prefs().get("context", "dynamic").lower() in {"stable", "static", "locked", "freeze"}
 
 
+def preferred_density() -> str:
+    value = prefs().get("density", "").lower()
+    if value in {"normal", "compact", "wide", "immersive"}:
+        return value
+    return ""
+
+
 def signal_min_interval() -> float:
     try:
         return max(0.2, float(prefs().get("signal_min_interval", "1.2")))
@@ -199,7 +206,15 @@ def refresh_window_memory(event: str) -> None:
 def layout_policy(profile_key: str, app: str, service: str, fullscreen: bool) -> dict:
     density = "normal"
     priority = "balanced"
-    if fullscreen or service in {"streaming", "youtube"} or profile_key == "pulse":
+    if stable_context():
+        density = preferred_density() or "compact"
+        priority = {
+            "compact": "workflow",
+            "wide": "assets",
+            "immersive": "content",
+            "normal": "balanced",
+        }.get(density, "workflow")
+    elif fullscreen or service in {"streaming", "youtube"} or profile_key == "pulse":
         density = "immersive"
         priority = "content"
     elif profile_key in {"shield", "forge"} or app in {"developer", "terminal"}:

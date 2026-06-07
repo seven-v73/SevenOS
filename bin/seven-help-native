@@ -500,7 +500,10 @@ SECTIONS = [
         "commands": [
             ("seven-waybar status --json", t("État Waybar", "Waybar state")),
             ("seven-waybar limits --json", t("Limites dynamiques", "Dynamic limits")),
+            ("seven-waybar performance", t("Performance runtime", "Runtime performance")),
             ("seven-waybar doctor --json", t("Diagnostic complet", "Full diagnostic")),
+            ("seven-waybar footprint", t("Poids caches/backups", "Cache/backup footprint")),
+            ("seven-waybar optimize", t("Optimiser la barre", "Optimize the bar")),
             ("seven-waybar restart", t("Redémarrer Waybar", "Restart Waybar")),
             ("seven-profile-theme audit-waybars", t("Auditer les mini Waybar", "Audit mini Waybars")),
             ("seven-waybar stable", t("Activer mode stable", "Enable stable mode")),

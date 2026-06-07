@@ -10,14 +10,17 @@ fi
 RUNTIME_ROOT="${SEVENOS_RUNTIME_ROOT:-/opt/SevenOS}"
 ACTION="${1:-status}"
 JSON=0
+FAST=0
 
-if [[ "$ACTION" == "--json" ]]; then
+for arg in "$@"; do
+  case "$arg" in
+    --json|json) JSON=1 ;;
+    --fast) FAST=1 ;;
+  esac
+done
+
+if [[ "$ACTION" == "--json" || "$ACTION" == "--fast" ]]; then
   ACTION="status"
-  JSON=1
-fi
-
-if [[ "${2:-}" == "--json" || "$ACTION" == "json" ]]; then
-  JSON=1
 fi
 
 usage() {
@@ -27,6 +30,7 @@ SevenOS Footprint Audit
 Usage:
   seven footprint
   seven footprint --json
+  seven footprint --fast --json
   seven footprint plan
   seven footprint cleanup
   seven footprint record
@@ -185,7 +189,7 @@ collect_json() {
   local source_iso opt_iso
   source_iso="$(latest_iso_in "$ROOT_DIR/out/iso" || true)"
   opt_iso="$(latest_iso_in "$RUNTIME_ROOT/out/iso" || true)"
-  ROOT_DIR="$ROOT_DIR" RUNTIME_ROOT="$RUNTIME_ROOT" SOURCE_ISO="$source_iso" OPT_ISO="$opt_iso" python - <<'PY'
+  ROOT_DIR="$ROOT_DIR" RUNTIME_ROOT="$RUNTIME_ROOT" SOURCE_ISO="$source_iso" OPT_ISO="$opt_iso" FAST="$FAST" python - <<'PY'
 import json
 import os
 import shutil
@@ -197,6 +201,7 @@ root = Path(os.environ["ROOT_DIR"]).resolve()
 opt = Path(os.environ.get("RUNTIME_ROOT", "/opt/SevenOS")).resolve()
 source_iso = Path(os.environ["SOURCE_ISO"]) if os.environ.get("SOURCE_ISO") else None
 opt_iso = Path(os.environ["OPT_ISO"]) if os.environ.get("OPT_ISO") else None
+fast = os.environ.get("FAST") == "1"
 
 def bytes_of(path: Path) -> int:
     try:
@@ -249,6 +254,24 @@ def find_dir(path: Path, candidates: list[str]) -> dict | None:
             return {"path": str(item), "bytes": size, "size": human(size)}
     return None
 
+def command_json(command: list[str], timeout: float = 8.0) -> dict:
+    try:
+        result = subprocess.run(
+            command,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+        if result.returncode != 0:
+            return {
+                "state": "MISS",
+                "error": result.stderr.strip() or result.stdout.strip() or f"exit={result.returncode}",
+            }
+        return json.loads(result.stdout)
+    except Exception as exc:
+        return {"state": "MISS", "error": str(exc)}
+
 def iso_info(path: Path | None) -> dict:
     if not path or not path.exists():
         return {"state": "MISS", "path": "", "size": "0 B", "bytes": 0, "age_hours": None}
@@ -286,20 +309,40 @@ def git_snapshot(path: Path) -> dict:
         "paths": paths[:80],
     }
 
-repo_bytes = bytes_of(root)
-opt_bytes = bytes_of(opt)
+repo_bytes = 0 if fast else bytes_of(root)
+opt_bytes = 0 if fast else bytes_of(opt)
 git = git_snapshot(root)
 home_cache = Path.home() / ".cache"
+sevenos_share = Path.home() / ".local/share/sevenos"
+sevenos_share_bytes = 0 if fast else bytes_of(sevenos_share)
 state_dir = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
 event_file = state_dir / "events.jsonl"
 events_bytes = bytes_of(event_file)
+package_footprint = command_json([str(root / "bin" / "sevenpkg"), "footprint", "--fast", "--json"])
+package_summary = package_footprint.get("summary") if isinstance(package_footprint, dict) else {}
+duplicated_packages = int((package_summary or {}).get("duplicated_packages") or 0)
+ready_rootfs = int((package_summary or {}).get("ready_rootfs") or 0)
+mini_os_count = int((package_summary or {}).get("mini_os") or 0)
 
 checks = []
 def check(key, state, title, detail, command=""):
     checks.append({"key": key, "state": state, "title": title, "detail": detail, "command": command})
 
-check("repo-size", "ATTENTION" if repo_bytes > 10 * 1024**3 else "OK", "Source repository footprint", f"{human(repo_bytes)} in {root}")
-check("opt-size", "ATTENTION" if opt_bytes > 12 * 1024**3 else "OK", "Installed runtime footprint", f"{human(opt_bytes)} in /opt/SevenOS")
+if fast:
+    check("repo-size", "SKIP", "Source repository footprint", f"Skipped in fast mode for {root}", "seven footprint --json")
+    check("opt-size", "SKIP", "Installed runtime footprint", "Skipped in fast mode for /opt/SevenOS", "seven footprint --json")
+    check("sevenos-share-size", "SKIP", "SevenOS local state footprint", f"Skipped in fast mode for {sevenos_share}", "seven footprint plan")
+else:
+    check("repo-size", "ATTENTION" if repo_bytes > 10 * 1024**3 else "OK", "Source repository footprint", f"{human(repo_bytes)} in {root}")
+    check("opt-size", "ATTENTION" if opt_bytes > 12 * 1024**3 else "OK", "Installed runtime footprint", f"{human(opt_bytes)} in /opt/SevenOS")
+    check("sevenos-share-size", "ATTENTION" if sevenos_share_bytes > 70 * 1024**3 else "OK", "SevenOS local state footprint", f"{human(sevenos_share_bytes)} in {sevenos_share}", "seven footprint plan")
+check(
+    "rootfs-duplication",
+    "ATTENTION" if duplicated_packages > 800 else "OK",
+    "Mini OS rootfs package duplication",
+    f"{duplicated_packages} duplicated package name(s); {ready_rootfs}/{mini_os_count} mini OS rootfs ready",
+    "sevenpkg footprint --fast --json",
+)
 src_iso = iso_info(source_iso)
 installed_iso = iso_info(opt_iso)
 check("source-iso", src_iso["state"], "Source tree ISO artifact", src_iso["path"] or "No ISO in source out/iso.")
@@ -326,10 +369,16 @@ recommendations = [
         "command": "seven footprint --json",
         "risk": "low",
     },
+    {
+        "title": "Treat ~/.local/share/sevenos as platform state, not cache",
+        "detail": "Rootfs, VM disks and Windows prefixes can be large but are user-visible system state. They should be archived, compacted or removed only through guided flows.",
+        "command": "seven footprint plan",
+        "risk": "low",
+    },
 ]
 
 cleanup_plan = []
-def plan_item(key, title, detail, path, command, risk="low", reclaim_bytes=0, confirm=False):
+def plan_item(key, title, detail, path, command, risk="low", reclaim_bytes=0, confirm=False, reclaimable=True):
     cleanup_plan.append({
         "key": key,
         "title": title,
@@ -339,10 +388,11 @@ def plan_item(key, title, detail, path, command, risk="low", reclaim_bytes=0, co
         "risk": risk,
         "reclaim_bytes": int(reclaim_bytes or 0),
         "reclaim": human(int(reclaim_bytes or 0)),
+        "reclaimable": bool(reclaimable),
         "requires_confirmation": bool(confirm),
     })
 
-out_archiso = find_dir(root, ["out/archiso"])
+out_archiso = None if fast else find_dir(root, ["out/archiso"])
 if out_archiso and out_archiso["bytes"] > 1024**3:
     plan_item(
         "source-build-cache",
@@ -355,7 +405,7 @@ if out_archiso and out_archiso["bytes"] > 1024**3:
         False,
     )
 
-calamares_aur = find_dir(root, ["out/calamares-aur"])
+calamares_aur = None if fast else find_dir(root, ["out/calamares-aur"])
 if calamares_aur and calamares_aur["bytes"] > 200 * 1024**2:
     plan_item(
         "calamares-build-cache",
@@ -368,7 +418,7 @@ if calamares_aur and calamares_aur["bytes"] > 200 * 1024**2:
         False,
     )
 
-opt_archiso = find_dir(opt, ["out/archiso"])
+opt_archiso = None if fast else find_dir(opt, ["out/archiso"])
 if opt_archiso and opt_archiso["bytes"] > 1024**3:
     plan_item(
         "runtime-build-cache",
@@ -382,7 +432,7 @@ if opt_archiso and opt_archiso["bytes"] > 1024**3:
     )
 
 yay_cache = Path.home() / ".cache/yay"
-if yay_cache.exists():
+if yay_cache.exists() and not fast:
     yay_bytes = bytes_of(yay_cache)
     if yay_bytes > 5 * 1024**3:
         plan_item(
@@ -397,7 +447,7 @@ if yay_cache.exists():
         )
 
 seven_cache = Path.home() / ".cache/sevenos"
-if seven_cache.exists():
+if seven_cache.exists() and not fast:
     cache_bytes = bytes_of(seven_cache)
     if cache_bytes > 1024**3:
         plan_item(
@@ -411,6 +461,70 @@ if seven_cache.exists():
             False,
         )
 
+rootfs_dir = sevenos_share / "profile-rootfs"
+if rootfs_dir.exists() and not fast:
+    rootfs_bytes = bytes_of(rootfs_dir)
+    if rootfs_bytes > 40 * 1024**3:
+        plan_item(
+            "profile-rootfs-footprint",
+            "Audit mini OS rootfs footprint",
+            "Rootfs trees are core SevenOS state, not disposable cache. Review per-profile size and duplication before installing more optional stacks.",
+            rootfs_dir,
+            "du -h -d 2 ~/.local/share/sevenos/profile-rootfs | sort -hr | head -n 40 && sevenpkg footprint --json",
+            "medium",
+            rootfs_bytes,
+            True,
+            False,
+        )
+
+podman_dir = sevenos_share / "profile-rootfs-podman"
+if podman_dir.exists() and not fast:
+    podman_bytes = bytes_of(podman_dir)
+    if podman_bytes > 5 * 1024**3:
+        plan_item(
+            "profile-rootfs-podman",
+            "Review mini OS container storage",
+            "Podman storage can grow with build layers and temporary containers. Prune only after confirming no active Forge/Pulse/Studio workload needs them.",
+            podman_dir,
+            "du -sh ~/.local/share/sevenos/profile-rootfs-podman && podman system df",
+            "medium",
+            podman_bytes,
+            True,
+            False,
+        )
+
+vm_dir = sevenos_share / "vm"
+if vm_dir.exists() and not fast:
+    vm_bytes = bytes_of(vm_dir)
+    if vm_bytes > 10 * 1024**3:
+        plan_item(
+            "sevenos-vm-images",
+            "Review SevenOS VM images",
+            "VM disks are user-visible system assets. Compact, move to external storage or delete only from the VM manager.",
+            vm_dir,
+            "du -h -d 2 ~/.local/share/sevenos/vm | sort -hr | head -n 40",
+            "high",
+            vm_bytes,
+            True,
+            False,
+        )
+
+profile_containers = sevenos_share / "profile-containers"
+if profile_containers.exists() and not fast:
+    containers_bytes = bytes_of(profile_containers)
+    if containers_bytes > 2 * 1024**3:
+        plan_item(
+            "profile-containers",
+            "Review legacy profile containers",
+            "Profile container folders may include older compatibility state. Keep them unless the matching mini OS route confirms they are unused.",
+            profile_containers,
+            "du -h -d 2 ~/.local/share/sevenos/profile-containers | sort -hr | head -n 40",
+            "medium",
+            containers_bytes,
+            True,
+            False,
+        )
+
 attention = sum(1 for item in checks if item["state"] == "ATTENTION")
 missing = sum(1 for item in checks if item["state"] == "MISS")
 state = "needs-trim" if attention else "needs-source-iso" if missing else "ready"
@@ -421,6 +535,7 @@ payload = {
     "state": state,
     "score": score,
     "generated_at": int(time.time()),
+    "fast": fast,
     "root": str(root),
     "runtime_root": str(opt),
     "summary": {
@@ -428,8 +543,16 @@ payload = {
         "repo_bytes": repo_bytes,
         "opt": human(opt_bytes),
         "opt_bytes": opt_bytes,
+        "sevenos_share": human(sevenos_share_bytes),
+        "sevenos_share_bytes": sevenos_share_bytes,
         "sevenbus": human(events_bytes),
         "sevenbus_bytes": events_bytes,
+        "rootfs_duplication": {
+            "duplicated_packages": duplicated_packages,
+            "ready_rootfs": ready_rootfs,
+            "mini_os": mini_os_count,
+            "state": package_footprint.get("state", "unknown") if isinstance(package_footprint, dict) else "unknown",
+        },
         "source_iso": src_iso,
         "installed_iso": installed_iso,
         "git": {
@@ -440,19 +563,23 @@ payload = {
         },
     },
     "top": {
-        "repo": top_dirs(root, depth=1),
-        "repo_nested": top_dirs(root, depth=2),
-        "opt": top_dirs(opt, depth=1),
-        "home_cache": top_dirs(home_cache, depth=1, limit=8),
+        "repo": [] if fast else top_dirs(root, depth=1),
+        "repo_nested": [] if fast else top_dirs(root, depth=2),
+        "opt": [] if fast else top_dirs(opt, depth=1),
+        "home_cache": [] if fast else top_dirs(home_cache, depth=1, limit=8),
+        "sevenos_share": [] if fast else top_dirs(sevenos_share, depth=1, limit=12),
+        "sevenos_share_nested": [] if fast else top_dirs(sevenos_share, depth=2, limit=16),
     },
+    "package_footprint": package_footprint,
     "checks": checks,
     "recommendations": recommendations,
     "cleanup_plan": cleanup_plan,
     "cleanup_summary": {
         "items": len(cleanup_plan),
-        "reviewable_reclaim": human(sum(item["reclaim_bytes"] for item in cleanup_plan)),
+        "reviewable_footprint": human(sum(item["reclaim_bytes"] for item in cleanup_plan)),
+        "safe_reclaim_candidate": human(sum(item["reclaim_bytes"] for item in cleanup_plan if item.get("reclaimable"))),
         "automatic_cleanup": False,
-        "policy": "plan-only; commands are shown for review and require explicit user action",
+        "policy": "plan-only; commands are shown for review and require explicit user action; rootfs, VM images and profile state are audit targets, not automatic cleanup targets",
     },
     "commands": {
         "json": "seven footprint --json",
@@ -549,6 +676,8 @@ def plan_reclaim(data: dict) -> int:
     total = 0
     for item in items:
         if isinstance(item, dict):
+            if not item.get("reclaimable", True):
+                continue
             try:
                 total += int(item.get("reclaim_bytes") or 0)
             except Exception:
@@ -986,7 +1115,11 @@ print(f"Score: {data.get('score', 0)}%")
 summary = data.get("summary", {})
 print(f"Source repo: {summary.get('repo', 'unknown')}")
 print(f"/opt/SevenOS: {summary.get('opt', 'unknown')}")
+print(f"SevenOS local state: {summary.get('sevenos_share', 'unknown')}")
 print(f"SevenBus: {summary.get('sevenbus', 'unknown')}")
+rootfs = summary.get("rootfs_duplication", {})
+if rootfs:
+    print(f"Rootfs duplication: {rootfs.get('duplicated_packages', 0)} package name(s) · {rootfs.get('ready_rootfs', 0)}/{rootfs.get('mini_os', 0)} ready")
 git = summary.get("git", {})
 if git:
     print(f"Git: {git.get('state', 'unknown')} · {git.get('dirty_count', 0)} path(s) · {git.get('branch', 'unknown')}@{git.get('commit', 'unknown')}")
@@ -995,10 +1128,14 @@ for item in data.get("checks", []):
 if os.environ.get("ACTION") == "plan":
     cleanup = data.get("cleanup_summary", {})
     print("")
-    print(f"Reviewable reclaim: {cleanup.get('reviewable_reclaim', 'unknown')}")
+    print(f"Footprint under review: {cleanup.get('reviewable_footprint', 'unknown')}")
+    print(f"Safe reclaim candidate: {cleanup.get('safe_reclaim_candidate', 'unknown')}")
     print("Automatic cleanup: no")
     for item in data.get("cleanup_plan", []):
-        confirm = "requires confirmation" if item.get("requires_confirmation") else "review only"
+        if item.get("reclaimable"):
+            confirm = "requires confirmation" if item.get("requires_confirmation") else "review only"
+        else:
+            confirm = "audit only"
         print(f"- {item.get('title')} — {item.get('reclaim')} · {confirm}")
         print(f"  {item.get('command')}")
 PY

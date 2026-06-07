@@ -281,6 +281,20 @@ Duplication is not automatically an error because shared base packages are
 normal. It is a release signal: if a mini OS grows too much, move large tools to
 guided packs or keep them cataloged but optional.
 
+The wider ecosystem footprint is tracked separately with:
+
+```bash
+seven footprint --fast --json
+seven footprint plan
+seven footprint --json
+```
+
+`--fast` is the UI/SevenAI route and skips deep byte-size scans. The full audit
+is for maintenance windows. Rootfs trees, VM images, Windows prefixes and
+profile containers are platform state, not disposable cache; they should appear
+as audit targets and require an explicit guided action before anything is
+removed, compacted or archived.
+
 ## Known Limits To Track
 
 Flatpak is still user-global today. SevenPkg can record profile intent and

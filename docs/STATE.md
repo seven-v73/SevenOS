@@ -65,3 +65,17 @@ Examples:
 
 Normal UI rendering should not force refreshes continuously. This keeps SevenOS
 fast and avoids turning every settings page into a heavy diagnostic run.
+
+## Footprint Rule
+
+Storage and footprint surfaces should not run a deep size scan during normal
+rendering. Use:
+
+```bash
+seven footprint --fast --json
+```
+
+for SevenAI, Spotlight, Settings, Doctor and widgets. Use the full
+`seven footprint --json` or `seven footprint plan` only when the user opens a
+maintenance view. SevenOS treats rootfs trees, VM images, Windows prefixes and
+profile containers as platform state, not cache.

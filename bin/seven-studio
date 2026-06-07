@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+ROOT = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+REQUIRED_FILE = ROOT / "scripts/packages-creation.txt"
+OPTIONAL_FILE = ROOT / "scripts/packages-creation-optional.txt"
+APPS_FILE = ROOT / "sevenpkg/apps.json"
+
+
+def host_home() -> Path:
+    if os.environ.get("SEVENOS_HOST_HOME"):
+        return Path(os.environ["SEVENOS_HOST_HOME"])
+    raw = Path(os.environ.get("HOME", str(Path.home())))
+    marker = "/.local/share/sevenos/profile-containers/"
+    text = str(raw)
+    if marker in text and text.endswith("/home"):
+        return Path(text.split(marker, 1)[0])
+    user = os.environ.get("USER")
+    if user:
+        candidate = Path("/home") / user
+        if candidate.is_dir():
+            return candidate
+    return raw
+
+
+HOST_HOME = host_home()
+HOST_DATA_HOME = Path(os.environ.get("SEVENOS_HOST_DATA_HOME", str(HOST_HOME / ".local/share")))
+PROFILE_ROOT = HOST_DATA_HOME / "sevenos/profile-rootfs/studio/rootfs"
+PROFILE_LOCAL = PROFILE_ROOT / "var/lib/pacman/local"
+PROFILE_WORKSPACE = HOST_HOME / "Studio"
+
+
+def package_file(path: Path) -> list[str]:
+    if not path.is_file():
+        return []
+    packages = []
+    for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        item = raw.split("#", 1)[0].strip()
+        if item:
+            packages.append(item)
+    return packages
+
+
+def command_output(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout if result.returncode == 0 else ""
+
+
+def installed_packages() -> set[str]:
+    if not shutil.which("pacman"):
+        return set()
+    return {line.strip() for line in command_output(["pacman", "-Qq"]).splitlines() if line.strip()}
+
+
+def rootfs_ready() -> bool:
+    return (PROFILE_ROOT / "usr/bin").is_dir() and (PROFILE_ROOT / "var/lib/pacman").exists()
+
+
+def rootfs_packages() -> set[str]:
+    packages = set()
+    if not PROFILE_LOCAL.is_dir():
+        return packages
+    for desc in PROFILE_LOCAL.glob("*/desc"):
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for index, line in enumerate(lines):
+            if line == "%NAME%" and index + 1 < len(lines):
+                packages.add(lines[index + 1].strip())
+                break
+    return packages
+
+
+def app_catalog() -> list[dict]:
+    try:
+        payload = json.loads(APPS_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    return [item for item in payload.get("apps", []) if item.get("domain") == "studio"]
+
+
+def executable_state() -> dict[str, bool]:
+    mapping = {
+        "gimp": "gimp",
+        "krita": "krita",
+        "inkscape": "inkscape",
+        "blender": "blender",
+        "kdenlive": "kdenlive",
+        "obs": "obs",
+        "audacity": "audacity",
+        "ardour": "ardour",
+    }
+    return {name: bool(shutil.which(binary) or (PROFILE_ROOT / "usr/bin" / binary).exists()) for name, binary in mapping.items()}
+
+
+def workspace_state() -> dict:
+    folders = {
+        "projects": PROFILE_WORKSPACE / "Projects",
+        "renders": PROFILE_WORKSPACE / "Renders",
+        "captures": PROFILE_WORKSPACE / "Captures",
+        "assets": PROFILE_WORKSPACE / "Assets",
+        "exports": PROFILE_WORKSPACE / "Exports",
+    }
+    return {
+        "path": str(PROFILE_WORKSPACE),
+        "folders": {key: {"path": str(path), "exists": path.is_dir()} for key, path in folders.items()},
+        "ready": all(path.is_dir() for path in folders.values()),
+    }
+
+
+def ensure_workspace() -> None:
+    for folder in ("Projects", "Renders", "Captures", "Assets", "Exports"):
+        (PROFILE_WORKSPACE / folder).mkdir(parents=True, exist_ok=True)
+
+
+def payload() -> dict:
+    required = package_file(REQUIRED_FILE)
+    optional = package_file(OPTIONAL_FILE)
+    installed = installed_packages()
+    private = rootfs_packages()
+    effective = installed | private
+    missing_required = [pkg for pkg in required if pkg not in effective]
+    missing_optional = [pkg for pkg in optional if pkg not in effective]
+    apps = executable_state()
+    workspace = workspace_state()
+    blockers = []
+    warnings = []
+    if missing_required:
+        blockers.append("studio-required-packages")
+    if not rootfs_ready():
+        warnings.append("studio-rootfs-not-ready")
+    if not workspace["ready"]:
+        warnings.append("studio-workspace-not-materialized")
+    if not apps.get("obs"):
+        warnings.append("studio-capture-tool-missing")
+    ready = not blockers
+    data = {
+        "schema": "sevenos.studio.center.v1",
+        "generated_at": int(time.time()),
+        "profile": "studio",
+        "ready": ready,
+        "summary": {
+            "required": len(required),
+            "required_missing": len(missing_required),
+            "optional": len(optional),
+            "optional_missing": len(missing_optional),
+            "rootfs_ready": rootfs_ready(),
+            "package_count": len(private),
+            "workspace_ready": workspace["ready"],
+            "apps_ready": sum(1 for ok in apps.values() if ok),
+            "apps_total": len(apps),
+        },
+        "workspace": workspace,
+        "apps": apps,
+        "catalog": app_catalog(),
+        "missing": {
+            "required": missing_required,
+            "optional": missing_optional,
+        },
+        "blockers": blockers,
+        "warnings": warnings,
+        "commands": {
+            "open": "seven-mini-os-center studio",
+            "activate": "seven profile activate studio",
+            "install_required": "seven profile requirements studio --apply --yes",
+            "install_optional": "seven profile requirements studio --optional --apply --yes",
+            "prepare_rootfs": "seven profile-rootfs prepare studio --apply --yes",
+            "workspace": "seven studio workspace",
+            "assets": "seven-files ~/Studio/Assets",
+            "captures": "seven-files ~/Studio/Captures",
+            "exports": "seven-files ~/Studio/Exports",
+            "record": "seven-recorder panel",
+            "apps": "sevenpkg studio packages",
+        },
+        "plan": [],
+    }
+    if missing_required:
+        data["plan"].append({
+            "id": "studio.install.required",
+            "label": "Installer les essentiels Studio",
+            "command": data["commands"]["install_required"],
+            "scope": "studio-profile",
+            "reason": "Studio needs its creator tools before it can behave like a complete creator mini OS.",
+        })
+    if missing_optional:
+        data["plan"].append({
+            "id": "studio.install.optional",
+            "label": "Installer les extensions Studio",
+            "command": data["commands"]["install_optional"],
+            "scope": "studio-profile",
+            "reason": "Optional creator tools stay explicit so SevenOS does not become heavy by surprise.",
+        })
+    if not workspace["ready"]:
+        data["plan"].append({
+            "id": "studio.workspace.prepare",
+            "label": "Préparer l'espace Studio",
+            "command": data["commands"]["workspace"],
+            "scope": "user-data",
+            "reason": "Projects, assets, captures and exports need stable locations for continuity.",
+        })
+    return data
+
+
+def print_human(data: dict) -> None:
+    summary = data["summary"]
+    print("SevenOS Studio Center")
+    print("=====================")
+    print(f"State: {'ready' if data['ready'] else 'needs setup'}")
+    print(f"Required packages: {summary['required'] - summary['required_missing']}/{summary['required']}")
+    print(f"Optional tools: {summary['optional'] - summary['optional_missing']}/{summary['optional']}")
+    print(f"Apps: {summary['apps_ready']}/{summary['apps_total']}")
+    print(f"Workspace: {'ready' if summary['workspace_ready'] else 'needs setup'}")
+    print(f"Rootfs: {'ready' if summary['rootfs_ready'] else 'not ready'} ({summary['package_count']} private packages)")
+    if data["missing"]["required"]:
+        print()
+        print("Missing essentials:")
+        for item in data["missing"]["required"]:
+            print(f"- {item}")
+    if data["missing"]["optional"]:
+        print()
+        print("Optional still available:")
+        for item in data["missing"]["optional"][:10]:
+            print(f"- {item}")
+    print()
+    print("Studio routes:")
+    for key in ("open", "workspace", "assets", "captures", "exports", "record"):
+        print(f"- {data['commands'][key]}")
+
+
+def run(command: list[str], dry_run: bool = False) -> int:
+    if dry_run:
+        print(" ".join(command))
+        return 0
+    return subprocess.run(command, check=False).returncode
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-studio")
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json", "plan", "open", "activate", "install", "optional", "rootfs", "workspace", "assets", "captures", "exports", "record", "apps"))
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    if args.action in {"status", "doctor", "json", "plan"}:
+        data = payload()
+        if args.action == "plan":
+            output = {"schema": "sevenos.studio.plan.v1", "profile": "studio", "ready": data["ready"], "actions": data["plan"], "commands": data["commands"]}
+            print(json.dumps(output, indent=2) if args.json else "\n".join(f"{item['label']}: {item['command']}" for item in output["actions"]))
+            return 0
+        if args.json or args.action == "json":
+            print(json.dumps(data, indent=2))
+        else:
+            print_human(data)
+        return 0
+    if args.action == "workspace":
+        if args.dry_run:
+            print(f"mkdir -p {PROFILE_WORKSPACE}/{{Projects,Renders,Captures,Assets,Exports}}")
+            return 0
+        ensure_workspace()
+        print(f"Studio workspace ready: {PROFILE_WORKSPACE}")
+        return 0
+    if args.action == "open":
+        return run([str(ROOT / "bin/seven-mini-os-center"), "studio"], args.dry_run)
+    if args.action == "activate":
+        return run([str(ROOT / "bin/seven"), "profile", "activate", "studio"], args.dry_run)
+    if args.action == "install":
+        return run([str(ROOT / "bin/seven"), "profile", "requirements", "studio", "--apply", "--yes"], args.dry_run)
+    if args.action == "optional":
+        return run([str(ROOT / "bin/seven"), "profile", "requirements", "studio", "--optional", "--apply", "--yes"], args.dry_run)
+    if args.action == "rootfs":
+        return run([str(ROOT / "bin/seven"), "profile-rootfs", "prepare", "studio", "--apply", "--yes"], args.dry_run)
+    if args.action in {"assets", "captures", "exports"}:
+        ensure_workspace()
+        folder = {"assets": "Assets", "captures": "Captures", "exports": "Exports"}[args.action]
+        return run([str(ROOT / "bin/seven-files"), str(PROFILE_WORKSPACE / folder)], args.dry_run)
+    if args.action == "record":
+        return run([str(ROOT / "bin/seven-recorder"), "panel"], args.dry_run)
+    if args.action == "apps":
+        return run([str(ROOT / "bin/sevenpkg"), "studio", "packages"], args.dry_run)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

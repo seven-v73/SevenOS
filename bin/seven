@@ -324,8 +324,14 @@ def handle_bridge(args):
 
 
 def handle_baobab(args):
-    extra = [args.action, *args.extra]
-    if args.json:
+    raw_extra = list(getattr(args, "extra", []) or [])
+    wants_json = bool(getattr(args, "json", False) or "--json" in raw_extra)
+    if args.action == "guide":
+        extra = ["--json"] if wants_json else []
+        run_script(args, "bin/seven-baobab-guide", *extra)
+        return
+    extra = [args.action, *(item for item in raw_extra if item != "--json")]
+    if wants_json:
         extra.append("--json")
     run_script(args, "scripts/baobab.sh", *extra)
 
@@ -961,23 +967,16 @@ def handle_vm(args):
 
 
 def handle_atlas(args):
-    if args.action in ("open", "center"):
-        run_script(args, "bin/seven-mini-os-center", "atlas")
-    elif args.action == "install":
-        extra = []
-        if getattr(args, "yes", False):
-            extra.append("--yes")
-        install_target("atlas", args, extra)
-    elif args.action in ("status", "requirements"):
-        extra = ["status", "atlas"]
-        if args.json:
-            extra.append("--json")
-        run_script(args, "bin/seven-profile-requirements", *extra)
-    elif args.action == "activate":
-        run_script(args, "profiles/profile-manager.sh", "activate", "atlas")
-    else:
-        print(f"seven: unknown atlas action: {args.action}", file=sys.stderr)
-        sys.exit(1)
+    raw_extra = list(getattr(args, "extra", []) or [])
+    wants_json = bool(getattr(args, "json", False) or "--json" in raw_extra)
+    dry_run = bool(getattr(args, "dry_run", False) or "--dry-run" in raw_extra)
+    extra = []
+    if wants_json:
+        extra.append("--json")
+    if dry_run:
+        extra.append("--dry-run")
+    extra.extend(item for item in raw_extra if item not in {"--json", "--dry-run"})
+    run_script(args, "bin/seven-atlas", args.action, *extra)
 
 
 def handle_run(args):
@@ -1188,6 +1187,22 @@ def handle_notes(args):
 
 def handle_deploy(args):
     run_script(args, "server/seven-deploy.sh", args.action, *args.extra)
+
+
+def handle_forge(args):
+    extra = [args.action, *args.extra]
+    if args.json and "--json" not in extra:
+        extra.append("--json")
+    run_script(args, "bin/seven-forge", *extra)
+
+
+def handle_studio(args):
+    extra = [args.action, *args.extra]
+    if args.json and "--json" not in extra:
+        extra.append("--json")
+    if args.dry_run and "--dry-run" not in extra:
+        extra.append("--dry-run")
+    run_script(args, "bin/seven-studio", *extra)
 
 
 def handle_ecosystem(args):
@@ -2279,6 +2294,7 @@ def main():
     mini_doctor_parser.add_argument("action", nargs="?", default="doctor")
     mini_doctor_parser.add_argument("--json", action="store_true", help="print machine-readable mini OS doctor state")
     mini_doctor_parser.add_argument("--dry-run", action="store_true", help="preview mini OS maintenance commands")
+    mini_doctor_parser.add_argument("--refresh", "--no-cache", action="store_true", help="ignore cached mini OS doctor state")
     mini_boundaries_parser = subparsers.add_parser("mini-boundaries", help="check Baobab/Atlas and mini OS role boundaries")
     mini_boundaries_parser.add_argument("--json", action="store_true", help="print machine-readable role boundary report")
     mini_boundaries_parser.add_argument("--open", action="store_true", help="open the native Baobab/Atlas boundary surface")
@@ -2300,7 +2316,7 @@ def main():
     bridge_parser.add_argument("--apply", action="store_true", help="apply a mini OS switch after preparing passage state")
     bridge_parser.add_argument("--json", action="store_true", help="print machine-readable bridge state")
     baobab_parser = subparsers.add_parser("baobab", help="inspect or open the Baobab cultural mini OS")
-    baobab_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "plan", "doctor", "bootstrap", "install-core", "install-optional", "capabilities", "capability-doctor", "config", "runtime", "config-doctor", "service-doctor", "app-doctor", "apply-config", "sound", "open", "native", "village", "heritage", "museum", "story", "explore", "countries", "country", "immersions", "immersion", "ritual", "journal", "route", "ambiance", "compass", "today", "session", "trail", "remember", "shell", "unesco", "datasets", "catalog", "search", "stats", "db", "engines", "tools", "tool-doctor", "languages", "protocols", "protocol-doctor", "validation-kit", "validation-doctor", "integrations", "integration", "roadmap", "packs", "audit-packs", "seed-packs", "enrich-packs", "evidence-packs", "sample-fieldwork", "scaffold-pack", "import-pack", "modules", "module"))
+    baobab_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "guide", "plan", "doctor", "bootstrap", "install-core", "install-optional", "capabilities", "capability-doctor", "config", "runtime", "config-doctor", "service-doctor", "app-doctor", "apply-config", "sound", "open", "native", "village", "heritage", "museum", "story", "explore", "countries", "country", "immersions", "immersion", "ritual", "journal", "route", "ambiance", "compass", "today", "session", "trail", "remember", "shell", "unesco", "datasets", "catalog", "search", "stats", "db", "engines", "tools", "tool-doctor", "languages", "protocols", "protocol-doctor", "validation-kit", "validation-doctor", "integrations", "integration", "roadmap", "packs", "audit-packs", "seed-packs", "enrich-packs", "evidence-packs", "sample-fieldwork", "scaffold-pack", "import-pack", "modules", "module"))
     baobab_parser.add_argument("extra", nargs=argparse.REMAINDER)
     baobab_parser.add_argument("--json", action="store_true", help="print machine-readable Baobab contract")
     window_parser = subparsers.add_parser("window", help="control the Seven Smart Window System")
@@ -2579,6 +2595,7 @@ def main():
     footprint_parser = subparsers.add_parser("footprint", help="audit SevenOS size, ISO evidence and cleanup readiness")
     footprint_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "plan", "cleanup", "record", "evidence", "compare", "trend", "guard"))
     footprint_parser.add_argument("--json", action="store_true", help="print machine-readable footprint audit")
+    footprint_parser.add_argument("--fast", action="store_true", help="skip deep byte-size scans for UI and agent surfaces")
     beta_parser = subparsers.add_parser("beta", help="alias for SevenOS public beta readiness")
     beta_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json", "validate"))
     beta_parser.add_argument("--json", action="store_true", help="print machine-readable public beta readiness contract")
@@ -2649,9 +2666,21 @@ def main():
     vm_parser.add_argument("name", nargs="?")
 
     atlas_parser = subparsers.add_parser("atlas", help="Atlas Explorer mini OS controls")
-    atlas_parser.add_argument("action", nargs="?", default="open", choices=("open", "center", "status", "requirements", "install", "activate"))
-    atlas_parser.add_argument("--json", action="store_true", help="print machine-readable Atlas requirements")
-    atlas_parser.add_argument("--yes", action="store_true", help="install Atlas requirements non-interactively")
+    atlas_parser.add_argument("action", nargs="?", default="status")
+    atlas_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    atlas_parser.add_argument("--json", action="store_true", help="print machine-readable Atlas center state")
+    atlas_parser.add_argument("--dry-run", action="store_true", help="preview Atlas command without executing it")
+
+    forge_parser = subparsers.add_parser("forge", help="Forge project center, services and developer catalog")
+    forge_parser.add_argument("action", nargs="?", default="status")
+    forge_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    forge_parser.add_argument("--json", action="store_true", help="print machine-readable Forge project center state")
+
+    studio_parser = subparsers.add_parser("studio", help="Studio creator center, assets, capture and export workflows")
+    studio_parser.add_argument("action", nargs="?", default="status")
+    studio_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    studio_parser.add_argument("--json", action="store_true", help="print machine-readable Studio creator state")
+    studio_parser.add_argument("--dry-run", action="store_true", help="preview Studio setup commands")
 
     pulse_parser = subparsers.add_parser("pulse", help="guided Pulse Gaming controls")
     pulse_parser.add_argument("action", nargs="?", default="doctor")
@@ -2769,6 +2798,8 @@ def main():
             extra.append("--json")
         if args.dry_run:
             extra.append("--dry-run")
+        if getattr(args, "refresh", False):
+            extra.append("--refresh")
         run_script(args, "bin/seven-mini-doctor", *extra)
     elif args.command == "mini-boundaries":
         if args.open:
@@ -2915,6 +2946,8 @@ def main():
         extra = [args.action]
         if args.json:
             extra.append("--json")
+        if getattr(args, "fast", False):
+            extra.append("--fast")
         run_script(args, "scripts/footprint-audit.sh", *extra)
     elif args.command == "about":
         handle_about(args)
@@ -2977,6 +3010,10 @@ def main():
         handle_vm(args)
     elif args.command == "atlas":
         handle_atlas(args)
+    elif args.command == "forge":
+        handle_forge(args)
+    elif args.command == "studio":
+        handle_studio(args)
     elif args.command == "pulse":
         extra = [args.action]
         if args.json:

@@ -1,0 +1,381 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+ROOT = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+REQUIRED_FILE = ROOT / "scripts/packages-atlas.txt"
+OPTIONAL_FILE = ROOT / "scripts/packages-atlas-optional.txt"
+AUR_FILE = ROOT / "scripts/packages-atlas-aur.txt"
+APPS_FILE = ROOT / "sevenpkg/apps.json"
+
+
+def host_home() -> Path:
+    if os.environ.get("SEVENOS_HOST_HOME"):
+        return Path(os.environ["SEVENOS_HOST_HOME"])
+    raw = Path(os.environ.get("HOME", str(Path.home())))
+    marker = "/.local/share/sevenos/profile-containers/"
+    text = str(raw)
+    if marker in text and text.endswith("/home"):
+        return Path(text.split(marker, 1)[0])
+    user = os.environ.get("USER")
+    if user:
+        candidate = Path("/home") / user
+        if candidate.is_dir():
+            return candidate
+    return raw
+
+
+HOST_HOME = host_home()
+HOST_DATA_HOME = Path(os.environ.get("SEVENOS_HOST_DATA_HOME", str(HOST_HOME / ".local/share")))
+PROFILE_ROOT = HOST_DATA_HOME / "sevenos/profile-rootfs/atlas/rootfs"
+PROFILE_LOCAL = PROFILE_ROOT / "var/lib/pacman/local"
+PROFILE_WORKSPACE = HOST_HOME / "Atlas"
+
+
+def package_file(path: Path) -> list[str]:
+    if not path.is_file():
+        return []
+    packages = []
+    for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        item = raw.split("#", 1)[0].strip()
+        if item:
+            packages.append(item)
+    return packages
+
+
+def command_output(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout if result.returncode == 0 else ""
+
+
+def installed_packages() -> set[str]:
+    if not shutil.which("pacman"):
+        return set()
+    return {line.strip() for line in command_output(["pacman", "-Qq"]).splitlines() if line.strip()}
+
+
+def rootfs_ready() -> bool:
+    return (PROFILE_ROOT / "usr/bin").is_dir() and (PROFILE_ROOT / "var/lib/pacman").exists()
+
+
+def rootfs_packages() -> set[str]:
+    packages = set()
+    if not PROFILE_LOCAL.is_dir():
+        return packages
+    for desc in PROFILE_LOCAL.glob("*/desc"):
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for index, line in enumerate(lines):
+            if line == "%NAME%" and index + 1 < len(lines):
+                packages.add(lines[index + 1].strip())
+                break
+    return packages
+
+
+def app_catalog() -> list[dict]:
+    try:
+        payload = json.loads(APPS_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    return [item for item in payload.get("apps", []) if item.get("domain") == "atlas"]
+
+
+def executable_state() -> dict[str, bool]:
+    mapping = {
+        "evince": "evince",
+        "foliate": "foliate",
+        "calibre": "calibre",
+        "marble": "marble",
+        "gnome_maps": "gnome-maps",
+        "pdfarranger": "pdfarranger",
+        "xournalpp": "xournalpp",
+        "tesseract": "tesseract",
+        "simple_scan": "simple-scan",
+        "paperwork": "paperwork",
+        "recoll": "recoll",
+        "zeal": "zeal",
+        "sigil": "sigil",
+        "qgis": "qgis",
+        "ocrmypdf": "ocrmypdf",
+    }
+    return {name: bool(shutil.which(binary) or (PROFILE_ROOT / "usr/bin" / binary).exists()) for name, binary in mapping.items()}
+
+
+def workspace_state() -> dict:
+    folders = {
+        "documents": PROFILE_WORKSPACE / "Documents",
+        "scans": PROFILE_WORKSPACE / "Scans",
+        "maps": PROFILE_WORKSPACE / "Maps",
+        "references": PROFILE_WORKSPACE / "References",
+        "research": PROFILE_WORKSPACE / "Research",
+        "exports": PROFILE_WORKSPACE / "Exports",
+    }
+    return {
+        "path": str(PROFILE_WORKSPACE),
+        "folders": {key: {"path": str(path), "exists": path.is_dir()} for key, path in folders.items()},
+        "ready": all(path.is_dir() for path in folders.values()),
+    }
+
+
+def ensure_workspace() -> None:
+    for folder in ("Documents", "Scans", "Maps", "References", "Research", "Exports"):
+        (PROFILE_WORKSPACE / folder).mkdir(parents=True, exist_ok=True)
+
+
+def payload() -> dict:
+    required = package_file(REQUIRED_FILE)
+    optional = package_file(OPTIONAL_FILE) + package_file(AUR_FILE)
+    installed = installed_packages()
+    private = rootfs_packages()
+    effective = installed | private
+    missing_required = [pkg for pkg in required if pkg not in effective]
+    missing_optional = [pkg for pkg in optional if pkg not in effective]
+    apps = executable_state()
+    workspace = workspace_state()
+    blockers = []
+    warnings = []
+    if missing_required:
+        blockers.append("atlas-required-packages")
+    if not rootfs_ready():
+        warnings.append("atlas-rootfs-not-ready")
+    if not workspace["ready"]:
+        warnings.append("atlas-workspace-not-materialized")
+    if not apps.get("recoll"):
+        warnings.append("atlas-local-search-not-ready")
+    if not apps.get("tesseract"):
+        warnings.append("atlas-ocr-engine-not-ready")
+    data = {
+        "schema": "sevenos.atlas.center.v1",
+        "generated_at": int(time.time()),
+        "profile": "atlas",
+        "ready": not blockers,
+        "summary": {
+            "required": len(required),
+            "required_missing": len(missing_required),
+            "optional": len(optional),
+            "optional_missing": len(missing_optional),
+            "rootfs_ready": rootfs_ready(),
+            "package_count": len(private),
+            "workspace_ready": workspace["ready"],
+            "apps_ready": sum(1 for ok in apps.values() if ok),
+            "apps_total": len(apps),
+            "catalog_entries": len(app_catalog()),
+        },
+        "workspace": workspace,
+        "apps": apps,
+        "catalog": app_catalog(),
+        "missing": {
+            "required": missing_required,
+            "optional": missing_optional,
+        },
+        "blockers": blockers,
+        "warnings": warnings,
+        "commands": {
+            "open": "seven-mini-os-center atlas",
+            "activate": "seven profile activate atlas",
+            "install_required": "seven profile requirements atlas --apply --yes",
+            "install_optional": "seven profile requirements atlas --optional --apply --yes",
+            "prepare_rootfs": "seven profile-rootfs prepare atlas --apply --yes",
+            "workspace": "seven atlas workspace",
+            "documents": "seven-files ~/Atlas/Documents",
+            "scans": "seven-files ~/Atlas/Scans",
+            "maps": "seven-files ~/Atlas/Maps",
+            "references": "seven-files ~/Atlas/References",
+            "research": "seven-files ~/Atlas/Research",
+            "exports": "seven-files ~/Atlas/Exports",
+            "search": "seven atlas search",
+            "ocr": "seven atlas ocr",
+            "apps": "sevenpkg atlas packages",
+        },
+        "plan": [],
+    }
+    if missing_required:
+        data["plan"].append({
+            "id": "atlas.install.required",
+            "label": "Installer les essentiels Atlas",
+            "command": data["commands"]["install_required"],
+            "scope": "atlas-profile",
+            "reason": "Atlas needs its document, scan, map and research baseline before it can feel complete.",
+        })
+    if missing_optional:
+        data["plan"].append({
+            "id": "atlas.install.optional",
+            "label": "Installer les extensions Atlas",
+            "command": data["commands"]["install_optional"],
+            "scope": "atlas-profile",
+            "reason": "Heavy map, OCR and offline knowledge tools stay explicit to keep SevenOS lean.",
+        })
+    if not workspace["ready"]:
+        data["plan"].append({
+            "id": "atlas.workspace.prepare",
+            "label": "Préparer l'espace Atlas",
+            "command": data["commands"]["workspace"],
+            "scope": "user-data",
+            "reason": "Documents, scans, maps and references need stable locations for continuity.",
+        })
+    return data
+
+
+def print_human(data: dict) -> None:
+    summary = data["summary"]
+    print("SevenOS Atlas Center")
+    print("====================")
+    print(f"State: {'ready' if data['ready'] else 'needs setup'}")
+    print(f"Required packages: {summary['required'] - summary['required_missing']}/{summary['required']}")
+    print(f"Optional tools: {summary['optional'] - summary['optional_missing']}/{summary['optional']}")
+    print(f"Apps: {summary['apps_ready']}/{summary['apps_total']}")
+    print(f"Workspace: {'ready' if summary['workspace_ready'] else 'needs setup'}")
+    print(f"Rootfs: {'ready' if summary['rootfs_ready'] else 'not ready'} ({summary['package_count']} private packages)")
+    if data["warnings"]:
+        print()
+        print("Attention:")
+        for item in data["warnings"]:
+            print(f"- {item}")
+    if data["missing"]["required"]:
+        print()
+        print("Missing essentials:")
+        for item in data["missing"]["required"]:
+            print(f"- {item}")
+    if data["missing"]["optional"]:
+        print()
+        print("Optional still available:")
+        for item in data["missing"]["optional"][:12]:
+            print(f"- {item}")
+    print()
+    print("Atlas routes:")
+    for key in ("open", "workspace", "documents", "scans", "maps", "references", "search", "ocr"):
+        print(f"- {data['commands'][key]}")
+
+
+def run(command: list[str], dry_run: bool = False) -> int:
+    if dry_run:
+        print(" ".join(command))
+        return 0
+    return subprocess.run(command, check=False).returncode
+
+
+def open_workspace_folder(name: str, dry_run: bool = False) -> int:
+    ensure_workspace()
+    folder = {
+        "documents": "Documents",
+        "scans": "Scans",
+        "maps": "Maps",
+        "references": "References",
+        "research": "Research",
+        "exports": "Exports",
+    }[name]
+    return run([str(ROOT / "bin/seven-files"), str(PROFILE_WORKSPACE / folder)], dry_run)
+
+
+def print_search_help(query: list[str]) -> int:
+    ensure_workspace()
+    if query:
+        needle = " ".join(query)
+        recollq = shutil.which("recollq") or str(PROFILE_ROOT / "usr/bin/recollq")
+        if Path(recollq).exists() or shutil.which("recollq"):
+            return run([recollq, needle])
+        rg = shutil.which("rg")
+        if rg:
+            return run([rg, "--files", str(PROFILE_WORKSPACE)])
+        print("Atlas local search is not ready yet. Install Recoll or use seven atlas optional.")
+        return 1
+    print("Atlas search")
+    print("============")
+    print("Use: seven atlas search <words>")
+    print(f"Scope: {PROFILE_WORKSPACE}")
+    print("Tip: enable Recoll for richer document indexing.")
+    return 0
+
+
+def print_ocr_help(paths: list[str]) -> int:
+    ensure_workspace()
+    if paths:
+        ocrmypdf = shutil.which("ocrmypdf") or str(PROFILE_ROOT / "usr/bin/ocrmypdf")
+        if not (Path(ocrmypdf).exists() or shutil.which("ocrmypdf")):
+            print("OCRmyPDF is not installed. Use seven atlas optional for searchable PDF generation.")
+            return 1
+        for raw in paths:
+            source = Path(raw).expanduser()
+            if not source.exists():
+                print(f"Missing file: {source}", file=sys.stderr)
+                return 1
+            target = PROFILE_WORKSPACE / "Exports" / f"{source.stem}-ocr.pdf"
+            code = run([ocrmypdf, "--skip-text", str(source), str(target)])
+            if code != 0:
+                return code
+            print(f"OCR ready: {target}")
+        return 0
+    print("Atlas OCR")
+    print("=========")
+    print("Use: seven atlas ocr <scan.pdf>")
+    print(f"Scans: {PROFILE_WORKSPACE / 'Scans'}")
+    print(f"Exports: {PROFILE_WORKSPACE / 'Exports'}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-atlas")
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json", "plan", "open", "center", "activate", "install", "optional", "rootfs", "workspace", "documents", "scans", "maps", "references", "research", "exports", "search", "ocr", "apps"))
+    parser.add_argument("extra", nargs=argparse.REMAINDER)
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+    raw_extra = list(args.extra or [])
+    if "--json" in raw_extra:
+        args.json = True
+        raw_extra = [item for item in raw_extra if item != "--json"]
+    if "--dry-run" in raw_extra:
+        args.dry_run = True
+        raw_extra = [item for item in raw_extra if item != "--dry-run"]
+    args.extra = [item for item in raw_extra if item != "--yes"]
+
+    if args.action in {"status", "doctor", "json", "plan"}:
+        data = payload()
+        if args.action == "plan":
+            output = {"schema": "sevenos.atlas.plan.v1", "profile": "atlas", "ready": data["ready"], "actions": data["plan"], "commands": data["commands"]}
+            print(json.dumps(output, indent=2) if args.json else "\n".join(f"{item['label']}: {item['command']}" for item in output["actions"]))
+            return 0
+        if args.json or args.action == "json":
+            print(json.dumps(data, indent=2))
+        else:
+            print_human(data)
+        return 0
+    if args.action == "workspace":
+        if args.dry_run:
+            print(f"mkdir -p {PROFILE_WORKSPACE}/{{Documents,Scans,Maps,References,Research,Exports}}")
+            return 0
+        ensure_workspace()
+        print(f"Atlas workspace ready: {PROFILE_WORKSPACE}")
+        return 0
+    if args.action in {"open", "center"}:
+        return run([str(ROOT / "bin/seven-mini-os-center"), "atlas"], args.dry_run)
+    if args.action == "activate":
+        return run([str(ROOT / "bin/seven"), "profile", "activate", "atlas"], args.dry_run)
+    if args.action == "install":
+        return run([str(ROOT / "bin/seven"), "profile", "requirements", "atlas", "--apply", "--yes"], args.dry_run)
+    if args.action == "optional":
+        return run([str(ROOT / "bin/seven"), "profile", "requirements", "atlas", "--optional", "--apply", "--yes"], args.dry_run)
+    if args.action == "rootfs":
+        return run([str(ROOT / "bin/seven"), "profile-rootfs", "prepare", "atlas", "--apply", "--yes"], args.dry_run)
+    if args.action in {"documents", "scans", "maps", "references", "research", "exports"}:
+        return open_workspace_folder(args.action, args.dry_run)
+    if args.action == "search":
+        return print_search_help(args.extra)
+    if args.action == "ocr":
+        return print_ocr_help(args.extra)
+    if args.action == "apps":
+        return run([str(ROOT / "bin/sevenpkg"), "atlas", "packages"], args.dry_run)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

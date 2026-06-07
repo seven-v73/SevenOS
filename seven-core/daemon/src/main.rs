@@ -779,11 +779,7 @@ fn config_dir() -> PathBuf {
 }
 
 fn active_profile_key() -> String {
-    for key in [
-        "SEVENOS_ACTIVE_PROFILE",
-        "SEVENOS_PROFILE_CONTAINER",
-        "SEVENOS_EXEC_PROFILE",
-    ] {
+    for key in ["SEVENOS_PROFILE_CONTAINER", "SEVENOS_EXEC_PROFILE"] {
         if let Ok(value) = env::var(key) {
             let trimmed = value.trim();
             if !trimmed.is_empty() {
@@ -804,6 +800,28 @@ fn active_profile_key() -> String {
                 "forge".to_string()
             } else {
                 value.to_string()
+            };
+        }
+    }
+    let isolation_path = config_dir().join("profile-isolation.env");
+    let isolation_content = fs::read_to_string(isolation_path).unwrap_or_default();
+    for line in isolation_content.lines() {
+        if let Some(raw) = line.strip_prefix("SEVENOS_ISOLATION_PRIMARY=") {
+            let value = raw.trim_matches('"').trim_matches('\'');
+            return if value == "horizon" {
+                "forge".to_string()
+            } else {
+                value.to_string()
+            };
+        }
+    }
+    if let Ok(value) = env::var("SEVENOS_ACTIVE_PROFILE") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return if trimmed == "horizon" {
+                "forge".to_string()
+            } else {
+                trimmed.to_string()
             };
         }
     }

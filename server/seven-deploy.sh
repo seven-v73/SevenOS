@@ -88,10 +88,6 @@ json_array() {
 }
 
 active_profile() {
-  if [[ -n "${SEVENOS_ACTIVE_PROFILE:-}" ]]; then
-    printf '%s\n' "$SEVENOS_ACTIVE_PROFILE"
-    return 0
-  fi
   if [[ -n "${SEVENOS_PROFILE_CONTAINER:-}" ]]; then
     printf '%s\n' "$SEVENOS_PROFILE_CONTAINER"
     return 0
@@ -103,6 +99,15 @@ active_profile() {
   local env_file="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env"
   if [[ -f "$env_file" ]]; then
     sed -n 's/^SEVENOS_ACTIVE_PROFILE=//p' "$env_file" 2>/dev/null | head -1 | tr -d '"'\'' '
+    return 0
+  fi
+  local isolation_env="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile-isolation.env"
+  if [[ -f "$isolation_env" ]]; then
+    sed -n 's/^SEVENOS_ISOLATION_PRIMARY=//p' "$isolation_env" 2>/dev/null | head -1 | tr -d '"'\'' '
+    return 0
+  fi
+  if [[ -n "${SEVENOS_ACTIVE_PROFILE:-}" ]]; then
+    printf '%s\n' "$SEVENOS_ACTIVE_PROFILE"
     return 0
   fi
   local json_file="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.json"
@@ -208,6 +213,8 @@ detect_stack() {
   local detected=()
 
   [[ -f "$project_dir/package.json" ]] && detected+=("node")
+  [[ -f "$project_dir/Cargo.toml" || -d "$project_dir/seven-core" ]] && detected+=("rust")
+  [[ -f "$project_dir/pyproject.toml" || -d "$project_dir/bin" || -d "$project_dir/scripts" ]] && detected+=("python-shell")
   [[ -f "$project_dir/go.mod" ]] && detected+=("go")
   [[ -f "$project_dir/composer.json" && -f "$project_dir/artisan" ]] && detected+=("laravel")
   [[ -f "$project_dir/pubspec.yaml" ]] && detected+=("flutter")
@@ -278,6 +285,10 @@ def has(path):
 stacks = []
 if has("package.json"):
     stacks.append("node")
+if has("Cargo.toml") or has("seven-core"):
+    stacks.append("rust")
+if has("pyproject.toml") or has("bin") or has("scripts"):
+    stacks.append("python-shell")
 if has("go.mod"):
     stacks.append("go")
 if has("composer.json") and has("artisan"):
@@ -322,6 +333,18 @@ if "node" in stacks:
         dev_commands.append(f"{pm} run {dev_script}" if pm in {"npm", "pnpm", "yarn", "bun"} else f"{pm} {dev_script}")
     if build_script:
         build_commands.append(f"{pm} run {build_script}")
+if "rust" in stacks:
+    required.append("cargo")
+    if has("Cargo.toml"):
+        dev_commands.append("cargo check")
+        build_commands.append("cargo build")
+    elif has("seven-core"):
+        dev_commands.append("cargo check --manifest-path seven-core/Cargo.toml")
+        build_commands.append("cargo build --manifest-path seven-core/Cargo.toml")
+if "python-shell" in stacks:
+    required.extend(["python", "bash", "rg"])
+    dev_commands.append("seven health")
+    build_commands.append("scripts/check.sh")
 if "go" in stacks:
     required.append("go")
     dev_commands.append("go run .")

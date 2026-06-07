@@ -44,10 +44,6 @@ json_string() {
 }
 
 active_profile() {
-  if [[ -n "${SEVENOS_ACTIVE_PROFILE:-}" ]]; then
-    printf '%s\n' "$SEVENOS_ACTIVE_PROFILE"
-    return 0
-  fi
   if [[ -n "${SEVENOS_PROFILE_CONTAINER:-}" ]]; then
     printf '%s\n' "$SEVENOS_PROFILE_CONTAINER"
     return 0
@@ -59,6 +55,15 @@ active_profile() {
   local env_file="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env"
   if [[ -f "$env_file" ]]; then
     sed -n 's/^SEVENOS_ACTIVE_PROFILE=//p' "$env_file" 2>/dev/null | head -1 | tr -d '"'\'' '
+    return 0
+  fi
+  local isolation_env="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile-isolation.env"
+  if [[ -f "$isolation_env" ]]; then
+    sed -n 's/^SEVENOS_ISOLATION_PRIMARY=//p' "$isolation_env" 2>/dev/null | head -1 | tr -d '"'\'' '
+    return 0
+  fi
+  if [[ -n "${SEVENOS_ACTIVE_PROFILE:-}" ]]; then
+    printf '%s\n' "$SEVENOS_ACTIVE_PROFILE"
     return 0
   fi
   local json_file="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.json"
@@ -437,7 +442,7 @@ def command_json(command):
     return payload
 
 def active_profile():
-    for key in ("SEVENOS_ACTIVE_PROFILE", "SEVENOS_PROFILE_CONTAINER", "SEVENOS_EXEC_PROFILE"):
+    for key in ("SEVENOS_PROFILE_CONTAINER", "SEVENOS_EXEC_PROFILE"):
         value = os.environ.get(key, "").strip()
         if value:
             return "forge" if value == "horizon" else value
@@ -450,6 +455,18 @@ def active_profile():
                     return "forge" if value == "horizon" else value
     except OSError:
         pass
+    isolation_path = os.path.expanduser("~/.config/sevenos/profile-isolation.env")
+    try:
+        with open(isolation_path, "r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.startswith("SEVENOS_ISOLATION_PRIMARY="):
+                    value = line.split("=", 1)[1].strip().strip("'\"")
+                    return "forge" if value == "horizon" else value
+    except OSError:
+        pass
+    value = os.environ.get("SEVENOS_ACTIVE_PROFILE", "").strip()
+    if value:
+        return "forge" if value == "horizon" else value
     json_path = os.path.expanduser("~/.config/sevenos/profile.json")
     try:
         with open(json_path, "r", encoding="utf-8") as handle:

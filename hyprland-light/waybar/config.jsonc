@@ -7,13 +7,13 @@
   "margin-left": 0,
   "margin-right": 0,
   "gtk-layer-shell": true,
-  "modules-left": ["custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"],
+  "modules-left": ["custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-menu"],
   "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/media", "custom/system-status", "custom/wifi", "custom/bluetooth", "custom/spotlight", "clock", "custom/control-center"],
+  "modules-right": ["custom/profile", "custom/system-status", "custom/wifi", "custom/bluetooth", "custom/spotlight", "clock", "custom/control-center"],
   "custom/sevenos": {
     "exec": "seven-waybar-status sevenos",
     "return-type": "json",
-    "interval": 3,
+    "interval": 8,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action sevenos-menu",
@@ -23,7 +23,7 @@
   "custom/profile": {
     "exec": "seven-waybar-status profile",
     "return-type": "json",
-    "interval": 3,
+    "interval": 8,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-profile-center-native",
@@ -32,7 +32,7 @@
   "custom/mini-context": {
     "exec": "seven-waybar-status mini-context",
     "return-type": "json",
-    "interval": 4,
+    "interval": 10,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action mini-context",
@@ -62,7 +62,7 @@
   "custom/app-menu": {
     "exec": "seven-waybar-status app-menu",
     "return-type": "json",
-    "interval": 10,
+    "interval": 12,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-menu",
@@ -71,7 +71,7 @@
   "custom/app-file": {
     "exec": "seven-waybar-status app-menu-item file",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-file",
@@ -80,7 +80,7 @@
   "custom/app-edit": {
     "exec": "seven-waybar-status app-menu-item edit",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-edit",
@@ -90,7 +90,7 @@
     "exec": "seven-waybar-status app-menu-item view",
     "return-type": "json",
     "signal": 8,
-    "interval": 10,
+    "interval": 30,
     "tooltip": true,
     "on-click": "seven-waybar-action app-view",
     "on-click-right": "seven-waybar-action app-menu"
@@ -98,7 +98,7 @@
   "custom/app-extra": {
     "exec": "seven-waybar-status app-menu-item extra",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-extra",
@@ -107,7 +107,7 @@
   "custom/app-more": {
     "exec": "seven-waybar-status app-menu-more",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-menu",
@@ -116,7 +116,7 @@
   "custom/app-tools": {
     "exec": "seven-waybar-status app-menu-item tools",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-tools",
@@ -125,7 +125,7 @@
   "custom/app-window": {
     "exec": "seven-waybar-status app-menu-item window",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-window",
@@ -134,7 +134,7 @@
   "custom/app-help": {
     "exec": "seven-waybar-status app-menu-item help",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-help",
@@ -149,7 +149,7 @@
   "custom/experience": {
     "exec": "seven-waybar-status experience",
     "return-type": "json",
-    "interval": 2,
+    "interval": 12,
     "tooltip": true,
     "on-click": "seven experience warmup",
     "on-click-right": "seven experience events",
@@ -158,7 +158,7 @@
   "custom/media": {
     "exec": "seven-waybar-status media",
     "return-type": "json",
-    "interval": 5,
+    "interval": 12,
     "tooltip": true,
     "on-click": "seven-waybar-action media-menu",
     "on-click-right": "seven-quick-settings"
@@ -197,7 +197,7 @@
   "custom/wifi": {
     "exec": "seven-waybar-status wifi",
     "return-type": "json",
-    "interval": 5,
+    "interval": 12,
     "tooltip": true,
     "on-click": "seven-quick-settings wifi",
     "on-click-right": "seven-quick-settings",
@@ -206,7 +206,7 @@
   "custom/bluetooth": {
     "exec": "seven-waybar-status bluetooth",
     "return-type": "json",
-    "interval": 5,
+    "interval": 15,
     "tooltip": true,
     "on-click": "seven-quick-settings bluetooth",
     "on-click-right": "seven-quick-settings",
@@ -241,7 +241,7 @@
     "exec": "sh -lc 'cmd=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin/seven-waybar-status\"; [ -x \"$cmd\" ] || cmd=seven-waybar-status; exec \"$cmd\" recorder'",
     "return-type": "json",
     "format": "{}",
-    "interval": 2,
+    "interval": 5,
     "tooltip": true,
     "on-click": "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder area'",
     "on-click-right": "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder panel'",
@@ -250,7 +250,7 @@
   "custom/system-status": {
     "exec": "seven-waybar-status system-status",
     "return-type": "json",
-    "interval": 3,
+    "interval": 10,
     "tooltip": true,
     "on-click": "seven-quick-settings",
     "on-click-right": "seven-settings",
@@ -268,7 +268,7 @@
   "custom/control-center": {
     "exec": "seven-waybar-status control-center",
     "return-type": "json",
-    "interval": 3,
+    "interval": 10,
     "tooltip": true,
     "on-click": "seven-quick-settings",
     "on-click-right": "seven-settings",

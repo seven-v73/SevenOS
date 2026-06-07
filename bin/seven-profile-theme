@@ -104,7 +104,7 @@ modules |= essential_left | essential_right
 recorder_command = "sh -lc 'cmd=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin/seven-waybar-status\"; [ -x \"$cmd\" ] || cmd=seven-waybar-status; exec \"$cmd\" recorder'"
 recorder_click = "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder ACTION'"
 
-left = ["custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"]
+left = ["custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-menu"]
 config["modules-left"] = left
 config["modules-center"] = ["hyprland/workspaces"]
 config["hyprland/window"] = {
@@ -131,7 +131,7 @@ config["hyprland/window"] = {
 config["custom/app-menu"] = {
     "exec": "seven-waybar-status app-menu",
     "return-type": "json",
-    "interval": 10,
+    "interval": 12,
     "signal": 8,
     "tooltip": True,
     "on-click": "seven-waybar-action app-menu",
@@ -142,7 +142,7 @@ for item in ("file", "edit", "view", "extra", "tools", "window", "help"):
     config[key_name] = {
         "exec": f"seven-waybar-status app-menu-item {item}",
         "return-type": "json",
-        "interval": 10,
+        "interval": 30,
         "signal": 8,
         "tooltip": True,
         "on-click": f"seven-waybar-action app-{item}",
@@ -152,7 +152,7 @@ config["custom/app-help"]["on-click-right"] = "seven-help"
 config["custom/app-more"] = {
     "exec": "seven-waybar-status app-menu-more",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": True,
     "on-click": "seven-waybar-action app-menu",
@@ -161,7 +161,6 @@ config["custom/app-more"] = {
 
 config["modules-right"] = [
     "custom/profile",
-    "custom/media",
     "custom/system-status",
     "custom/wifi",
     "custom/bluetooth",
@@ -173,7 +172,7 @@ config["tray"] = {"icon-size": 14, "spacing": 6}
 config["custom/system-status"] = {
     "exec": "seven-waybar-status system-status",
     "return-type": "json",
-    "interval": 3,
+    "interval": 10,
     "tooltip": True,
     "on-click": "seven-quick-settings",
     "on-click-right": "seven-settings",
@@ -182,7 +181,7 @@ config["custom/system-status"] = {
 config["custom/mini-context"] = {
     "exec": "seven-waybar-status mini-context",
     "return-type": "json",
-    "interval": 4,
+    "interval": 10,
     "signal": 8,
     "tooltip": True,
     "on-click": "seven-waybar-action mini-context",
@@ -192,7 +191,7 @@ config["custom/recorder"] = {
     "exec": recorder_command,
     "return-type": "json",
     "format": "{}",
-    "interval": 2,
+    "interval": 5,
     "tooltip": True,
     "on-click": recorder_click.replace("ACTION", "area"),
     "on-click-right": recorder_click.replace("ACTION", "panel"),
@@ -205,12 +204,19 @@ icon = profile.get("waybar_icon") or profile.get("icon") or "7"
 short = profile.get("short_label") or key[:3].upper()
 config.setdefault("custom/sevenos", {})["exec"] = "seven-waybar-status sevenos"
 config.setdefault("custom/sevenos", {})["return-type"] = "json"
-config.setdefault("custom/sevenos", {})["interval"] = 3
+config.setdefault("custom/sevenos", {})["interval"] = 8
 config.setdefault("custom/sevenos", {})["tooltip"] = True
 config.setdefault("custom/sevenos", {})["on-click"] = "seven-waybar-action sevenos-menu"
 config.setdefault("custom/sevenos", {})["on-click-right"] = "seven-profile-center-native"
 config.setdefault("custom/sevenos", {})["on-click-middle"] = "seven-spotlight field"
 config.setdefault("custom/spotlight", {})["format"] = "󰍉"
+
+visible_modules = set()
+for section in ("modules-left", "modules-center", "modules-right"):
+    visible_modules.update(item for item in config.get(section, []) if isinstance(item, str))
+for key_name in list(config):
+    if key_name.startswith("custom/") and key_name not in visible_modules:
+        config.pop(key_name, None)
 
 print(json.dumps(config, indent=2, ensure_ascii=False))
 PY
@@ -706,7 +712,7 @@ recorder_module = {
     "exec": recorder_command,
     "return-type": "json",
     "format": "{}",
-    "interval": 2,
+    "interval": 5,
     "tooltip": True,
     "on-click": recorder_click.replace("ACTION", "area"),
     "on-click-right": recorder_click.replace("ACTION", "panel"),
@@ -732,7 +738,7 @@ profiles = {
         "modules": ["custom/project", "custom/recorder", "custom/containers", "custom/services"],
         "custom": {
             "project": {"format": "󰉋", "tooltip": "Forge workspace · ouvrir l'espace projet", "on-click": "seven profile open forge"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 3, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
             "containers": {"exec": "docker info >/dev/null 2>&1 && echo '󰡨' || echo '󰡨 off'", "interval": 20, "tooltip": "Docker/Podman et services locaux", "on-click": "seven-terminal forge -- bash -lc 'docker ps; printf \"\\n\"; podman ps 2>/dev/null || true; read -r'"},
             "services": {"format": "󰒓", "tooltip": "Inspecter les services Forge", "on-click": "seven-terminal forge -- bash -lc 'systemctl --user --no-pager --type=service --state=running; read -r'"},
         },
@@ -756,7 +762,7 @@ profiles = {
         "custom": {
             "scope": {"format": "󰒃", "tooltip": "Shield Center · périmètre autorisé", "on-click": "seven-shield-center-native"},
             "vpn": {"exec": "seven-waybar-status vpn", "return-type": "json", "interval": 10, "tooltip": True, "on-click": "seven-waybar-action security"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 3, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
         },
     },
     "studio": {
@@ -777,8 +783,8 @@ profiles = {
         "modules": ["custom/canvas", "custom/media", "custom/recorder"],
         "custom": {
             "canvas": {"format": "󰽉", "tooltip": "Studio canvas · ouvrir l'espace créatif", "on-click": "seven profile open studio"},
-            "media": {"exec": "seven-waybar-status media", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "seven-waybar-action media-menu", "on-click-right": "seven-quick-settings audio"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 3, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
+            "media": {"exec": "seven-waybar-status media", "return-type": "json", "interval": 12, "tooltip": True, "on-click": "seven-waybar-action media-menu", "on-click-right": "seven-quick-settings audio"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
         },
     },
     "atlas": {
@@ -824,7 +830,7 @@ profiles = {
         "custom": {
             "performance": {"format": "󰾆", "tooltip": "Pulse performance · latence et FPS", "on-click": "seven profile center pulse"},
             "gamemode": {"exec": "pgrep -x gamemoded >/dev/null 2>&1 && echo '󰊴' || echo '󰊴 off'", "interval": 30, "tooltip": "Optimisation gaming locale"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 3, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
         },
     },
 }
@@ -847,7 +853,7 @@ config = {
     "custom/identity": {
         "exec": "seven-waybar-status sevenos",
         "return-type": "json",
-        "interval": 3,
+        "interval": 8,
         "signal": 8,
         "tooltip": True,
         "on-click": "seven profile center",
@@ -862,7 +868,7 @@ config = {
     "custom/profile": {
         "exec": "seven-waybar-status profile",
         "return-type": "json",
-        "interval": 3,
+        "interval": 8,
         "signal": 8,
         "tooltip": True,
         "on-click": "seven-profile-center-native",
@@ -901,7 +907,7 @@ config = {
     "custom/app-menu": {
         "exec": "seven-waybar-status app-menu",
         "return-type": "json",
-        "interval": 10,
+        "interval": 12,
         "signal": 8,
         "tooltip": True,
         "on-click": "seven-waybar-action app-menu",
@@ -911,7 +917,7 @@ config = {
         f"custom/app-{item}": {
             "exec": f"seven-waybar-status app-menu-item {item}",
             "return-type": "json",
-            "interval": 10,
+            "interval": 30,
             "signal": 8,
             "tooltip": True,
             "on-click": f"seven-waybar-action app-{item}",
@@ -922,7 +928,7 @@ config = {
     "custom/app-more": {
         "exec": "seven-waybar-status app-menu-more",
         "return-type": "json",
-        "interval": 10,
+        "interval": 30,
         "signal": 8,
         "tooltip": True,
         "on-click": "seven-waybar-action app-menu",
@@ -936,7 +942,7 @@ config = {
     "custom/system-status": {
         "exec": "seven-waybar-status system-status",
         "return-type": "json",
-        "interval": 3,
+        "interval": 10,
         "tooltip": True,
         "on-click": "seven-quick-settings",
         "on-click-right": "seven-settings",
@@ -957,7 +963,7 @@ config = {
     "custom/wifi": {
         "exec": "seven-waybar-status wifi",
         "return-type": "json",
-        "interval": 5,
+        "interval": 12,
         "tooltip": True,
         "on-click": "seven-waybar-action network",
         "on-click-right": "seven-quick-settings wifi",
@@ -966,7 +972,7 @@ config = {
     "custom/bluetooth": {
         "exec": "seven-waybar-status bluetooth",
         "return-type": "json",
-        "interval": 5,
+        "interval": 15,
         "tooltip": True,
         "on-click": "seven-waybar-action bluetooth",
         "on-click-right": "seven-quick-settings bluetooth",
@@ -995,14 +1001,12 @@ config = {
         "on-click-right": "seven-quick-settings time",
     },
 }
-if "hyprland/window" not in config["modules-left"]:
-    config["modules-left"].insert(1, "hyprland/window")
 app_menu_items = ["custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"]
-visible_app_menu_items = ["custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more"]
-config["modules-left"] = [item for item in config["modules-left"] if item != "custom/app-menu" and item not in app_menu_items]
-insert_at = config["modules-left"].index("hyprland/window") + 1 if "hyprland/window" in config["modules-left"] else 1
-for item in reversed(visible_app_menu_items):
-    config["modules-left"].insert(insert_at, item)
+config["modules-left"] = [item for item in config["modules-left"] if item not in app_menu_items]
+for item in ("custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-menu"):
+    if item not in config["modules-left"]:
+        insert_at = 1 if item == "custom/recorder" and config["modules-left"] else len(config["modules-left"])
+        config["modules-left"].insert(insert_at, item)
 for name, payload in spec["custom"].items():
     config[f"custom/{name}"] = payload
 if "custom/recorder" in config.get("modules-right", []) or "custom/recorder" in config.get("modules-left", []):
@@ -1011,28 +1015,26 @@ if "custom/recorder" in config.get("modules-right", []) or "custom/recorder" in 
     config["modules-left"] = [item for item in config["modules-left"] if item != "custom/recorder"]
     insert_at = 1 if config["modules-left"] else 0
     config["modules-left"].insert(insert_at, "custom/recorder")
-if "custom/experience" not in config["modules-right"]:
-    insert_at = config["modules-right"].index("clock") if "clock" in config["modules-right"] else len(config["modules-right"])
-    config["modules-right"].insert(insert_at, "custom/experience")
-if "custom/mini-context" not in config["modules-right"]:
-    insert_at = config["modules-right"].index("custom/system-status") if "custom/system-status" in config["modules-right"] else 0
-    config["modules-right"].insert(insert_at, "custom/mini-context")
 if "custom/spotlight" not in config["modules-right"]:
     insert_at = config["modules-right"].index("clock") if "clock" in config["modules-right"] else len(config["modules-right"])
     config["modules-right"].insert(insert_at, "custom/spotlight")
-if "tray" not in config["modules-right"]:
-    insert_at = config["modules-right"].index("custom/spotlight") if "custom/spotlight" in config["modules-right"] else len(config["modules-right"])
-    config["modules-right"].insert(insert_at, "tray")
 config["tray"] = {"icon-size": 14, "spacing": 6}
 config["custom/experience"] = {
     "exec": "seven-waybar-status experience",
     "return-type": "json",
-    "interval": 8,
+    "interval": 12,
     "tooltip": True,
     "on-click": "seven experience warmup",
     "on-click-right": "seven experience events",
     "on-click-middle": "seven experience recommend",
 }
+visible_modules = set()
+for section in ("modules-left", "modules-center", "modules-right"):
+    visible_modules.update(item for item in config.get(section, []) if isinstance(item, str))
+for key_name in list(config):
+    if key_name.startswith("custom/") and key_name not in visible_modules:
+        config.pop(key_name, None)
+
 print(json.dumps(config, indent=2, ensure_ascii=False))
 PY
 }
@@ -1693,15 +1695,11 @@ if "custom/media" in modules and "custom/media" not in cfg.get("modules-right", 
     right = cfg.setdefault("modules-right", [])
     insert_at = right.index("custom/system-status") if "custom/system-status" in right else len(right)
     right.insert(insert_at, "custom/media")
-if "hyprland/window" not in cfg.get("modules-left", []):
-    cfg.setdefault("modules-left", []).insert(1, "hyprland/window")
 app_menu_items = ["custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"]
-visible_app_menu_items = ["custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more"]
 left = cfg.setdefault("modules-left", [])
-left[:] = [item for item in left if item in {"custom/baobab", "hyprland/window"}]
-insert_at = left.index("hyprland/window") + 1 if "hyprland/window" in left else 1
-for item in reversed(visible_app_menu_items):
-    left.insert(insert_at, item)
+identity_modules = [item for item in left if item.startswith("custom/") and item not in app_menu_items and item != "custom/app-menu"]
+identity = identity_modules[0] if identity_modules else "custom/sevenos"
+left[:] = [identity, "custom/recorder", "hyprland/window", "custom/app-menu"] if "custom/recorder" in modules else [identity, "hyprland/window", "custom/app-menu"]
 if "custom/experience" not in modules:
     right = cfg.setdefault("modules-right", [])
     insert_at = right.index("clock") if "clock" in right else len(right)
@@ -1746,7 +1744,7 @@ cfg["hyprland/window"] = {
 cfg["custom/app-menu"] = {
     "exec": "seven-waybar-status app-menu",
     "return-type": "json",
-    "interval": 10,
+    "interval": 12,
     "signal": 8,
     "tooltip": True,
     "on-click": "seven-waybar-action app-menu",
@@ -1755,7 +1753,7 @@ cfg["custom/app-menu"] = {
 cfg["custom/mini-context"] = {
     "exec": "seven-waybar-status mini-context",
     "return-type": "json",
-    "interval": 4,
+    "interval": 10,
     "signal": 8,
     "tooltip": True,
     "on-click": "seven-waybar-action mini-context",
@@ -1765,7 +1763,7 @@ for item in ("file", "edit", "view", "extra", "tools", "window", "help"):
     cfg[f"custom/app-{item}"] = {
         "exec": f"seven-waybar-status app-menu-item {item}",
         "return-type": "json",
-        "interval": 10,
+        "interval": 30,
         "signal": 8,
         "tooltip": True,
         "on-click": f"seven-waybar-action app-{item}",
@@ -1774,7 +1772,7 @@ for item in ("file", "edit", "view", "extra", "tools", "window", "help"):
 cfg["custom/app-more"] = {
     "exec": "seven-waybar-status app-menu-more",
     "return-type": "json",
-    "interval": 10,
+    "interval": 30,
     "signal": 8,
     "tooltip": True,
     "on-click": "seven-waybar-action app-menu",
@@ -1784,7 +1782,7 @@ cfg["tray"] = {"icon-size": 14, "spacing": 6}
 cfg["custom/experience"] = {
     "exec": "seven-waybar-status experience",
     "return-type": "json",
-    "interval": 8,
+    "interval": 12,
     "tooltip": True,
     "on-click": "seven experience warmup",
     "on-click-right": "seven experience events",
@@ -1793,7 +1791,7 @@ cfg["custom/experience"] = {
 cfg["custom/system-status"] = {
     "exec": "seven-waybar-status system-status",
     "return-type": "json",
-    "interval": 3,
+    "interval": 10,
     "tooltip": True,
     "on-click": "seven-quick-settings",
     "on-click-right": "seven-settings",
@@ -2054,9 +2052,6 @@ apply_profile() {
     render_style "$mode" "$style_base" > "$WAYBAR_STYLE"
     rm -f "$CONFIG_HOME/fontconfig/conf.d/70-sevenos-baobab-fonts.conf" 2>/dev/null || true
   fi
-  if [[ "$mode" == "light" ]]; then
-    append_light_legibility_lock
-  fi
   PROFILE_JSON="$(profile_json)" MODE="$mode" ROOT_DIR="$ROOT_DIR" python - <<'PY' | tee "$PROFILE_UI" > "$profile_ui"
 import json
 import os
@@ -2298,9 +2293,9 @@ profiles = {
     "studio": {"position": "top", "max_modules": 19, "identity": "Studio", "required": {"custom/canvas", "custom/media", "custom/recorder"}},
     "atlas": {"position": "top", "max_modules": 19, "identity": "Atlas", "required": {"custom/atlas-home", "custom/apps", "custom/atlas-folders"}},
     "pulse": {"position": "top", "max_modules": 20, "identity": "Pulse", "required": {"custom/performance", "custom/gamemode", "custom/recorder"}},
-    "baobab": {"position": "top", "height": 30, "max_modules": 19, "identity": "Baobab", "identity_contains": True, "identity_module": "custom/baobab", "root": "baobab/waybar", "common_required": False, "required": {"hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more", "custom/language", "custom/sound", "custom/ai", "custom/mini-context", "custom/system-status", "custom/experience", "custom/spotlight", "clock", "tray", "custom/profile-switch"}},
+    "baobab": {"position": "top", "height": 30, "max_modules": 19, "identity": "Baobab", "identity_contains": True, "identity_module": "custom/baobab", "root": "baobab/waybar", "common_required": False, "required": {"hyprland/window", "custom/app-menu", "custom/language", "custom/sound", "custom/ai", "custom/mini-context", "custom/system-status", "custom/experience", "custom/spotlight", "clock", "custom/profile-switch"}},
 }
-common_required = {"hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more", "custom/mini-context", "custom/system-status", "clock", "tray", "custom/profile-switch", "custom/experience", "custom/spotlight"}
+common_required = {"hyprland/window", "custom/app-menu", "custom/system-status", "clock", "custom/spotlight"}
 css_tokens = re.compile(r"@(accent|warn|danger|text|tooltip_bg|line|radius)\\b")
 errors = []
 warnings = []

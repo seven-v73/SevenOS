@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+import os
+
+
+ROOT = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+
+
+def run_json(command: list[str], fallback: dict | None = None, timeout: int = 20) -> dict:
+    try:
+        result = subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return fallback or {}
+    if result.returncode != 0:
+        return fallback or {}
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return fallback or {}
+
+
+def baobab_payload() -> dict:
+    mini = run_json([str(ROOT / "bin/seven"), "mini-doctor", "baobab", "--json"], {"ready": False, "summary": {}})
+    audit = run_json([str(ROOT / "bin/seven"), "baobab", "audit-packs", "--json"], {"state": "unknown", "score": 0, "packs": []})
+    validation = run_json([str(ROOT / "bin/seven"), "baobab", "validation-doctor", "--json"], {"state": "unknown", "community_validation_score": 0})
+    modules = run_json([str(ROOT / "bin/seven"), "baobab", "modules", "--json"], {"modules": []})
+
+    summary = mini.get("summary") or {}
+    packs = audit.get("packs") or []
+    pack_count = len(packs)
+    community_scores = [int(pack.get("community_validation_score") or 0) for pack in packs]
+    community_avg = round(sum(community_scores) / len(community_scores), 1) if community_scores else 0
+    optional_missing = int(summary.get("optional_missing") or 0)
+    module_items = modules.get("modules") or modules.get("village") or []
+    if isinstance(module_items, dict):
+        module_items = list(module_items.values())
+
+    risks = []
+    if optional_missing:
+        risks.append("optional-heavy-stack-not-installed")
+    if community_avg == 0:
+        risks.append("community-validation-not-yet-recorded")
+    if validation.get("validators_registered", 0) == 0:
+        risks.append("validators-not-registered")
+    if audit.get("warnings", 0):
+        risks.append("packs-have-draft-warnings")
+
+    actions = [
+        {
+            "id": "baobab.open",
+            "label": "Ouvrir Baobab",
+            "command": "seven baobab open",
+            "kind": "safe",
+            "reason": "Open the native cultural surface.",
+        },
+        {
+            "id": "baobab.today",
+            "label": "Entrée du jour",
+            "command": "seven baobab today",
+            "kind": "safe",
+            "reason": "Start with a calm daily route instead of a command list.",
+        },
+        {
+            "id": "baobab.validation",
+            "label": "Préparer la validation communautaire",
+            "command": "seven baobab validation-kit",
+            "kind": "safe",
+            "reason": "Create the real review workflow without claiming validation.",
+        },
+        {
+            "id": "baobab.audit",
+            "label": "Auditer les packs culturels",
+            "command": "seven baobab audit-packs",
+            "kind": "safe",
+            "reason": "Check provenance, rights, confidence and fieldwork state.",
+        },
+    ]
+    if optional_missing:
+        actions.append({
+            "id": "baobab.optional",
+            "label": "Voir les extensions optionnelles",
+            "command": "seven baobab install-optional",
+            "kind": "packages",
+            "reason": "Only install heavy immersive tools when the user asks for them.",
+        })
+
+    state = "ready"
+    if not mini.get("ready"):
+        state = "needs-baseline"
+    elif community_avg == 0:
+        state = "ready-public-source-only"
+
+    return {
+        "schema": "sevenos.baobab.guide.v1",
+        "generated_at": int(time.time()),
+        "state": state,
+        "ready": bool(mini.get("ready")),
+        "summary": {
+            "required_missing": int(summary.get("required_missing") or 0),
+            "optional_missing": optional_missing,
+            "rootfs_ready": bool(summary.get("rootfs_ready")),
+            "private_package_count": int(summary.get("private_package_count") or 0),
+            "pack_audit_state": audit.get("state", "unknown"),
+            "pack_audit_score": int(audit.get("score") or 0),
+            "pack_count": pack_count,
+            "pack_warnings": int(audit.get("warnings") or 0),
+            "community_validation_score": community_avg,
+            "validators_registered": int(validation.get("validators_registered") or 0),
+            "validation_requests": int(validation.get("requests") or 0),
+            "attestations": int(validation.get("attestations") or 0),
+            "module_count": len(module_items),
+        },
+        "risks": risks,
+        "policy": {
+            "identity": "Rooted Technology",
+            "install_policy": "Core is light; immersive tools are opt-in.",
+            "validation_policy": "Public sources are not community validation. Real attestations stay explicit.",
+            "boundary": "Baobab owns culture and transmission; Atlas owns general documents, OCR, maps and references.",
+        },
+        "actions": actions,
+        "commands": {
+            "open": "seven baobab open",
+            "today": "seven baobab today",
+            "packs": "seven baobab packs",
+            "audit": "seven baobab audit-packs",
+            "validation": "seven baobab validation-doctor",
+            "modules": "seven baobab modules",
+            "boundaries": "seven mini-boundaries",
+        },
+    }
+
+
+def print_human(payload: dict) -> None:
+    summary = payload["summary"]
+    print("SevenOS Baobab Guide")
+    print("====================")
+    print(f"State: {payload['state']}")
+    print(f"Rootfs: {'ready' if summary['rootfs_ready'] else 'not ready'} ({summary['private_package_count']} private packages)")
+    print(f"Packs: {summary['pack_count']} pack(s), audit {summary['pack_audit_state']} · score {summary['pack_audit_score']}")
+    print(f"Community validation: {summary['community_validation_score']}% · validators {summary['validators_registered']} · attestations {summary['attestations']}")
+    print(f"Optional immersive tools missing: {summary['optional_missing']}")
+    if payload["risks"]:
+        print()
+        print("Attention:")
+        for risk in payload["risks"]:
+            print(f"- {risk}")
+    print()
+    print("Recommended next actions:")
+    for action in payload["actions"]:
+        print(f"- {action['label']}: {action['command']}")
+    print()
+    print("Policy:")
+    print(f"- {payload['policy']['install_policy']}")
+    print(f"- {payload['policy']['validation_policy']}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-baobab-guide")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    payload = baobab_payload()
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    else:
+        print_human(payload)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

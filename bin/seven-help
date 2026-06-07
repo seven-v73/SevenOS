@@ -1177,7 +1177,10 @@ cohérente sans composer la liste à la main.
 ```bash
 seven-waybar status --json
 seven-waybar limits --json
+seven-waybar performance
 seven-waybar doctor --json
+seven-waybar footprint
+seven-waybar optimize
 seven-waybar restart
 seven-waybar stable
 seven-waybar dynamic
@@ -2708,7 +2711,10 @@ rotation without building the list manually.
 ```bash
 seven-waybar status --json
 seven-waybar limits --json
+seven-waybar performance
 seven-waybar doctor --json
+seven-waybar footprint
+seven-waybar optimize
 seven-waybar restart
 seven-waybar stable
 seven-waybar dynamic
