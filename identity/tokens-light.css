@@ -43,11 +43,11 @@
   --focus-violet: rgba(106, 92, 255, 0.12);
   --focus-cyan: rgba(0, 184, 217, 0.16);
 
-  --font-display: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
-  --font-interface: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
-  --font-text: "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-  --font-mono: "SF Mono", "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
-  --font-brand: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif;
+  --font-display: "Inter", "Noto Sans", system-ui, sans-serif;
+  --font-interface: "Inter", "Noto Sans", system-ui, sans-serif;
+  --font-text: "Noto Sans", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+  --font-brand: "Inter", "Noto Sans", system-ui, sans-serif;
 
   --r-button: 14px;
   --r-widget: 18px;
@@ -97,9 +97,8 @@
   --clay-dim: #A90D31;
   --clay-pale: rgba(210, 15, 57, 0.10);
 
-  /* Seven Latte: Catppuccin-inspired compatibility tokens for the
-     clarity-first SevenOS Light Mode. */
-  --seven-mode-name: "Seven Latte";
+  /* Prism Light compatibility tokens for the clarity-first SevenOS Light Mode. */
+  --seven-mode-name: "Prism Light";
   --cat-base: #EFF1F5;
   --cat-mantle: #E6E9EF;
   --cat-crust: #DCE0E8;

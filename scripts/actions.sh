@@ -627,12 +627,12 @@ identity.status	Ecosystem	SevenOS Visual Identity	seven identity	safe	Show Seven
 identity.experience	Ecosystem	Identity Experience Gate	seven identity experience	safe	Check whether SevenOS feels like a coherent OS identity instead of a set of scripts.
 identity.open	Ecosystem	Identity Experience Surface	seven identity open	safe	Open the native Prism-first identity report for SevenOS.
 identity.plan	Ecosystem	Identity Plan	seven identity plan	safe	Show identity gaps before public surfaces rely on branding and theme assets.
-identity.design	Ecosystem	Seven Design Engine	seven identity design	safe	Show Seven Mocha/Latte palettes, icon resolution and design surfaces.
+identity.design	Ecosystem	Seven Design Engine	seven identity design	safe	Show Prism Dark/Light palettes, icon resolution and design surfaces.
 identity.theme	Ecosystem	Theme Runtime	seven identity theme	safe	Show active GTK, Qt, icons, cursor and Kvantum runtime state.
 identity.theme.doctor	Ecosystem	Theme Doctor	seven identity theme-doctor	safe	Check dark/light parity, toolkit coherence and runtime theme state.
 identity.icons	Ecosystem	SevenOS Native Icons	seven identity icons	safe	Show native SevenOS app icons and install names.
-identity.visuals	Ecosystem	Visual Package Layer	seven identity visuals	safe	Show Catppuccin, cursor, Kvantum and icon package readiness.
-identity.visuals.install	Ecosystem	Install Visual Layer	seven identity visuals install --yes	packages	Install Catppuccin GTK, cursors, Kvantum themes and Papirus folder integration.
+identity.visuals	Ecosystem	Visual Package Layer	seven identity visuals	safe	Show Prism Flow visual package, cursor, Kvantum and icon readiness.
+identity.visuals.install	Ecosystem	Install Visual Layer	seven identity visuals install --yes	packages	Install Prism-compatible GTK, cursor, Kvantum and Papirus folder integration.
 identity.packs	Ecosystem	Regional Accent Packs	seven identity packs	safe	Show planned regional accent packs without turning the UI into flags.
 identity.current	Ecosystem	Active Identity Pack	seven identity current	safe	Show the active SevenOS regional accent pack.
 identity.activate.pan	Ecosystem	Activate Accent Pack	seven identity activate pan-african	changes	Set the active SevenOS contextual accent pack.

@@ -1,6 +1,6 @@
 {
   "schema": "sevenos.icons.v1",
-  "style": "SevenOS Catppuccin-inspired app marks",
+  "style": "SevenOS Prism Flow app marks",
   "install_target": "hicolor/scalable/apps",
   "icons": [
     {

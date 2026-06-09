@@ -1,6 +1,6 @@
 :root {
   --seven-design-engine: "Seven Design Engine";
-  --seven-mode-name: "Seven Mocha";
+  --seven-mode-name: "Prism Dark";
 
   --cat-base: #11111B;
   --cat-mantle: #181825;
@@ -28,7 +28,7 @@
 }
 
 [data-seven-theme="light"] {
-  --seven-mode-name: "Seven Latte";
+  --seven-mode-name: "Prism Light";
 
   --cat-base: #EFF1F5;
   --cat-mantle: #E6E9EF;

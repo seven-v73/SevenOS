@@ -2,9 +2,9 @@
 
 > Beyond the Desktop.
 
-SevenOS is a futuristic, premium and immersive Linux operating system identity.
-It combines Hyprland fluidity, contextual AI, cybersecurity clarity, creative
-workflows and cinematic glass surfaces.
+SevenOS is a Prism Flow Linux operating system identity. It combines Hyprland
+fluidity, contextual AI, cybersecurity clarity, creative workflows and
+instrument-like native surfaces without copying another desktop OS.
 
 ## Source Of Truth
 
@@ -19,24 +19,28 @@ workflows and cinematic glass surfaces.
 SevenOS should be perceived as the intelligent next generation Linux experience
 for creators, developers and cybersecurity.
 
-Core influences:
+Core references:
 
-- Apple VisionOS and macOS for premium OS polish
-- realistic sci-fi interfaces for depth and atmosphere
+- Seven Prism as the public symbol and behavior model
+- Mini OS facets for contextual identity
+- instrument panels for precise system control
 - modern SOC dashboards for cybersecurity readability
-- Arc/Nothing-style minimalism for calm, focused surfaces
-- Hyprland for transparent, animated and adaptive Linux ergonomics
+- Hyprland for animated, adaptive Linux ergonomics
+- African-rooted memory and transmission through Baobab, kept structural and
+  subtle
 
 ## Official Palette
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| `--seven-blue` | `#4DA3FF` | primary accent |
-| `--seven-violet` | `#7A5CFF` | identity glow and depth |
-| `--seven-cyan` | `#00D4FF` | interactions and active states |
-| `--seven-green` | `#00FFB3` | cyber mode and trusted live signals |
-| `--deep-void` | `#09090B` | primary background |
-| `--surface-dark` | `#12131A` | cards and panels |
+| `--prism-ink` | `#070A10` | deep system foundation |
+| `--graphite-plane` | `#111722` | primary panels |
+| `--mineral-surface` | `#182131` | raised surfaces |
+| `--frost-line` | `#A9B7C7` | separators and secondary text |
+| `--prism-blue` | `#4C8DFF` | primary interaction and Equinox |
+| `--signal-gold` | `#D6A84F` | identity and attention |
+| `--baobab-green` | `#2FB87A` | trust and Baobab |
+| `--atlas-teal` | `#33B6C4` | exploration and knowledge |
 | `--surface-glass` | `rgba(255, 255, 255, 0.06)` | translucent surfaces |
 | `--soft-white` | `#EDEDED` | primary text |
 | `--muted-gray` | `#8A8F98` | secondary text |
@@ -49,10 +53,10 @@ linear-gradient(135deg, #4DA3FF 0%, #7A5CFF 50%, #00D4FF 100%)
 
 ## Typography
 
-- Interface principale: SF Pro Display for shell chrome, titles and controls.
-- UI secondaire: SF Pro Rounded for brand, badges and friendly controls.
-- Texte normal: SF Pro Text for body copy, lists and settings descriptions.
-- Terminal / cyber: SF Mono with JetBrains Mono fallback.
+- Interface principale: Inter or Noto Sans for shell chrome, titles and controls.
+- Texte normal: Noto Sans for body copy, lists and settings descriptions.
+- Terminal / cyber: JetBrains Mono.
+- Language coverage: Noto family.
 
 Rules:
 
@@ -62,12 +66,12 @@ Rules:
 
 ## Surfaces
 
-SevenOS surfaces are floating, translucent, luminous and minimal:
+SevenOS surfaces are precise, layered, stateful and minimal:
 
-- Base: `--deep-void`
-- Panel: `--surface-1`
+- Base: `--prism-ink`
+- Panel: `--graphite-plane`
 - Card: `--surface-glass` + `--glass-border`
-- Focus: gradient border, cyan/blue text glow and alpha overlays
+- Focus: Prism edge, Signal Gold attention or profile facet accent
 - Cyber: `--cyber-void`, `--surface-cyber`, `--seven-green`
 
 Production shell CSS does not rely on web-only `backdrop-filter`; Hyprland blur
@@ -78,11 +82,11 @@ expressed through text shadow, borders and translucent gradients.
 
 | Element | Radius |
 | --- | --- |
-| Buttons | 14px |
-| Widgets | 18px |
-| Cards | 22px |
-| Waybar | 24px |
-| Windows | 28px |
+| Tiny controls | 6px |
+| Buttons and inputs | 8px |
+| Panels and cards | 10px |
+| Dialogs and sheets | 14px |
+| Prism Passage overlays | 18px |
 
 ## Motion
 
@@ -114,6 +118,7 @@ network/security signals and SOC-like density without clutter.
 ## Absolute Rules
 
 - No generic Linux bar look for primary shell surfaces.
+- No macOS clone language for public SevenOS surfaces.
 - No visually heavy black-on-black panels without glass depth.
 - No aggressive rainbow/RGB effects.
 - No cartoon icons.
@@ -125,8 +130,8 @@ network/security signals and SOC-like density without clutter.
 ## PR Checklist
 
 - Colors use `identity/tokens.css` or this charter.
-- Typography follows Display / Rounded / Text / Mono roles.
-- Surfaces are floating, translucent and rounded.
+- Typography follows Inter/Noto/JetBrains roles.
+- Surfaces are precise, stateful and token-driven.
 - Interactions expose features directly, not procedural menus.
 - Motion uses calm fade, slide or subtle scale.
 - Cyber surfaces use green/cyan data clarity without visual noise.

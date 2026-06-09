@@ -34,6 +34,20 @@ SevenOS should help users code, create, secure, learn, explore knowledge,
 preserve cultural memory, run Windows applications when needed, and deploy
 projects without feeling like they are assembling a system by hand every day.
 
+The fluid and autonomous architecture is captured in
+`docs/FLUID_AUTONOMOUS_ARCHITECTURE.md`. Its core philosophy is:
+
+```text
+One user
+  -> one identity
+  -> one system
+  -> several worlds
+```
+
+In current SevenOS vocabulary, those worlds are Mini OS profiles. Atlas is the
+exploration and knowledge Mini OS; Nexus is not the current SevenOS profile
+name.
+
 ## Product Promise
 
 SevenOS should feel:

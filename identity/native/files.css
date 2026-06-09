@@ -1,4 +1,4 @@
-    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
+    * { font-family: "Inter", "Noto Sans", system-ui, sans-serif; }
     window.seven-files {
       background:
         linear-gradient(145deg, alpha(@files_panel, 0.96), alpha(@files_bg, 0.94));
@@ -41,19 +41,19 @@
       background: linear-gradient(135deg, alpha(@files_accent, 0.34), alpha(@seven_secondary, 0.22));
       border: 1px solid alpha(@files_accent, 0.44);
       color: @files_text;
-      font: 500 17px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 17px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .files-identity-title {
       color: @files_text;
-      font: 500 13px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 13px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .files-identity-subtitle {
       color: @files_muted;
-      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 10px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .sidebar-heading {
       color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
       margin: 14px 0 5px 8px;
     }
     .sidebar-row {
@@ -61,7 +61,7 @@
       padding: 0 11px;
       border-radius: 12px;
       color: @files_text;
-      font: 500 13px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 13px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .sidebar-row:hover,
     .sidebar-row.active {
@@ -95,7 +95,7 @@
       background: @files_selected;
       color: @files_text;
       border: 0;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 12px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .preview-action:hover {
       background: @files_hover;
@@ -114,7 +114,7 @@
       color: @files_text;
       background: alpha(@files_panel, 0.34);
       border: 1px solid alpha(@files_border, 0.42);
-      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 10px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .preview-mini-action:hover {
       background: @files_hover;
@@ -133,11 +133,11 @@
     }
     .preview-decision-title {
       color: @files_text;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .preview-decision-body {
       color: @files_muted;
-      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 10px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .files-dialog-surface {
       border-radius: 18px;
@@ -156,11 +156,11 @@
     }
     .files-dialog-title {
       color: @files_text;
-      font: 500 16px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 16px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .files-dialog-subtitle {
       color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .files-dialog-entry {
       min-height: 34px;
@@ -175,25 +175,25 @@
     }
     .preview-title {
       color: @files_text;
-      font: 500 17px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 17px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .preview-subtitle {
       color: @files_muted;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 12px "Noto Sans", "Inter", system-ui, sans-serif;
       margin-bottom: 18px;
     }
     .preview-heading {
       color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
       margin-top: 12px;
     }
     .preview-value {
       color: @files_text;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 12px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .preview-hint {
       color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
       margin-top: 12px;
     }
     .files-toolbar {
@@ -211,11 +211,11 @@
     }
     .files-context-title {
       color: @files_text;
-      font: 500 13px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 13px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .files-context-subtitle {
       color: @files_muted;
-      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 10px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .files-context-chip {
       border-radius: 999px;
@@ -223,7 +223,7 @@
       color: @files_text;
       background: alpha(@files_sidebar, 0.56);
       border: 1px solid alpha(@files_border, 0.54);
-      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 10px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .toolbar-group {
       min-height: 40px;
@@ -245,7 +245,7 @@
     }
     .files-title {
       color: @files_text;
-      font: 500 18px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 18px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .breadcrumb-button {
       min-height: 30px;
@@ -254,7 +254,7 @@
       background: transparent;
       color: @files_text;
       border: 0;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 12px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .breadcrumb-button:hover {
       background: @files_hover;
@@ -309,11 +309,11 @@
     }
     .file-name {
       color: @files_text;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 12px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .file-meta {
       color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .file-kind-chip {
       min-height: 18px;
@@ -322,7 +322,7 @@
       color: @files_muted;
       background: alpha(@files_sidebar, 0.54);
       border: 1px solid alpha(@files_border, 0.46);
-      font: 500 9px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 9px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .file-risk-chip {
       color: @seven_danger;
@@ -335,7 +335,7 @@
       border-radius: 999px;
       color: @files_text;
       background: @files_selected;
-      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 10px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .tag-blue { background: alpha(@files_accent, 0.30); }
     .tag-violet { background: alpha(@seven_secondary, 0.30); }
@@ -348,7 +348,7 @@
       border-radius: 999px;
       background: @files_selected;
       color: @files_text;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .files-statusbar {
       min-height: 32px;
@@ -358,7 +358,7 @@
     }
     .files-status-label {
       color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .selection-bar {
       min-height: 42px;
@@ -376,7 +376,7 @@
       color: @files_text;
       background: alpha(@files_panel, 0.48);
       border: 1px solid alpha(@files_border, 0.52);
-      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 10px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     .selection-action:hover {
       background: @files_hover;
@@ -407,7 +407,7 @@
       border-radius: 8px;
       padding: 0 10px;
       color: @files_text;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 500 12px "Noto Sans", "Inter", system-ui, sans-serif;
     }
     menuitem:hover {
       background: @files_hover;
@@ -424,7 +424,7 @@
     }
     .quicklook-text {
       color: @files_text;
-      font: 500 13px "SF Mono", "JetBrainsMono Nerd Font", "SF Pro Text", monospace;
+      font: 500 13px "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
       padding: 18px;
     }
     

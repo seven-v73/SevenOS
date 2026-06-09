@@ -1925,20 +1925,20 @@ else
   fail "Kitty palette is not aligned with SevenOS identity"
 fi
 
-if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
+if grep -q -- '--prism-ink: #070A10' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--seven-blue: #2F7BFF' "$ROOT_DIR/identity/tokens-light.css" &&
-   grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q -- '--font-interface: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q -- '--font-text: "SF Pro Text"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q -- '--font-mono: "SF Mono"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q -- '--font-brand: "SF Pro Rounded"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q 'gtk-font-name=SF Pro Display 10' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
-   grep -q 'general="SF Pro Display,10' "$ROOT_DIR/hyprland/qt5ct/qt5ct.conf" &&
-   grep -q 'fixed="SF Mono,10' "$ROOT_DIR/hyprland/qt5ct/qt5ct.conf" &&
-   grep -q 'font=SF Pro Display 10.5' "$ROOT_DIR/hyprland/mako/config" &&
-   grep -q 'font_family SF Mono' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'SF Pro Display</family><prefer><family>Inter' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
-   grep -q 'SF Pro Rounded' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
+   grep -q -- '--font-display: "Inter"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-interface: "Inter"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-text: "Noto Sans"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-mono: "JetBrainsMono Nerd Font"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-brand: "Inter"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q 'gtk-font-name=Inter 10' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+   grep -q 'general="Inter,10' "$ROOT_DIR/hyprland/qt5ct/qt5ct.conf" &&
+   grep -q 'fixed="JetBrainsMono Nerd Font,10' "$ROOT_DIR/hyprland/qt5ct/qt5ct.conf" &&
+   grep -q 'font=Inter 10.5' "$ROOT_DIR/hyprland/mako/config" &&
+   grep -q 'font_family JetBrainsMono Nerd Font' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'Inter' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
+   grep -q 'Noto Sans' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'SevenOS Cyber' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'apply-default' "$ROOT_DIR/scripts/fonts.sh" &&
    grep -q 'import_fonts_button' "$ROOT_DIR/bin/seven-settings-native" &&

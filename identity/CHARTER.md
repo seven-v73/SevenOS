@@ -2,138 +2,150 @@
 
 > Beyond the Desktop.
 
-SevenOS is the next generation intelligent Linux experience for creators,
-developers and cybersecurity work. Its visual system fuses premium operating
-system polish, realistic sci-fi interfaces, contextual AI and modern SOC
-dashboard clarity.
+SevenOS uses **Prism Flow** as its official identity direction. The complete
+charter lives in `identity/PRISM_FLOW_CHARTER.md`.
 
-This charter defines the default immersive Dark Mode. SevenOS also ships a
-parallel clarity-first Light Mode in `identity/CHARTER_LIGHT.md`.
+SevenOS is not a macOS-like Linux desktop and not a generic cyberpunk shell.
+It is a context-aware operating system built around one user identity, Seven
+Core and several Mini OS facets.
 
-## Positioning
+## Identity Direction
 
-SevenOS should feel like a commercial high-end operating system designed in the
-future: fluid, secure, immersive and adaptive.
+```text
+One identity
+  -> Seven Core
+  -> Seven Prism
+  -> several Mini OS facets
+  -> focused workflows
+```
 
-Core perception:
+SevenOS should be recognized by:
 
-- intelligent
+- the Seven Prism symbol
+- Prism Flow transitions
+- Mini OS facets
+- calm, precise system state
+- depth with restraint
+- Linux-native product surfaces
+- design tied to backend state
+
+## Core Perception
+
+SevenOS should feel:
+
+- clear
+- grounded
 - fluid
-- elegant
-- powerful
+- sovereign
+- intelligent
+- precise
 - modern
-- innovative
-- premium minimal
+- alive without noise
 
 ## Design Pillars
 
-1. Fluidity: every interaction should feel alive and continuous.
-2. Transparency: glass and compositor blur are central to the system identity.
-3. Intelligent minimalism: remove procedural clutter and expose useful features.
-4. Depth: build interfaces from translucent layers, borders and luminous focus.
-5. Contextuality: profile, security and AI state should tune visible actions.
+1. **Prism identity**: one system, several focused facets.
+2. **Contextual flow**: every transition explains state and readiness.
+3. **Instrumental surfaces**: panels behave like OS instruments, not
+   decorative cards.
+4. **Sober depth**: depth and translucency support focus; glass is not the
+   identity.
+5. **State clarity**: OK, PART, FAIL, jobs, trust and progress are visible.
+6. **Native independence**: SevenOS uses desktop quality references without
+   cloning another OS.
 
 ## Official Palette
 
+The base palette is **Prism Mineral**.
+
 | Token | Color | Role |
 | --- | --- | --- |
-| Seven Blue | `#4DA3FF` | primary accent |
-| Seven Violet | `#7A5CFF` | glow and identity depth |
-| Seven Cyan | `#00D4FF` | interactions and active states |
-| Seven Green | `#00FFB3` | cyber mode and trusted live signals |
-| Deep Void | `#09090B` | primary background |
-| Surface Dark | `#12131A` | cards and panels |
-| Surface Glass | `rgba(255,255,255,0.06)` | translucent surfaces |
-| Soft White | `#EDEDED` | primary text |
-| Muted Gray | `#8A8F98` | secondary text |
+| Prism Ink | `#070A10` | deep system foundation |
+| Graphite Plane | `#111722` | primary panels |
+| Mineral Surface | `#182131` | raised surfaces |
+| Frost Line | `#A9B7C7` | quiet separators and secondary text |
+| Prism Blue | `#4C8DFF` | primary interaction and Equinox |
+| Signal Gold | `#D6A84F` | identity, primary signal and attention |
+| Baobab Green | `#2FB87A` | trust, continuity and Baobab |
+| Atlas Teal | `#33B6C4` | exploration, maps and knowledge |
+| Forge Ember | `#FF7A4D` | build, deploy and engineering |
+| Shield Mint | `#4DE6A8` | security and verified state |
+| Studio Iris | `#8D6CFF` | creative production |
+| Pulse Coral | `#FF5C7A` | gaming and performance |
 
-Official gradient:
-
-```css
-linear-gradient(135deg, #4DA3FF 0%, #7A5CFF 50%, #00D4FF 100%)
-```
-
-Official glow intent:
-
-```css
-0 0 12px rgba(77,163,255,0.25),
-0 0 24px rgba(122,92,255,0.18)
-```
-
-Production Linux surfaces express this glow through borders, alpha gradients
-and `text-shadow`; Hyprland provides the real blur. Web-only `backdrop-filter`
-and decorative `box-shadow` are not used in shipped shell CSS.
+Compatibility aliases such as `Seven Blue`, `Seven Violet`, `Seven Cyan` and
+`Surface Glass` may remain while existing surfaces migrate to Prism Mineral.
 
 ## Typography
 
-- Main UI: SF Pro Display
-- Secondary UI: SF Pro Rounded
-- Terminal and cyber: SF Mono, JetBrains Mono fallback
+SevenOS uses free, Linux-native typography by default:
 
-## Radius Scale
+- Interface: Inter or Noto Sans
+- Body: Noto Sans
+- Mono: JetBrains Mono
+- Language coverage: Noto family
+
+SF Pro can be a fallback when installed, but it is not the SevenOS identity.
+
+## Shape
+
+SevenOS uses controlled, precise radius:
 
 | Element | Radius |
 | --- | --- |
-| Buttons | 14px |
-| Cards | 22px |
-| Windows | 28px |
-| Widgets | 18px |
-| Waybar | 24px |
+| Tiny controls | 6px |
+| Buttons and inputs | 8px |
+| Panels and cards | 10px |
+| Dialogs and sheets | 14px |
+| Prism Passage overlays | 18px |
+| Semantic pills | 999px |
+
+Large rounded panels are not the default shape. SevenOS favors compact,
+instrument-like surfaces.
+
+## Shell Language
+
+SevenOS shell surfaces use their own vocabulary:
+
+- **Prism Bar** for system context and state.
+- **Context Rail** for apps, Mini OS facets, running jobs and trust state.
+- **Prism Passage** for Mini OS transitions.
+- **Spotlight** for intent/search.
+- **Seven Hub** for control and repair.
+
+Avoid describing public SevenOS shell surfaces as macOS-style.
 
 ## Motion
 
-| Interaction | Duration |
-| --- | --- |
-| Hover | 120ms |
-| Window opening | 220ms |
-| Workspace transition | 280ms |
-| Fade | 180ms |
-| Spotlight | 300ms |
+Motion should explain flow:
 
-Motion should breathe: fade, slide, subtle scaling, luminous focus and calm
-workspace motion. Avoid aggressive bounce, gaming RGB effects and noisy motion.
+- intent appears
+- context is detected
+- plan is previewed
+- action runs as a job
+- progress streams
+- result is verified
 
-## Waybar
-
-SevenOS Waybar is a floating cockpit:
-
-- left: SevenOS logo and workspaces
-- center: Spotlight, media and SevenAI entry points
-- right: power, network, audio, Bluetooth, VPN, weather, time and monitoring
-
-Modules live in independent glass capsules with subtle blue/violet/cyan focus.
-
-## Cyber Mode
-
-Cyber Mode shifts the system to:
-
-- background: `#0A0F0D`
-- surfaces: `#002B22`
-- accent: `#00FFB3`
-- activity: `#00E676`
-
-It should feel like a premium SOC cockpit: live data, terminal clarity,
-minimal logs, discreet monitoring and no visual noise.
+Motion must respect reduced-motion settings and must not block pointer or
+keyboard work.
 
 ## System Surfaces
 
-Hyprlock, wlogout, notifications, settings, Seven Hub, Seven Files, terminal,
-Spotlight, Dock and native profile/security panels all follow the same glass,
-radius, typography and palette.
+Hub, Settings, Store, Files, Shell, notifications, installer, profile center
+and Shield surfaces all follow the Prism Flow language:
 
-## Wallpaper Direction
+- token-driven colors
+- reusable state components
+- visible progress
+- details on demand
+- recovery actions
+- profile accents as facets
 
-Official wallpapers should use cyber-futuristic depth, night cities, subtle
-neon, fluid abstraction, spatial depth and AI intelligence cues.
+## Non-Negotiables
 
-## Signature
-
-SevenOS visual signature:
-
-- premium blur
-- subtle glow
-- translucent layers
-- cinematic depth
-- intelligent minimalism
-- discreet neon
-- contextual motion
+- Atlas is the exploration and knowledge Mini OS.
+- The public symbol is the Seven Prism.
+- Glass is a material, not the identity.
+- Scripts are not the public product language.
+- Profile accents are facets, not unrelated themes.
+- Public workflows must expose state, progress and recovery.

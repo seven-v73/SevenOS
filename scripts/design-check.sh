@@ -54,23 +54,24 @@ else
   ok "Seven Hub imports design tokens"
 fi
 
-if grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
+if grep -q -- '--font-display: "Inter"' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--seven-blue: #2F7BFF' "$ROOT_DIR/identity/tokens-light.css" &&
-   grep -q -- '--font-interface: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q -- '--font-text: "SF Pro Text"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q -- '--font-mono: "SF Mono"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q -- '--font-brand: "SF Pro Rounded"' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
-   grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
-   grep -q 'font_family SF Mono' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q -- '--font-interface: "Inter"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-text: "Noto Sans"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-mono: "JetBrainsMono Nerd Font"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-brand: "Inter"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q 'Inter' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+   grep -q 'Inter' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
+   grep -q 'font_family JetBrainsMono Nerd Font' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'env SEVENOS_TERMINAL_BACKEND=kitty' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'window_logo_path /opt/SevenOS/branding/sddm/sevenos/assets/seven-prism.png' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'SF Pro Display</family><prefer><family>Inter' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
-   grep -q 'SF Pro Rounded' "$ROOT_DIR/hyprland/fontconfig/fonts.conf"; then
-  ok "SevenOS typography exposes SF Pro roles through the bundled Inter/JetBrains/Noto core"
+   grep -q 'Inter' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'Noto Sans' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'Inter' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
+   grep -q 'Noto Sans' "$ROOT_DIR/hyprland/fontconfig/fonts.conf"; then
+  ok "SevenOS typography uses the Inter/Noto/JetBrains Prism Flow core"
 else
-  fail "SevenOS typography should expose SF Pro roles through the bundled Inter/JetBrains/Noto core"
+  fail "SevenOS typography should use the Inter/Noto/JetBrains Prism Flow core"
 fi
 
 if [[ -s "$ROOT_DIR/branding/plymouth/sevenos/sevenos.plymouth" ]] &&
@@ -146,11 +147,13 @@ if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&
    [[ -s "$ROOT_DIR/identity/design-engine.css" ]] &&
    [[ -s "$ROOT_DIR/identity/PROFILE_THEMES.md" ]] &&
    [[ -s "$ROOT_DIR/profiles/catalog.json" ]] &&
-   jq -e '.schema == "sevenos.design-engine.v1" and .modes."seven-mocha".palette.base == "#11111B" and .modes."seven-latte".palette.base == "#EFF1F5" and (.icon_strategy.rule | contains("Papirus")) and .profile_themes.contract == "identity/profile-themes.json" and .profile_themes.catalog == "profiles/catalog.json"' "$ROOT_DIR/identity/design-engine.json" >/dev/null &&
+   jq -e '.schema == "sevenos.design-engine.v1" and .modes."seven-mocha".label == "Prism Dark" and .modes."seven-mocha".palette.base == "#070A10" and .modes."seven-latte".label == "Prism Light" and .modes."seven-latte".palette.base == "#EFF1F5" and (.icon_strategy.rule | contains("Papirus")) and .profile_themes.contract == "identity/profile-themes.json" and .profile_themes.catalog == "profiles/catalog.json"' "$ROOT_DIR/identity/design-engine.json" >/dev/null &&
    jq -e '.schema == "sevenos.profile-themes.v1" and .profiles.equinox.short_label == "EQX" and .profiles.baobab.catppuccin_role == "green/yellow" and .profiles.shield.short_label == "SEC" and .profiles.pulse.short_label == "GAME"' "$ROOT_DIR/identity/profile-themes.json" >/dev/null &&
    jq -e '.schema == "sevenos.profiles.catalog.v1" and .default_profile == "equinox" and .profile_model.short_name == "LAPA" and .profiles.forge.mini_os == true and .profiles.atlas.title == "Atlas Explorer" and .profiles.baobab.layers.experience and .isolation_policy.activation and .core_package_files[0] == "scripts/packages-base.txt" and .runtime_optional_package_files[0] == "scripts/packages-runtime-optional.txt" and any(.profiles.baobab.anti_nuisance[]; . == "no dev toolchain") and .profiles.pulse.optional_package_files[0] == "scripts/packages-performance-optional.txt"' "$ROOT_DIR/profiles/catalog.json" >/dev/null &&
-   grep -q -- '--cat-base: #11111B' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--prism-ink: #070A10' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--seven-mode-name: "Prism Dark"' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--cat-base: #EFF1F5' "$ROOT_DIR/identity/tokens-light.css" &&
+   grep -q -- '--seven-mode-name: "Prism Light"' "$ROOT_DIR/identity/tokens-light.css" &&
    grep -q 'resolve_icon_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'resolve_gtk_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'resolve_cursor_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
@@ -175,9 +178,9 @@ if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&
    grep -q 'Icon=seven-ai' "$ROOT_DIR/seven-hub/seven-ai.desktop" &&
    grep -q 'seven-baobab.svg' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'seven-spotlight.desktop' "$ROOT_DIR/scripts/apply-theme.sh"; then
-  ok "Seven Design Engine exposes Catppuccin-inspired Mocha/Latte palettes with resilient icon resolution"
+  ok "Seven Design Engine exposes Prism Dark/Light palettes with resilient icon resolution"
 else
-  fail "Seven Design Engine should expose Mocha/Latte palettes, optional Catppuccin icons and Papirus fallback"
+  fail "Seven Design Engine should expose Prism Dark/Light palettes, optional icon compatibility and Papirus fallback"
 fi
 
 if [[ -s "$ROOT_DIR/identity/INTERACTION_CONTRACT.md" ]] &&
@@ -276,7 +279,7 @@ else
 fi
 
 if jq -e '."modules-left" == ["custom/sevenos","custom/recorder","hyprland/window","custom/app-menu"] and ."hyprland/window".format == "{class}" and ."hyprland/window"."max-length" == 18 and ."custom/app-menu".exec == "seven-waybar-status app-menu" and ."custom/app-menu"."on-click" == "seven-waybar-action app-menu" and ."custom/app-menu".interval == 12 and ."custom/sevenos".exec == "seven-waybar-status sevenos" and ."custom/sevenos"."return-type" == "json" and ."custom/sevenos".interval == 8 and ."custom/sevenos"."on-click-right" == "seven-profile-center-native" and ."custom/sevenos"."on-click-middle" == "seven-spotlight field" and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["custom/profile","custom/system-status","custom/wifi","custom/bluetooth","custom/spotlight","clock","custom/control-center"] and .height == 30 and .spacing == 4 and ."margin-top" == 0 and ."margin-left" == 0 and ."margin-right" == 0 and ."gtk-layer-shell" == true and ."custom/system-status".exec == "seven-waybar-status system-status" and ."custom/system-status"."return-type" == "json" and ."custom/system-status".interval == 10 and ."custom/spotlight".format == "󰍉" and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and (."custom/recorder".exec | contains("seven-waybar-status") and contains("recorder")) and ."custom/recorder".format == "{}" and ."custom/recorder".interval == 5 and ."custom/control-center".exec == "seven-waybar-status control-center" and ."custom/control-center"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar uses the SevenOS public premium floating hierarchy"
+  ok "Waybar uses the SevenOS Prism Bar hierarchy"
 else
   fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
 fi
@@ -311,9 +314,9 @@ if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'rgba(18, 20, 34, 0.72)' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '@define-color seven_violet' "$ROOT_DIR/hyprland/waybar/style.css"; then
-  ok "Waybar uses premium liquid glass islands"
+  ok "Waybar uses Prism Flow state islands"
 else
-  fail "Waybar should use premium liquid glass islands"
+  fail "Waybar should use Prism Flow state islands"
 fi
 
 if [[ -x "$ROOT_DIR/bin/seven-dock" ]] &&
@@ -397,9 +400,9 @@ if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'notification-card' "$ROOT_DIR/bin/seven-notification-center-native" &&
    grep -q 'action-glyph' "$ROOT_DIR/bin/seven-notification-center-native" &&
    ! grep -q 'Notification Status' "$ROOT_DIR/bin/seven-waybar-notifications"; then
-  ok "Native shell panel, quick settings and notification center follow SevenOS glass surface language"
+  ok "Native shell panel, quick settings and notification center follow Prism Flow surface language"
 else
-  fail "Native shell panel, quick settings and notification center should follow SevenOS glass surface language"
+  fail "Native shell panel, quick settings and notification center should follow Prism Flow surface language"
 fi
 
 if grep -q 'SevenProfileCenterNative' "$ROOT_DIR/bin/seven-profile-center-native" &&
@@ -463,13 +466,13 @@ else
   fail "SevenOS Settings should expose wallpaper, display, security, profile and device controls"
 fi
 
-if [[ -s "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" ]] &&
-   grep -q 'Spotlight is the only global search surface' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" &&
-   grep -q 'Dock is a workflow surface' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" &&
-   grep -q 'No flat black-on-black utility surfaces' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md"; then
-  ok "SevenOS has an OS-level Liquid Glass direction"
+if [[ -s "$ROOT_DIR/identity/PRISM_FLOW_CHARTER.md" ]] &&
+   grep -q 'Context Rail' "$ROOT_DIR/identity/PRISM_FLOW_CHARTER.md" &&
+   grep -q 'Prism Bar' "$ROOT_DIR/identity/PRISM_FLOW_CHARTER.md" &&
+   grep -q 'Glass is a material, not the identity' "$ROOT_DIR/identity/PRISM_FLOW_CHARTER.md"; then
+  ok "SevenOS has an OS-level Prism Flow direction"
 else
-  fail "SevenOS should document the OS-level Liquid Glass direction"
+  fail "SevenOS should document the OS-level Prism Flow direction"
 fi
 
 if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
@@ -767,9 +770,9 @@ if grep -q 'seven-hub-window' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-tile' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'render_dashboard_compact' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-card' "$ROOT_DIR/bin/seven-hub-native"; then
-  ok "Seven Hub Native uses OS-grade glass navigation"
+  ok "Seven Hub Native uses OS-grade Prism navigation"
 else
-  fail "Seven Hub Native should use OS-grade glass navigation"
+  fail "Seven Hub Native should use OS-grade Prism navigation"
 fi
 
 if [[ -s "$ROOT_DIR/session/sevenos.desktop" ]] &&
@@ -792,9 +795,9 @@ fi
 if grep -q 'bg: rgba(18, 19, 26, 0.86)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'min-height: 58px' "$ROOT_DIR/hyprland/rofi/hub.rasi"; then
-  ok "Seven Hub fallback uses readable futuristic glass navigation"
+  ok "Seven Hub fallback uses readable Prism navigation"
 else
-  fail "Seven Hub fallback should use readable futuristic glass navigation"
+  fail "Seven Hub fallback should use readable Prism navigation"
 fi
 
 if grep -q 'width: 52%' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
@@ -817,9 +820,9 @@ if grep -q 'width: 52%' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" &&
    ! grep -Eq 'placeholder: "Search|filename: "search"' "$ROOT_DIR/hyprland/rofi/sevenos.rasi"; then
-  ok "SevenOS Spotlight uses centered readable liquid command surface"
+  ok "SevenOS Spotlight uses a centered readable Prism intent surface"
 else
-  fail "SevenOS Spotlight should use centered readable liquid command surface"
+  fail "SevenOS Spotlight should use a centered readable Prism intent surface"
 fi
 
 if grep -Fq 'children: [ inputbar, listview ]' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -841,7 +844,7 @@ if grep -Fq 'children: [ inputbar, listview ]' "$ROOT_DIR/hyprland/rofi/apps.ras
    grep -q 'size: 84px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'spacing: 58px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -Eq '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi/apps.rasi"; then
-  ok "Apps overview has SevenOS header, tokenized surfaces and rounded glass tiles"
+  ok "Apps overview has SevenOS header, tokenized Prism surfaces and app tiles"
 else
   fail "Apps overview still lacks SevenOS signature depth or tokenized surfaces"
 fi
@@ -942,9 +945,9 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'Exec=seven-kitty' "$ROOT_DIR/seven-hub/seven-kitty.desktop" &&
    grep -q 'SEVENOS_TERMINAL_NATIVE=0' "$ROOT_DIR/bin/seven-kitty"; then
-  ok "SevenOS default UI is dark, transparent and cinematic with glass accents"
+  ok "SevenOS default UI ships Prism Dark surfaces, native apps and backend-aware controls"
 else
-  fail "SevenOS default UI should ship dark transparent cinematic glass"
+  fail "SevenOS default UI should ship Prism Dark surfaces, native apps and backend-aware controls"
 fi
 
 if grep -q 'kente-band' "$ROOT_DIR/seven-hub/gui/src/index.html" &&

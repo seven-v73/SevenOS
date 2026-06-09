@@ -4,11 +4,15 @@ SevenOS is designed as an operating ecosystem, not a theme pack. Every module
 must belong to a clear layer, expose a predictable command path, and connect to
 the user experience through `seven`, `sevenpkg`, Seven Hub, or Seven Server.
 
-The long-term architecture references are `docs/SYSTEM_EXPERIENCE_LAYER.md`
-and `docs/HYBRID_OS_ARCHITECTURE.md`. Together they define SevenOS as a
-system experience layer and local user-space hybrid OS architecture above
-Linux and Arch: Seven Core, SevenBus, Seven Shell, Seven Hub and future
-intelligent services.
+The long-term architecture references are `docs/SYSTEM_EXPERIENCE_LAYER.md`,
+`docs/HYBRID_OS_ARCHITECTURE.md`,
+`docs/FLUID_AUTONOMOUS_ARCHITECTURE.md`, `docs/OS_STABLE_STACK.md` and
+`docs/DESIGN_FIRST_STACK.md`, plus `docs/SYSTEM_LANGUAGE_STACK.md` and
+`docs/REAL_DESIGN_START.md`.
+Together they define SevenOS as a system experience layer and local user-space
+hybrid OS architecture above Linux and Arch: Seven Core, SevenBus, Seven
+Shell, Seven Hub, Seven Services, Seven Platform APIs, design-first native
+surfaces, packaged components and future intelligent services.
 
 ## Product Problem
 
@@ -20,6 +24,17 @@ The promise is:
 
 > one intelligent Linux ecosystem to create, secure, develop, run, deploy and
 > maintain digital work without assembling a different toolchain every day.
+
+The fluid-autonomous rule is:
+
+```text
+One user
+  -> one identity
+  -> one system
+  -> several Mini OS profiles
+```
+
+The user never changes operating system. The user only changes context.
 
 ## System Layers
 

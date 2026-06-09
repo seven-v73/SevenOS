@@ -1,20 +1,33 @@
 :root {
+  --prism-ink: #070A10;
+  --graphite-plane: #111722;
+  --mineral-surface: #182131;
+  --frost-line: #A9B7C7;
+  --prism-blue: #4C8DFF;
+  --signal-gold: #D6A84F;
+  --baobab-green: #2FB87A;
+  --atlas-teal: #33B6C4;
+  --forge-ember: #FF7A4D;
+  --shield-mint: #4DE6A8;
+  --studio-iris: #8D6CFF;
+  --pulse-coral: #FF5C7A;
+
   --seven-blue: #4DA3FF;
   --seven-violet: #7A5CFF;
   --seven-cyan: #00D4FF;
   --seven-green: #00FFB3;
   --seven-green-active: #00E676;
-  --deep-void: #09090B;
+  --deep-void: var(--prism-ink);
   --cyber-void: #0A0F0D;
-  --surface-dark: #12131A;
+  --surface-dark: var(--graphite-plane);
   --surface-cyber: #002B22;
   --soft-white: #EDEDED;
   --muted-gray: #8A8F98;
 
-  --surface-0: #09090B;
-  --surface-1: rgba(18, 19, 26, 0.78);
-  --surface-2: rgba(28, 31, 44, 0.72);
-  --surface-3: rgba(39, 43, 61, 0.78);
+  --surface-0: var(--prism-ink);
+  --surface-1: rgba(17, 23, 34, 0.82);
+  --surface-2: rgba(24, 33, 49, 0.76);
+  --surface-3: rgba(37, 49, 69, 0.78);
   --comfort-dark-bg: #080A12;
   --comfort-dark-panel: rgba(13, 17, 29, 0.82);
   --comfort-dark-panel-2: rgba(20, 27, 43, 0.76);
@@ -32,32 +45,33 @@
   --text-3: #8A8F98;
   --text-4: #606776;
 
-  --gradient-primary: linear-gradient(135deg, #4DA3FF 0%, #7A5CFF 50%, #00D4FF 100%);
+  --gradient-primary: linear-gradient(135deg, var(--prism-blue) 0%, var(--signal-gold) 46%, var(--atlas-teal) 100%);
+  --gradient-prism: linear-gradient(135deg, var(--prism-blue), var(--signal-gold), var(--atlas-teal));
   --gradient-cyber: linear-gradient(135deg, rgba(0, 255, 179, 0.22), rgba(0, 212, 255, 0.12));
   --glow-blue: rgba(77, 163, 255, 0.25);
   --glow-violet: rgba(122, 92, 255, 0.18);
   --glow-cyan: rgba(0, 212, 255, 0.28);
   --glow-green: rgba(0, 255, 179, 0.26);
 
-  --font-display: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
-  --font-interface: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
-  --font-text: "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-  --font-mono: "SF Mono", "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
-  --font-cyber: "JetBrainsMono Nerd Font", "JetBrains Mono", "SF Mono", monospace;
-  --font-brand: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif;
+  --font-display: "Inter", "Noto Sans", system-ui, sans-serif;
+  --font-interface: "Inter", "Noto Sans", system-ui, sans-serif;
+  --font-text: "Noto Sans", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+  --font-cyber: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+  --font-brand: "Inter", "Noto Sans", system-ui, sans-serif;
 
-  --r-button: 14px;
-  --r-widget: 18px;
-  --r-card: 22px;
-  --r-waybar: 24px;
-  --r-window: 28px;
+  --r-button: 8px;
+  --r-widget: 10px;
+  --r-card: 10px;
+  --r-waybar: 10px;
+  --r-window: 14px;
   --r-pill: 999px;
 
   --r-xs: 8px;
-  --r-sm: 14px;
-  --r-md: 18px;
-  --r-lg: 22px;
-  --r-xl: 28px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -111,10 +125,10 @@
   --light-seven-violet: #6A5CFF;
   --light-seven-cyan: #00B8D9;
 
-  /* Seven Mocha: Catppuccin-inspired compatibility tokens for the
-     Seven Design Engine. Catppuccin icon themes are optional; the runtime
+  /* Prism Dark compatibility tokens for the Seven Design Engine.
+     Third-party icon themes are optional; the runtime
      resolver falls back to Papirus-Dark/Papirus when they are unavailable. */
-  --seven-mode-name: "Seven Mocha";
+  --seven-mode-name: "Prism Dark";
   --cat-base: #11111B;
   --cat-mantle: #181825;
   --cat-crust: #0B0B12;

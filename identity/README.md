@@ -1,11 +1,13 @@
 # SevenOS Identity
 
-SevenOS uses a futuristic premium visual identity for an intelligent Linux
-ecosystem: fluid, secure, immersive and adaptive.
+SevenOS uses Prism Flow: a native visual identity for an intelligent Linux
+ecosystem that is fluid, secure, contextual and independent from borrowed
+desktop styles.
 
 The broader product direction lives in:
 
 - `identity/CHARTER.md`
+- `identity/PRISM_FLOW_CHARTER.md`
 - `identity/STYLE.md`
 - `identity/LIQUID_GLASS_OS.md`
 - `docs/VISION.md`
@@ -14,31 +16,33 @@ The broader product direction lives in:
 
 ## Design Direction
 
-SevenOS uses **Design System v2: Beyond the Desktop**.
+SevenOS uses **Prism Flow: Beyond the Desktop**.
 
-The goal is not to look like a themed Linux desktop. SevenOS should feel like a
-coherent, commercial-grade operating system for creators, developers and
-cybersecurity: premium, cinematic, intelligent and fast.
+The goal is not to look like a themed Linux desktop or a macOS-like shell.
+SevenOS should feel like a coherent operating system for creators, developers,
+cybersecurity and knowledge work: precise, contextual, intelligent and fast.
 
-- dark translucent surfaces for immersion and focus
-- Hyprland compositor blur as the real glass engine
-- blue/violet/cyan glow for identity and interactions
-- green cyber signals for security and trusted live state
+- Prism identity and Mini OS facets
+- mineral dark surfaces for focus
+- restrained depth instead of glass everywhere
+- Signal Gold and profile facets for identity and attention
+- Shield Mint/Baobab Green for trust and continuity
 - contextual AI and profile signals in visible shell surfaces
-- outline iconography inspired by Lucide, Phosphor and SF Symbols
+- outline/faceted iconography
 - feature-first controls instead of procedural menus
-- consistent SF Pro Display, SF Pro Rounded, SF Pro Text and SF Mono roles
+- Inter/Noto/JetBrains typography roles
 
 ## Palette
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `seven-blue` | `#4DA3FF` | primary accent |
-| `seven-violet` | `#7A5CFF` | glow and identity depth |
-| `seven-cyan` | `#00D4FF` | interaction and active state |
-| `seven-green` | `#00FFB3` | cyber and trusted live state |
-| `deep-void` | `#09090B` | primary background |
-| `surface-dark` | `#12131A` | panels and cards |
+| `prism-ink` | `#070A10` | system foundation |
+| `graphite-plane` | `#111722` | primary panels |
+| `mineral-surface` | `#182131` | raised surfaces |
+| `prism-blue` | `#4C8DFF` | primary interaction |
+| `signal-gold` | `#D6A84F` | identity and attention |
+| `baobab-green` | `#2FB87A` | trust and continuity |
+| `atlas-teal` | `#33B6C4` | exploration and knowledge |
 | `surface-glass` | `rgba(255, 255, 255, 0.06)` | glass surfaces |
 | `soft-white` | `#EDEDED` | primary text |
 | `muted-gray` | `#8A8F98` | secondary text |
@@ -47,23 +51,25 @@ cybersecurity: premium, cinematic, intelligent and fast.
 
 Use names that feel native to SevenOS:
 
-- `Deep Void` for the immersive base
-- `Seven Blue` for primary interaction
-- `Seven Violet` for identity glow
-- `Seven Cyan` for active focus and fluid UI
-- `Seven Green` for Cyber Mode and trusted state
-- `Surface Glass` for translucent cards and widgets
+- `Prism Ink` for the system foundation
+- `Graphite Plane` for primary panels
+- `Mineral Surface` for raised surfaces
+- `Prism Blue` for primary interaction
+- `Signal Gold` for identity and attention
+- `Baobab Green` for trust and continuity
+- `Atlas Teal` for exploration and knowledge
 
 ## Current Implementation
 
 - `identity/CHARTER.md` as the official graphic charter
+- `identity/PRISM_FLOW_CHARTER.md` as the full Prism Flow reference
 - `identity/SYMBOL.md` as the SevenOS public symbol direction
 - `identity/STYLE.md` as the design contract
 - `identity/tokens.css` as CSS token source
 - `identity/palette.sh` as shell/script palette source
 - `scripts/identity.sh` / `seven identity --json` as the machine-readable identity contract
 - Hyprland border colors, blur and animation tuning
-- Waybar cockpit modules and glass capsules
+- Prism Bar and Context Rail direction
 - Rofi launcher, Spotlight, quick settings and power themes
 - Mako notification theme
 - Kitty terminal profiles
@@ -84,7 +90,8 @@ SevenOS keeps reusable identity components for profile and status surfaces:
 - `identity/components/kente-divider.svg`
 
 Regional and cultural accent components remain optional layers. The default
-SevenOS identity is now the global premium sci-fi glass direction.
+SevenOS identity is now Prism Flow: global, contextual, sovereign and
+Linux-native.
 
 ## Tagline
 

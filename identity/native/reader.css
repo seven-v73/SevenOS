@@ -28,7 +28,7 @@ window.seven-reader {
 }
 .reader-section-title {
   color: @seven_text;
-  font: 500 15px "SF Pro Text", "Inter", system-ui, sans-serif;
+  font: 500 15px "Noto Sans", "Inter", system-ui, sans-serif;
 }
 .library-card {
   background: @seven_panel;
@@ -75,11 +75,11 @@ window.seven-reader {
 }
 .cover-title {
   color: @seven_text;
-  font: 500 18px "SF Pro Display", "Inter", system-ui, sans-serif;
+  font: 500 18px "Inter", "Noto Sans", system-ui, sans-serif;
 }
 .cover-subtitle {
   color: @seven_muted;
-  font: 500 11px "SF Pro Text", "Inter", system-ui, sans-serif;
+  font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
 }
 .reader-stage {
   background:
@@ -140,7 +140,7 @@ window.seven-reader {
 }
 .reader-note {
   color: @seven_muted;
-  font: 500 12px "SF Pro Text", "Inter", system-ui, sans-serif;
+  font: 500 12px "Noto Sans", "Inter", system-ui, sans-serif;
 }
 .book-spread {
   background:
@@ -224,7 +224,7 @@ window.seven-reader {
 }
 .reader-current-state {
   color: @seven_muted;
-  font: 500 11px "SF Pro Text", "Inter", system-ui, sans-serif;
+  font: 500 11px "Noto Sans", "Inter", system-ui, sans-serif;
 }
 .reader-nav-button {
   min-width: 30px;
@@ -232,7 +232,7 @@ window.seven-reader {
 }
 .reader-nav-label {
   color: @seven_text;
-  font: 600 13px "SF Pro Text", "Inter", system-ui, sans-serif;
+  font: 600 13px "Noto Sans", "Inter", system-ui, sans-serif;
   padding: 0 8px;
 }
 .reader-secondary-button {
@@ -305,7 +305,7 @@ window.seven-reader {
 }
 .reader-info {
   color: @seven_muted;
-  font: 500 12px "SF Pro Text", "Inter", system-ui, sans-serif;
+  font: 500 12px "Noto Sans", "Inter", system-ui, sans-serif;
 }
 .ai-card {
   background: @seven_sidebar;

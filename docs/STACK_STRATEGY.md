@@ -7,6 +7,10 @@ testable through JSON contracts, checks and Seven Hub.
 This strategy supports `docs/SYSTEM_EXPERIENCE_LAYER.md` and
 `docs/HYBRID_OS_ARCHITECTURE.md`, the main references for SevenOS as a system
 experience layer and user-space hybrid OS architecture above Linux and Arch.
+The stable product target is defined in `docs/OS_STABLE_STACK.md`. The
+design-first experience stack is defined in `docs/DESIGN_FIRST_STACK.md`.
+The language boundaries for building SevenOS are defined in
+`docs/SYSTEM_LANGUAGE_STACK.md`.
 
 ## Principle
 
@@ -15,20 +19,54 @@ Contracts first. Native surfaces second. New runtimes only when they replace
 real friction.
 ```
 
+For the OS-stable direction, the sharper rule is:
+
+```text
+Scripts may bootstrap SevenOS.
+Scripts must not be the long-term operating system.
+```
+
 ## Phase Order
 
 | Phase | Focus | Stack |
 | --- | --- | --- |
-| B2-B3 | JSON contracts, Hub Native, Seven Server preparation | Bash, Python, GTK4/libadwaita |
-| B3 | Seven Shell and long-running system core | AGS + TypeScript, Rust, small C probes |
-| Phase 4 | Intelligence and product apps | Python AI, Flutter/Qt/GTK apps |
-| Phase 5 | Store, Cloud, Sync and extensions | Rust, Python, Flutter/Qt, package registry |
+| B2-B3 | Freeze JSON contracts and separate adapters from OS ownership | Bash/Python as compatibility, GTK4/libadwaita, Rust daemon scaffold |
+| B3 | Seven Shell and long-running system core | Rust, systemd services, SevenBus, AGS + TypeScript shell iteration, small C probes |
+| Phase 4 | Product apps, AI and package APIs | Rust services, Python AI, GTK/libadwaita or Tauri app surfaces, SQLite |
+| Phase 5 | Store, Cloud, Sync and packaged releases | pacman/libalpm integration, signed packages, Seven Cloud services, typed APIs |
 
 ## Current Rule
 
-SevenOS keeps the existing Bash/Python scripts while they are useful. The work
-now is not to rewrite everything; it is to make every command expose stable JSON
-so native interfaces can control the system without parsing terminal text.
+SevenOS keeps the existing Bash/Python scripts while they are useful as
+bootstrap, compatibility and release-check adapters. The work now is not a
+blind rewrite; it is to move stateful OS behavior behind stable JSON contracts,
+Seven Core services and package boundaries so native interfaces can control the
+system without parsing terminal text.
+
+Anything long-running, stateful, security-sensitive or profile-owning should
+move out of scripts and into Seven Core, SevenBus, a supervised service or a
+native product surface.
+
+## OS-Stable Target
+
+The target stack is:
+
+| Layer | Stable direction |
+| --- | --- |
+| Core runtime | Rust, `seven-daemon`, systemd services, SQLite, typed state contracts |
+| IPC/events | SevenBus through Rust, dbus or local Unix sockets, JSON/Protobuf schemas |
+| CLI | `seven` and `sevenpkg` as clients of stable runtime contracts |
+| Shell | AGS/TypeScript for shell iteration, native Linux integration for final control |
+| Apps | GTK/libadwaita or Tauri where useful, all consuming Seven Platform APIs |
+| AI | Python for models and analysis, behind explicit SevenAI service contracts |
+| Security | Polkit, AppArmor first, sandboxing, audited privileged helpers |
+| Packaging | pacman packages, archiso, signed artifacts, update/rollback route |
+| Tests | contract tests, build checks, VM/live ISO smoke and public quality gates |
+
+Design-first work follows the same direction: define the user intent, backend
+contract, states, errors, progress and recovery before building the visible
+surface. SevenOS UI should consume Seven Core and SevenBus state instead of
+launching scripts and waiting for terminal output.
 
 ## Next Technical Move
 

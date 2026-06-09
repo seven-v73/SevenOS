@@ -4,23 +4,23 @@ Use this checklist before shipping a SevenOS visual change.
 
 ## Identity
 
-- SevenOS reads as premium, futuristic, intelligent and Linux-native.
+- SevenOS reads as Prism Flow: clear, sovereign, intelligent and Linux-native.
 - The direction matches `identity/CHARTER.md` and the tagline “Beyond the Desktop.”
 - Light Mode follows `identity/CHARTER_LIGHT.md` and the tagline “Clarity first.”
-- Interfaces feel fluid, transparent, minimal, deep and contextual.
+- Interfaces feel fluid, precise, stateful, deep and contextual.
 
 ## Palette
 
-- Primary accents use Seven Blue `#4DA3FF`, Seven Violet `#7A5CFF` and Seven Cyan `#00D4FF`.
-- Cyber/security signals use Seven Green `#00FFB3`.
-- Base surfaces use Deep Void `#09090B`, Surface Dark `#12131A` and translucent glass.
+- Primary accents use Prism Blue `#4C8DFF`, Signal Gold `#D6A84F` and Atlas Teal `#33B6C4`.
+- Trust/security signals use Shield Mint `#4DE6A8` and Baobab Green `#2FB87A`.
+- Base surfaces use Prism Ink `#070A10`, Graphite Plane `#111722` and Mineral Surface `#182131`.
 - Text uses Soft White `#EDEDED` and Muted Gray `#8A8F98`.
 
 ## Surface Rules
 
-- Floating surfaces use 14px, 18px, 22px, 24px or 28px radius according to role.
+- Surfaces use compact Prism Flow radius according to role.
 - Production shell CSS avoids decorative `box-shadow` and web-only `backdrop-filter`.
-- Glow is expressed through alpha gradients, borders, Hyprland blur and text-shadow.
+- Depth is expressed through mineral surfaces, borders, profile facets and restrained light lanes.
 - UI CSS avoids font weights above 500.
 - `identity/tokens-light.css` and `hyprland-light/` define the installable
   clarity-first Light Mode.

@@ -72,7 +72,7 @@
 * {
   border: none;
   border-radius: 0;
-  font-family: "SF Pro Display", "SF UI Display", "Inter", "JetBrainsMono Nerd Font", sans-serif;
+  font-family: "Inter", "Noto Sans", "JetBrainsMono Nerd Font", sans-serif;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0;
@@ -245,7 +245,7 @@ window#waybar {
   padding-left: 0;
   padding-right: 0;
   color: #FFFFFF;
-  font-family: "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+  font-family: "Inter", "Noto Sans", sans-serif;
   font-size: 15px;
   font-weight: 500;
   letter-spacing: 0;
@@ -302,7 +302,7 @@ window#waybar {
   padding-left: 8px;
   padding-right: 10px;
   color: rgba(245, 247, 250, 0.74);
-  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-family: "Noto Sans", "Inter", sans-serif;
   font-size: 12px;
 }
 
@@ -322,7 +322,7 @@ window#waybar {
   padding-left: 9px;
   padding-right: 9px;
   color: rgba(245, 247, 250, 0.66);
-  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-family: "Noto Sans", "Inter", sans-serif;
   font-size: 12px;
   font-weight: 500;
 }
@@ -486,7 +486,7 @@ window#waybar {
     linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.045)),
     radial-gradient(ellipse at 20% -18%, rgba(255, 255, 255, 0.12), transparent 58%),
     rgba(255, 255, 255, 0.025);
-  font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
+  font-family: "Inter", "Noto Sans", sans-serif;
   font-size: 12px;
 }
 
@@ -730,7 +730,7 @@ window#waybar {
   background:
     transparent;
   box-shadow: none;
-  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-family: "Noto Sans", "Inter", sans-serif;
   font-size: 12px;
 }
 
@@ -753,7 +753,7 @@ window#waybar {
   background:
     linear-gradient(180deg, rgba(156, 203, 255, 0.120), rgba(255, 255, 255, 0.038)),
     rgba(255, 255, 255, 0.018);
-  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-family: "Noto Sans", "Inter", sans-serif;
   font-size: 12px;
 }
 
@@ -806,7 +806,7 @@ window#waybar {
   padding-left: 10px;
   padding-right: 10px;
   color: rgba(255, 255, 255, 0.72);
-  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-family: "Noto Sans", "Inter", sans-serif;
   font-size: 12px;
 }
 
@@ -828,7 +828,7 @@ window#waybar {
   padding: 0;
   margin: 0 1px;
   color: rgba(255, 255, 255, 0.84);
-  font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
+  font-family: "Inter", "Noto Sans", sans-serif;
   font-size: 0;
 }
 
@@ -955,7 +955,7 @@ window#waybar {
   padding-left: 8px;
   padding-right: 8px;
   color: rgba(255, 255, 255, 0.82);
-  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-family: "Noto Sans", "Inter", sans-serif;
   font-size: 12px;
 }
 
@@ -984,7 +984,7 @@ window#waybar {
   padding-left: 7px;
   padding-right: 7px;
   color: rgba(255, 255, 255, 0.84);
-  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-family: "Noto Sans", "Inter", sans-serif;
   font-size: 12px;
 }
 
@@ -995,7 +995,7 @@ window#waybar {
   padding-right: 7px;
   border-radius: 6px;
   color: rgba(255, 255, 255, 0.94);
-  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-family: "Noto Sans", "Inter", sans-serif;
   font-size: 12px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.150), rgba(255, 255, 255, 0.052)),

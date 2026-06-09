@@ -107,11 +107,11 @@ copy_fonts_from() {
 }
 
 install_local_sources() {
-  local target="$FONT_HOME/SanFrancisco"
+  local target="$FONT_HOME/Imported"
   local source
 
   if is_dry_run; then
-    printf 'install local SF Pro/SF UI/SF Mono fonts into %q when available\n' "$target"
+    printf 'install local SevenOS-compatible fonts into %q when available\n' "$target"
     return 0
   fi
 
@@ -237,25 +237,25 @@ apply_gsettings() {
 }
 
 status_json() {
-  local interface text mono cyber brand sf_display sf_text sf_mono
-  interface="$(family_match "SF Pro Display")"
-  text="$(family_match "SF Pro Text")"
-  mono="$(family_match "SF Mono")"
+  local interface text mono cyber brand sevenos_display sevenos_text sevenos_mono
+  interface="$(family_match "SevenOS UI")"
+  text="$(family_match "SevenOS Text")"
+  mono="$(family_match "SevenOS Mono")"
   cyber="$(family_match "JetBrainsMono Nerd Font")"
   brand="$(family_match "SevenOS Brand")"
-  sf_display="$(family_match "SevenOS Display")"
-  sf_text="$(family_match "SevenOS Text")"
-  sf_mono="$(family_match "SevenOS Mono")"
+  sevenos_display="$(family_match "SevenOS Display")"
+  sevenos_text="$(family_match "SevenOS Text")"
+  sevenos_mono="$(family_match "SevenOS Mono")"
   printf '{"schema":"sevenos.fonts.v1","interface":"%s","text":"%s","mono":"%s","cyber":"%s","brand":"%s","sevenos_display":"%s","sevenos_text":"%s","sevenos_mono":"%s","font_home":"%s"}\n' \
-    "$interface" "$text" "$mono" "$cyber" "$brand" "$sf_display" "$sf_text" "$sf_mono" "$FONT_HOME"
+    "$interface" "$text" "$mono" "$cyber" "$brand" "$sevenos_display" "$sevenos_text" "$sevenos_mono" "$FONT_HOME"
 }
 
 status_human() {
   printf 'SevenOS Fonts\n'
   printf '=============\n'
-  printf 'Interface: %s\n' "$(family_match "SF Pro Display")"
-  printf 'Text:      %s\n' "$(family_match "SF Pro Text")"
-  printf 'Terminal:  %s\n' "$(family_match "SF Mono")"
+  printf 'Interface: %s\n' "$(family_match "SevenOS UI")"
+  printf 'Text:      %s\n' "$(family_match "SevenOS Text")"
+  printf 'Terminal:  %s\n' "$(family_match "SevenOS Mono")"
   printf 'Cyber:     %s\n' "$(family_match "JetBrainsMono Nerd Font")"
   printf 'Brand:     %s\n' "$(family_match "SevenOS Brand")"
   printf 'Core UI:   %s\n' "$(family_match "SevenOS UI")"

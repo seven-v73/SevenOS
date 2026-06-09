@@ -230,7 +230,7 @@ PROFILE_COLLECTIONS = {
 
 UI_CONTRACT = {
     "schema": "sevenos.store-ui.v1",
-    "design_language": "SevenOS Liquid Glass AppCenter",
+    "design_language": "SevenOS Prism Flow Store",
     "principles": [
         "discovery before package names",
         "one-click actions with explicit trust and source badges",

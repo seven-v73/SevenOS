@@ -171,20 +171,21 @@ It indexes:
 - contextual intents such as preparing Forge, Studio or Cyber workspaces.
 
 Use `Super` alone when you want the full app grid. `Super+A` remains a
-compatibility shortcut. `Super+D` toggles the SevenOS Dock for Files, Apps,
-Browser, Terminal, Spotlight, Hub and Settings. The Dock is a macOS-style
-floating surface: the default renderer is the premium canvas Dock, with the
-native GTK Dock kept as fallback. It separates folders from apps, shows running
-indicators, magnifies on hover, previews open windows, accepts file drops, provides
-right-click actions such as show windows, quit and force quit, and stores pinned
-items in `~/.config/sevenos/dock.json`. The canvas Dock floats as an overlay by
-default, so it does not push normal windows upward. It uses a subtle magnetic
-focus effect with spring motion, hover-intent previews and a smooth slide reveal instead of an aggressive layout-stealing zoom, and also supports
-drag reorder, middle-click new instance, scroll-to-cycle windows and macOS-style
-folder stacks for Downloads/Home. Spotlight from the Dock opens the current
-native Spotlight surface directly. Use `seven-dock repair` if the Dock is
-missing after a session refresh. Use `SEVENOS_DOCK_RENDERER=native seven-dock repair`
-only when the canvas renderer is unavailable.
+compatibility shortcut. `Super+D` toggles the SevenOS Context Rail for Files,
+Apps, Browser, Terminal, Spotlight, Hub and Settings. The Context Rail is a
+Prism Flow surface for apps, folders, Mini OS context and running jobs, with the
+native GTK rail kept as fallback. It separates folders from apps, shows running
+indicators, previews open windows, accepts file drops, provides right-click
+actions such as show windows, quit and force quit, and stores pinned items in
+`~/.config/sevenos/dock.json`. The rail floats as an overlay by default, so it
+does not push normal windows upward. It uses a subtle magnetic focus effect,
+hover-intent previews and a smooth slide reveal instead of an aggressive
+layout-stealing zoom, and also supports drag reorder, middle-click new
+instance, scroll-to-cycle windows and Prism folder stacks for Downloads/Home.
+Spotlight from the rail opens the current native Spotlight surface directly.
+Use `seven-dock repair` if the rail is missing after a session refresh. Use
+`SEVENOS_DOCK_RENDERER=native seven-dock repair` only when the canvas renderer
+is unavailable.
 Use `Super+Shift+H` or the
 Spotlight action `Desktop · Open Seven Hub` for the Control Center.
 
@@ -213,7 +214,7 @@ This is the normal-user configuration center. It groups the controls that
 should not require terminal usage:
 
 - wallpaper selection and Hyprpaper refresh;
-- liquid glass appearance, dock, terminal style and Waybar repair;
+- Prism Flow appearance, Context Rail, terminal style and Prism Bar repair;
 - display brightness, monitor tools and Hyprland monitor override;
 - Wi-Fi, NetworkManager and audio controls;
 - US/French keyboard layout with Alt+Shift switching;

@@ -295,7 +295,7 @@ SevenStore should look like a premium app discovery surface.
 
 Inspirations:
 
-- macOS App Store
+- SevenOS Prism Flow catalog surfaces
 - Steam
 - Microsoft Store
 - GNOME Software

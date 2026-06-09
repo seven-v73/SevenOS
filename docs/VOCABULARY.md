@@ -9,7 +9,11 @@ This document keeps SevenOS language consistent across commands, UI, and docs.
 | SevenOS | the full operating system ecosystem |
 | `seven` | system controller |
 | `sevenpkg` | package and application manager |
+| Seven Core | stable runtime layer for state, sessions, profiles, events and orchestration |
+| SevenBus | typed local event and action stream |
 | Seven Hub | graphical/control center entrypoint |
+| Seven Shell | panels, launcher, dock, quick settings, notifications and shell surfaces |
+| SevenAI | local assistant and analysis layer |
 | SevenRepo | future SevenOS package repository |
 | Windows Bridge | VM-first Windows compatibility with Wine, Bottles, and Lutris as lighter fallback paths |
 
@@ -26,6 +30,7 @@ This document keeps SevenOS language consistent across commands, UI, and docs.
 | Pulse Gaming | Linux gaming mini OS for Proton, low latency, overlays, and frame pacing |
 | Baobab Cultural OS | African cultural mini OS for heritage, languages, stories, sound, map, fashion, food, wisdom and offline memory |
 | Griot | documentation, knowledge, and learning toolkit |
+| Atlas | exploration and knowledge mini OS for maps, geography, documents, research and field notes |
 
 ## Identity Tokens
 
@@ -57,3 +62,5 @@ Avoid:
 - vague magic language
 - calling SevenOS only a theme
 - presenting BlackArch as default
+- calling Atlas Nexus
+- using scripts as the public product language

@@ -38,7 +38,7 @@ User question:
 SevenOS answer:
 
 - Beyond the Desktop identity
-- liquid glass desktop language
+- Prism Flow desktop language
 - Seven Hub control center
 - Waybar status surfaces
 - power menu, welcome flow, dashboard, notifications

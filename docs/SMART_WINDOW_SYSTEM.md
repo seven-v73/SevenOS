@@ -15,7 +15,7 @@ SSWS combines four engines:
 
 ## Traffic-Light Logic
 
-SevenOS native apps use macOS-style traffic lights as the public mental model:
+SevenOS native apps use Prism window controls as the public mental model:
 
 - Red closes the window.
 - Yellow toggles tiled/floating mode through `seven-window toggle-float`.

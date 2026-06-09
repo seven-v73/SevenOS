@@ -57,8 +57,8 @@ linear-gradient(135deg, #2F7BFF 0%, #6A5CFF 50%, #00B8D9 100%)
 
 ## Typography
 
-- Main UI: SF Pro Display
-- Content: SF Pro Text
+- Main UI: Inter or Noto Sans
+- Content: Noto Sans
 - Terminal and development: SF Mono
 
 Use high readability, moderate contrast, strong hierarchy and spacious text
@@ -132,7 +132,7 @@ for prompts or commands. The goal is maximum readability and low fatigue.
 ## Wallpaper Light
 
 Official Light wallpapers should use soft abstraction, organic gradients,
-natural light, spacious white/blue atmosphere and a clean Apple-like workspace
+natural light, spacious white/blue atmosphere and a clean Prism Flow workspace
 feeling.
 
 ## Signature

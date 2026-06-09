@@ -1,17 +1,18 @@
 # Seven Design Engine
 
-Seven Design Engine is the visual synchronization contract for SevenOS.
+Seven Design Engine is the visual synchronization contract for SevenOS Prism
+Flow.
 
-It uses Catppuccin-inspired palettes as a foundation, then adapts them into
-SevenOS product modes:
+It uses SevenOS-owned Prism Mineral palettes as the foundation, with third-party
+themes only as optional compatibility layers.
 
-- **Seven Mocha**: dark, cinematic, soft contrast, glass depth.
-- **Seven Latte**: light, clear, productive, low-friction.
+- **Prism Dark**: mineral dark, precise, contextual and restrained.
+- **Prism Light**: clear, spacious, low-friction and productive.
 
-Catppuccin icons are treated as an optional enhancement, not a required system
-dependency. When a compatible Catppuccin icon theme is installed, SevenOS uses
-it automatically. When it is not installed, SevenOS falls back to Papirus or
-Papirus-Dark so a fresh install remains coherent and reliable.
+Catppuccin icons are treated as an optional compatibility enhancement, not a
+SevenOS identity dependency. When a compatible theme is installed, SevenOS can
+use it. Otherwise SevenOS falls back to Papirus/Papirus-Dark and keeps its own
+app marks.
 
 Runtime status:
 
@@ -27,10 +28,9 @@ Apply modes:
 ./install.sh theme light
 ```
 
-The engine covers Waybar, Spotlight, Hub, Dock, Files, Settings,
-notifications, Hyprlock, terminal and Seven AI surfaces.
+The engine covers Prism Bar, Context Rail, Spotlight, Hub, Files, Settings,
+notifications, Hyprlock, terminal and SevenAI surfaces.
 
 Native SevenOS app marks live in `identity/icons/manifest.json` and install
-into `hicolor/scalable/apps`. This keeps the main system icon theme open:
-Catppuccin can skin the whole desktop when available, while SevenOS apps keep
-recognizable product icons everywhere.
+into `hicolor/scalable/apps`. This keeps the main system icon theme open while
+SevenOS apps keep recognizable product icons everywhere.

@@ -31,10 +31,11 @@ SevenOS should reveal complexity gradually:
 - then: package control through `sevenpkg`
 - finally: raw Arch tools when needed
 
-### 4. Calm Premium Surfaces
+### 4. Prism Flow Surfaces
 
-Use liquid glass surfaces, readable contrast, precise spacing, and restrained
-motion. Avoid visual noise and one-note palettes.
+Use Prism Flow surfaces, readable contrast, precise spacing, compact radius,
+real state and restrained motion. Depth supports focus, but glass is not the
+identity. Avoid visual noise and one-note palettes.
 
 ### 5. Narrative System Feedback
 

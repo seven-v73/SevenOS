@@ -301,7 +301,7 @@ print()
 print(f"Engine:      {data['engine']}")
 print(f"Mode:        {mode['label']} ({data['system_mode']})")
 print(f"Icons:       {data['preferred_icon_theme']}")
-print("Base:        Catppuccin-inspired SevenOS palettes")
+print("Base:        SevenOS Prism Mineral palettes")
 print()
 print("Surfaces:")
 for surface in data["surfaces"]:

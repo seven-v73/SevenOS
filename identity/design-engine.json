@@ -1,33 +1,34 @@
 {
   "schema": "sevenos.design-engine.v1",
   "engine": "Seven Design Engine",
-  "base": "Catppuccin-inspired palettes adapted to SevenOS, with optional Catppuccin icon support and stable Papirus fallback.",
-  "principle": "One central design contract synchronizes icons, palettes, surfaces and profile roles without making SevenOS depend on a fragile third-party icon package.",
+  "base": "SevenOS Prism Mineral palettes, with optional third-party icon compatibility and stable Papirus fallback.",
+  "principle": "One central design contract synchronizes icons, palettes, surfaces, Prism Flow and profile facets without making SevenOS depend on borrowed desktop identity.",
   "modes": {
     "seven-mocha": {
-      "label": "Seven Mocha",
+      "label": "Prism Dark",
       "system_mode": "dark",
-      "description": "Premium dark mode: soft contrast, glass depth, Seven blue/violet/cyan accents and calm Catppuccin-inspired surfaces.",
+      "description": "Mineral dark mode: precise surfaces, Prism Blue, Signal Gold, Atlas Teal and restrained depth.",
       "palette": {
-        "base": "#11111B",
-        "mantle": "#181825",
-        "crust": "#0B0B12",
-        "surface0": "#313244",
-        "surface1": "#45475A",
-        "surface2": "#585B70",
-        "text": "#CDD6F4",
-        "subtext0": "#A6ADC8",
-        "subtext1": "#BAC2DE",
-        "blue": "#89B4FA",
-        "mauve": "#CBA6F7",
-        "sky": "#89DCEB",
-        "teal": "#94E2D5",
-        "green": "#A6E3A1",
-        "red": "#F38BA8",
-        "peach": "#FAB387",
-        "seven_blue": "#6EA8FF",
-        "seven_violet": "#8B7CFF",
-        "seven_cyan": "#00D4FF"
+        "base": "#070A10",
+        "mantle": "#111722",
+        "crust": "#05070B",
+        "surface0": "#182131",
+        "surface1": "#253145",
+        "surface2": "#334258",
+        "text": "#EDEDED",
+        "subtext0": "#A9B7C7",
+        "subtext1": "#B9C0CC",
+        "prism_blue": "#4C8DFF",
+        "signal_gold": "#D6A84F",
+        "atlas_teal": "#33B6C4",
+        "baobab_green": "#2FB87A",
+        "forge_ember": "#FF7A4D",
+        "shield_mint": "#4DE6A8",
+        "studio_iris": "#8D6CFF",
+        "pulse_coral": "#FF5C7A",
+        "seven_blue": "#4C8DFF",
+        "seven_violet": "#8D6CFF",
+        "seven_cyan": "#33B6C4"
       },
       "icon_candidates": [
         "Catppuccin-Mocha",
@@ -41,9 +42,9 @@
       ]
     },
     "seven-latte": {
-      "label": "Seven Latte",
+      "label": "Prism Light",
       "system_mode": "light",
-      "description": "Clear productivity mode: bright surfaces, subtle Seven accents, readable hierarchy and Catppuccin Latte inspired calm.",
+      "description": "Clear productivity mode: mineral white surfaces, precise borders, Prism Blue and restrained Signal Gold.",
       "palette": {
         "base": "#EFF1F5",
         "mantle": "#E6E9EF",
@@ -61,6 +62,10 @@
         "green": "#40A02B",
         "red": "#D20F39",
         "peach": "#FE640B",
+        "prism_blue": "#2F7BFF",
+        "signal_gold": "#B8892E",
+        "atlas_teal": "#178A96",
+        "baobab_green": "#2A8C61",
         "seven_blue": "#2F7BFF",
         "seven_violet": "#6A5CFF",
         "seven_cyan": "#00B8D9"
@@ -76,8 +81,8 @@
     }
   },
   "icon_strategy": {
-    "style": "rounded, soft, outline-friendly, pastel-premium icons with SevenOS app marks layered on top",
-    "rule": "Prefer installed Catppuccin icon themes when present; otherwise use Papirus/Papirus-Dark so fresh installs stay reliable.",
+    "style": "outline-friendly, faceted, prism-aware icons with SevenOS app marks layered on top",
+    "rule": "Prefer SevenOS app marks and stable Papirus/Papirus-Dark fallback; use third-party themes only as optional compatibility.",
     "native_manifest": "identity/icons/manifest.json",
     "custom_apps": [
       "Seven Files",
@@ -100,7 +105,7 @@
   "profile_themes": {
     "contract": "identity/profile-themes.json",
     "catalog": "profiles/catalog.json",
-    "rule": "Equinox keeps the neutral SevenOS shell. Specialized profiles get distinct Catppuccin-inspired accents and Waybar identity pills without loading unrelated tools."
+    "rule": "Equinox keeps the neutral SevenOS shell. Specialized profiles get distinct Prism Flow facet accents and context indicators without loading unrelated tools."
   },
   "motion": {
     "contract": "scripts/shell-experience.sh",

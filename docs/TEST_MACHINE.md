@@ -172,10 +172,10 @@ seven-spotlight-native --probe
 SEVENOS_SPOTLIGHT_NATIVE=0 seven-spotlight rofi
 ```
 
-Waybar should expose a SevenOS top bar: `7 + Apps + time` on the left,
+Waybar should expose a SevenOS Prism Bar: `7 + Apps + time` on the left,
 workspaces in the center, and compact system controls on the right. Files and
-favorite launchers live in the macOS-style floating Dock through `Super+D`. The
-Dock separates apps, folders and system actions, shows running indicators,
+favorite launchers live in the SevenOS Context Rail through `Super+D`. The
+rail separates apps, folders and system actions, shows running indicators,
 supports right-click menus, drag reorder, file drops and hover window previews,
 and persists pins in `~/.config/sevenos/dock.json`. If the top bar is missing,
 run:
