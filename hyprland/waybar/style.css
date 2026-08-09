@@ -1,150 +1,101 @@
-@define-color seven_bg rgba(34, 38, 76, 0.44);
-@define-color seven_glass rgba(255, 255, 255, 0.105);
-@define-color seven_glass_lift rgba(255, 255, 255, 0.16);
-@define-color seven_edge rgba(255, 255, 255, 0.14);
-@define-color seven_edge_hot rgba(180, 198, 255, 0.30);
-@define-color seven_text #F5F7FA;
-@define-color seven_text_soft rgba(245, 247, 250, 0.78);
-@define-color seven_blue #6EA8FF;
-@define-color seven_violet #8B7CFF;
-@define-color seven_cyan #9CCBFF;
-@define-color seven_shadow rgba(3, 8, 24, 0.34);
-@define-color seven_hairline rgba(255, 255, 255, 0.085);
+/* ============================================================
+   SEVENOS WAYBAR - ELEGANT EDITION
+   Concept : Élégante • Fluide • Intelligente • Accessible
+   ============================================================ */
 
-@keyframes aiPulse {
-  0% {
-    opacity: 0.78;
-    text-shadow:
-      0 0 10px rgba(110, 168, 255, 0.78),
-      0 0 18px rgba(139, 124, 255, 0.42);
-  }
+/* ============================================================
+   1. PALETTE - Élégance et Clarté
+   ============================================================ */
 
-  50% {
-    opacity: 1;
-    text-shadow:
-      0 0 16px rgba(156, 203, 255, 0.96),
-      0 0 30px rgba(139, 124, 255, 0.64);
-  }
+@define-color bg_bar rgba(16, 18, 30, 0.92);
+@define-color bg_glass rgba(255, 255, 255, 0.04);
+@define-color bg_hover rgba(255, 255, 255, 0.07);
+@define-color bg_active rgba(255, 255, 255, 0.10);
+@define-color border_soft rgba(255, 255, 255, 0.06);
+@define-color border_focus rgba(156, 203, 255, 0.20);
+@define-color text_primary #EEF2F8;
+@define-color text_secondary rgba(238, 242, 248, 0.70);
+@define-color text_tertiary rgba(238, 242, 248, 0.40);
+@define-color text_muted rgba(238, 242, 248, 0.25);
+@define-color accent_blue #7EB8FF;
+@define-color accent_cyan #9CCBFF;
+@define-color accent_violet #A89CFF;
+@define-color accent_green #7AE0C0;
+@define-color accent_warm #F5D7A8;
+@define-color accent_rose #F5A8B8;
+@define-color accent_gold #F5D7A8;
+@define-color shadow_system rgba(0, 0, 0, 0.30);
+@define-color glow_blue rgba(126, 184, 255, 0.08);
+@define-color glow_cyan rgba(156, 203, 255, 0.06);
 
-  100% {
-    opacity: 0.78;
-    text-shadow:
-      0 0 10px rgba(110, 168, 255, 0.78),
-      0 0 18px rgba(139, 124, 255, 0.42);
-  }
-}
+/* ============================================================
+   2. ANIMATIONS - Fluides et Naturelles
+   ============================================================ */
 
-@keyframes workspaceGlow {
-  0% {
-    border-color: rgba(255, 255, 255, 0.18);
-  }
-
-  50% {
-    border-color: rgba(156, 203, 255, 0.44);
-  }
-
-  100% {
-    border-color: rgba(255, 255, 255, 0.18);
-  }
-}
-
-/* seven-motion-system: Waybar uses the same calm 180ms hover/press rhythm as the shell. */
-@keyframes sevenExperiencePulse {
-  0% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 0 10px rgba(156, 203, 255, 0.10);
-  }
-
-  50% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.20),
-      0 0 18px rgba(156, 203, 255, 0.22);
-  }
-
-  100% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 0 10px rgba(156, 203, 255, 0.10);
-  }
-}
+/* ============================================================
+   3. BARRE PRINCIPALE - Élégance Minimaliste
+   ============================================================ */
 
 * {
   border: none;
   border-radius: 0;
-  font-family: "Inter", "Noto Sans", "JetBrainsMono Nerd Font", sans-serif;
+  font-family: "Inter", "SF Pro Display", "Noto Sans", sans-serif;
   font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
+  font-weight: 400;
   min-height: 0;
 }
 
 window#waybar {
-  color: @seven_text;
-  border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.105);
-  border-radius: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.040)),
-    rgba(18, 20, 34, 0.72);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.055),
-    0 10px 28px rgba(3, 8, 24, 0.22);
+  background: @bg_bar;
+  color: @text_primary;
+  border-bottom: 1px solid @border_soft;
+  box-shadow: 0 2px 20px @shadow_system;
+  transition: background 0.3s ease;
+  letter-spacing: 0.01em;
 }
+
+window#waybar.hidden {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* ============================================================
+   4. ZONES - Organisation Claire
+   ============================================================ */
 
 .modules-left,
 .modules-center,
 .modules-right {
   min-height: 26px;
-  margin-top: 0;
-  padding: 1px 7px;
-  border: 1px solid transparent;
-  border-radius: 0;
+  padding: 0 4px;
   background: transparent;
-  box-shadow: none;
-  transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
 }
 
 .modules-left {
-  /* adaptive-waybar-layout: compact enough for laptops, elastic on wide displays. */
-  min-width: 0;
-  margin-left: 6px;
+  margin-left: 8px;
+  padding-left: 4px;
 }
 
 .modules-center {
-  min-width: 108px;
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
+  min-width: 120px;
+  padding: 0 12px;
+  border-left: 1px solid @border_soft;
+  border-right: 1px solid @border_soft;
 }
 
 .modules-right {
-  min-width: 0;
-  margin-right: 6px;
-  border-color: transparent;
-  background: transparent;
+  margin-right: 8px;
+  padding-right: 4px;
 }
 
-.modules-center:hover {
-  background: transparent;
-}
+/* ============================================================
+   5. INTERACTIONS - Accessibles et Réactives
+   ============================================================ */
 
 #custom-sevenos,
 #window,
 #custom-app-menu,
-#custom-app-file,
-#custom-app-edit,
-#custom-app-view,
-#custom-app-extra,
-#custom-app-more,
-#custom-app-tools,
-#custom-app-window,
-#custom-app-help,
 #custom-profile,
-#custom-os-switch,
 #custom-mini-context,
 #custom-spotlight,
 #custom-experience,
@@ -160,620 +111,389 @@ window#waybar {
 #custom-system-status,
 #clock,
 #custom-control-center {
-  min-height: 20px;
-  margin: 0 1px;
-  padding: 0 7px;
-  border-radius: 6px;
-  color: @seven_text;
+  min-height: 22px;
+  padding: 0 10px;
+  margin: 0 2px;
+  border-radius: 8px;
+  color: @text_secondary;
   background: transparent;
-  transition:
-    background 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease,
-    border-color 180ms ease;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 #custom-sevenos:hover,
-#window:hover,
-#custom-app-menu:hover,
-#custom-app-file:hover,
-#custom-app-edit:hover,
-#custom-app-view:hover,
-#custom-app-extra:hover,
-#custom-app-more:hover,
-#custom-app-tools:hover,
-#custom-app-window:hover,
-#custom-app-help:hover,
 #custom-profile:hover,
-#custom-os-switch:hover,
-#custom-mini-context:hover,
 #custom-spotlight:hover,
-#custom-experience:hover,
-#custom-media:hover,
-#custom-workspace-prev:hover,
-#custom-workspace-next:hover,
+#custom-control-center:hover,
+#clock:hover,
+#pulseaudio:hover,
 #custom-wifi:hover,
 #custom-bluetooth:hover,
-#pulseaudio:hover,
-#battery:hover,
-#custom-vpn:hover,
-#custom-recorder:hover,
-#custom-system-status:hover,
-#clock:hover,
-#custom-control-center:hover {
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.105);
-  box-shadow: none;
+#battery:hover {
+  color: @text_primary;
+  background: @bg_hover;
 }
 
 #custom-sevenos:active,
-#window:active,
-#custom-app-menu:active,
-#custom-app-file:active,
-#custom-app-edit:active,
-#custom-app-view:active,
-#custom-app-extra:active,
-#custom-app-more:active,
-#custom-app-tools:active,
-#custom-app-window:active,
-#custom-app-help:active,
 #custom-profile:active,
-#custom-os-switch:active,
-#custom-mini-context:active,
-#custom-spotlight:active,
-#custom-experience:active,
-#custom-media:active,
-#custom-workspace-prev:active,
-#custom-workspace-next:active,
-#custom-wifi:active,
-#custom-bluetooth:active,
-#pulseaudio:active,
-#battery:active,
-#custom-vpn:active,
-#custom-recorder:active,
-#custom-system-status:active,
-#clock:active,
-#custom-control-center:active {
-  background: rgba(255, 255, 255, 0.11);
-  box-shadow:
-    inset 0 1px 3px rgba(0, 0, 0, 0.18),
-    0 0 10px rgba(110, 168, 255, 0.070);
+#custom-control-center:active,
+#custom-spotlight:active {
+  background: @bg_active;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
+/* ============================================================
+   6. IDENTITÉ SEVENOS - Élégante et Distincte
+   ============================================================ */
+
 #custom-sevenos {
-  min-width: 28px;
-  padding-left: 0;
-  padding-right: 0;
-  color: #FFFFFF;
-  font-family: "Inter", "Noto Sans", sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0;
-  background:
-    radial-gradient(circle at 38% 30%, rgba(237, 237, 237, 0.22), transparent 34%),
-    linear-gradient(135deg, rgba(77, 163, 255, 0.20), rgba(122, 92, 255, 0.17) 52%, rgba(0, 212, 255, 0.18)),
-    rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(101, 186, 255, 0.22);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -1px 0 rgba(0, 212, 255, 0.06),
-    0 0 12px rgba(77, 163, 255, 0.10);
+  min-width: 36px;
+  padding: 0 10px;
+  color: @text_primary;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: rgba(126, 184, 255, 0.04);
+  border: 1px solid rgba(126, 184, 255, 0.08);
+  border-radius: 10px;
 }
 
 #custom-sevenos:hover {
-  color: #FFFFFF;
-  background:
-    radial-gradient(circle at 38% 30%, rgba(237, 237, 237, 0.28), transparent 34%),
-    linear-gradient(135deg, rgba(77, 163, 255, 0.30), rgba(122, 92, 255, 0.24) 52%, rgba(0, 212, 255, 0.28)),
-    rgba(255, 255, 255, 0.08);
-  border-color: rgba(141, 210, 255, 0.34);
+  background: rgba(126, 184, 255, 0.08);
+  border-color: rgba(126, 184, 255, 0.20);
 }
 
-#custom-sevenos.profile-forge,
-#custom-sevenos.profile-windows {
-  color: rgba(156, 203, 255, 0.98);
+/* Profils - Codes couleur subtils */
+#custom-sevenos.profile-shield { border-color: rgba(122, 224, 192, 0.20); }
+#custom-sevenos.profile-studio { border-color: rgba(245, 168, 184, 0.20); }
+#custom-sevenos.profile-forge { border-color: rgba(245, 215, 168, 0.20); }
+#custom-sevenos.profile-pulse { border-color: rgba(156, 203, 255, 0.20); }
+#custom-sevenos.profile-baobab { border-color: rgba(143, 212, 122, 0.20); }
+#custom-sevenos.profile-windows { border-color: rgba(126, 200, 232, 0.20); }
+
+#custom-sevenos.profile-active {
+  border-color: @border_focus;
+  box-shadow: 0 0 20px @glow_blue;
 }
 
-#custom-sevenos.profile-shield {
-  color: rgba(117, 232, 213, 0.98);
-  border-color: rgba(0, 255, 179, 0.30);
-}
-
-#custom-sevenos.profile-studio {
-  color: rgba(255, 204, 229, 0.98);
-}
-
-#custom-sevenos.profile-baobab {
-  color: rgba(218, 255, 210, 0.98);
-}
-
-#custom-sevenos.profile-pulse {
-  color: rgba(121, 223, 255, 0.98);
-}
-
-#custom-sevenos.warn,
-#custom-sevenos.miss {
-  color: #FFFFFF;
-  border-color: rgba(255, 228, 172, 0.22);
-}
+/* ============================================================
+   7. FENÊTRE ACTIVE - Contexte Discret
+   ============================================================ */
 
 #window {
-  min-width: 68px;
-  padding-left: 8px;
-  padding-right: 10px;
-  color: rgba(245, 247, 250, 0.74);
-  font-family: "Noto Sans", "Inter", sans-serif;
-  font-size: 12px;
+  min-width: 80px;
+  padding: 0 14px;
+  color: @text_secondary;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.02em;
 }
 
 #window.empty {
-  color: rgba(245, 247, 250, 0.46);
+  color: @text_tertiary;
+  font-style: italic;
 }
 
-#custom-app-menu,
-#custom-app-file,
-#custom-app-edit,
-#custom-app-view,
-#custom-app-extra,
-#custom-app-more,
-#custom-app-tools,
-#custom-app-window,
-#custom-app-help {
-  padding-left: 9px;
-  padding-right: 9px;
-  color: rgba(245, 247, 250, 0.66);
-  font-family: "Noto Sans", "Inter", sans-serif;
-  font-size: 12px;
+/* ============================================================
+   8. PROFIL UTILISATEUR - Élégant et Informé
+   ============================================================ */
+
+#custom-profile {
+  min-width: 58px;
+  padding: 0 12px;
   font-weight: 500;
-}
-
-#custom-app-file {
-  min-width: 42px;
-}
-
-#custom-app-edit {
-  min-width: 50px;
-}
-
-#custom-app-view {
-  min-width: 66px;
-}
-
-#custom-app-extra {
-  min-width: 62px;
-}
-
-#custom-app-tools,
-#custom-app-window {
-  min-width: 56px;
-}
-
-#custom-app-help {
-  min-width: 38px;
-}
-
-#custom-app-file,
-#custom-app-edit,
-#custom-app-view,
-#custom-app-extra,
-#custom-app-more,
-#custom-app-tools,
-#custom-app-window,
-#custom-app-help {
-  margin-left: 0;
-  margin-right: 0;
-  border-radius: 5px;
-}
-
-#custom-app-file:hover,
-#custom-app-edit:hover,
-#custom-app-view:hover,
-#custom-app-extra:hover,
-#custom-app-more:hover,
-#custom-app-tools:hover,
-#custom-app-window:hover,
-#custom-app-help:hover {
-  color: rgba(255, 255, 255, 0.94);
-  background: rgba(255, 255, 255, 0.095);
-}
-
-#custom-app-menu.developer,
-#custom-app-file.developer,
-#custom-app-edit.developer,
-#custom-app-view.developer,
-#custom-app-extra.developer,
-#custom-app-more.developer,
-#custom-app-tools.developer,
-#custom-app-window.developer,
-#custom-app-help.developer {
-  color: rgba(156, 203, 255, 0.78);
-}
-
-#custom-app-menu.files,
-#custom-app-file.files,
-#custom-app-edit.files,
-#custom-app-view.files,
-#custom-app-extra.files,
-#custom-app-more.files,
-#custom-app-tools.files,
-#custom-app-window.files,
-#custom-app-help.files {
-  color: rgba(225, 236, 255, 0.76);
-}
-
-#custom-app-menu.shield,
-#custom-app-file.shield,
-#custom-app-edit.shield,
-#custom-app-view.shield,
-#custom-app-extra.shield,
-#custom-app-more.shield,
-#custom-app-tools.shield,
-#custom-app-window.shield,
-#custom-app-help.shield {
-  color: rgba(117, 232, 213, 0.80);
-}
-
-#custom-app-menu.studio,
-#custom-app-file.studio,
-#custom-app-edit.studio,
-#custom-app-view.studio,
-#custom-app-extra.studio,
-#custom-app-more.studio,
-#custom-app-tools.studio,
-#custom-app-window.studio,
-#custom-app-help.studio {
-  color: rgba(255, 204, 229, 0.80);
-}
-
-#custom-app-menu.forge,
-#custom-app-file.forge,
-#custom-app-edit.forge,
-#custom-app-view.forge,
-#custom-app-extra.forge,
-#custom-app-more.forge,
-#custom-app-tools.forge,
-#custom-app-window.forge,
-#custom-app-help.forge {
-  color: rgba(255, 218, 138, 0.84);
-}
-
-#custom-app-menu.baobab,
-#custom-app-file.baobab,
-#custom-app-edit.baobab,
-#custom-app-view.baobab,
-#custom-app-extra.baobab,
-#custom-app-more.baobab,
-#custom-app-tools.baobab,
-#custom-app-window.baobab,
-#custom-app-help.baobab {
-  color: rgba(207, 245, 184, 0.84);
-}
-
-#custom-app-menu.pulse,
-#custom-app-file.pulse,
-#custom-app-edit.pulse,
-#custom-app-view.pulse,
-#custom-app-extra.pulse,
-#custom-app-more.pulse,
-#custom-app-tools.pulse,
-#custom-app-window.pulse,
-#custom-app-help.pulse {
-  color: rgba(116, 224, 255, 0.84);
-}
-
-#custom-app-menu.windows,
-#custom-app-file.windows,
-#custom-app-edit.windows,
-#custom-app-view.windows,
-#custom-app-extra.windows,
-#custom-app-more.windows,
-#custom-app-tools.windows,
-#custom-app-window.windows,
-#custom-app-help.windows {
-  color: rgba(116, 194, 255, 0.80);
-}
-
-#custom-profile,
-#custom-os-switch,
-#custom-mini-context {
-  min-width: 24px;
-  padding-left: 8px;
-  padding-right: 8px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
   border: 1px solid transparent;
-  border-radius: 7px;
-  color: #FFFFFF;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.045)),
-    radial-gradient(ellipse at 20% -18%, rgba(255, 255, 255, 0.12), transparent 58%),
-    rgba(255, 255, 255, 0.025);
-  font-family: "Inter", "Noto Sans", sans-serif;
-  font-size: 12px;
+  border-radius: 8px;
 }
 
-#custom-os-switch,
-#custom-mini-context,
 #custom-profile.profile-equinox {
-  color: #EDEBFF;
-  border-color: rgba(139, 124, 255, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(139, 124, 255, 0.14);
-}
-
-#custom-profile.profile-baobab {
-  color: #DFFFD9;
-  border-color: rgba(166, 227, 161, 0.30);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(166, 227, 161, 0.13);
-}
-
-#custom-profile.profile-forge {
-  color: #FFF4C7;
-  border-color: rgba(249, 226, 175, 0.30);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(249, 226, 175, 0.13);
+  color: @text_primary;
+  border-color: @border_soft;
 }
 
 #custom-profile.profile-shield {
-  color: #D8FFF3;
-  border-color: rgba(0, 255, 179, 0.34);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 18px rgba(0, 255, 179, 0.16);
+  color: @accent_green;
+  border-color: rgba(122, 224, 192, 0.15);
 }
 
 #custom-profile.profile-studio {
-  color: #F4E3FF;
-  border-color: rgba(203, 166, 247, 0.30);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(203, 166, 247, 0.14);
+  color: @accent_rose;
+  border-color: rgba(245, 168, 184, 0.15);
 }
 
-#custom-profile.profile-windows {
-  color: #DFF7FF;
-  border-color: rgba(137, 220, 235, 0.30);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(137, 220, 235, 0.13);
+#custom-profile.profile-forge {
+  color: @accent_warm;
+  border-color: rgba(245, 215, 168, 0.15);
 }
 
 #custom-profile.profile-pulse {
-  color: #DBF8FF;
-  border-color: rgba(0, 212, 255, 0.34);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 18px rgba(0, 212, 255, 0.16);
+  color: @accent_blue;
+  border-color: rgba(126, 184, 255, 0.15);
 }
 
-#custom-profile,
-#custom-os-switch,
-#custom-mini-context {
-  min-width: 38px;
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
+#custom-profile.profile-baobab {
+  color: #8FD47A;
+  border-color: rgba(143, 212, 122, 0.15);
 }
 
-#custom-profile {
-  margin-left: 16px;
-  padding-left: 9px;
-  padding-right: 9px;
-  min-width: 58px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-#custom-os-switch {
-  margin-left: 5px;
-  padding-left: 10px;
-  padding-right: 10px;
-  border-color: rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.050);
-}
-
-#custom-mini-context {
-  min-width: 24px;
-  margin-left: 5px;
-  padding-left: 7px;
-  padding-right: 7px;
-  color: rgba(245, 247, 250, 0.82);
-  background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(255, 255, 255, 0.075);
-}
-
-#custom-mini-context.active {
-  color: #FFFFFF;
-  border-color: rgba(156, 203, 255, 0.22);
-  background:
-    linear-gradient(180deg, rgba(156, 203, 255, 0.100), rgba(255, 255, 255, 0.026)),
-    rgba(255, 255, 255, 0.030);
-}
-
-#custom-mini-context.density-immersive {
-  color: rgba(255, 255, 255, 0.94);
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.028);
-}
-
-#custom-mini-context.density-compact,
-#custom-mini-context.priority-workflow {
-  padding-left: 8px;
-  padding-right: 8px;
-  border-color: rgba(156, 203, 255, 0.18);
-}
-
-#custom-mini-context.priority-content {
-  color: rgba(255, 255, 255, 0.90);
-  border-color: rgba(137, 220, 235, 0.18);
-}
-
-#custom-mini-context.priority-assets {
-  color: rgba(244, 227, 255, 0.94);
-  border-color: rgba(203, 166, 247, 0.20);
-}
-
-#custom-mini-context.profile-shield {
-  color: rgba(216, 255, 243, 0.96);
-  border-color: rgba(0, 255, 179, 0.22);
-}
-
-#custom-mini-context.profile-forge {
-  color: rgba(255, 244, 199, 0.96);
-  border-color: rgba(249, 226, 175, 0.22);
-}
-
-#custom-mini-context.profile-studio {
-  color: rgba(244, 227, 255, 0.96);
-  border-color: rgba(203, 166, 247, 0.22);
-}
-
-#custom-mini-context.profile-windows {
-  color: rgba(223, 247, 255, 0.96);
-  border-color: rgba(137, 220, 235, 0.22);
-}
-
-#custom-mini-context.profile-pulse {
-  color: rgba(219, 248, 255, 0.96);
-  border-color: rgba(0, 212, 255, 0.22);
-}
-
-#custom-mini-context.profile-baobab {
-  color: rgba(223, 255, 217, 0.96);
-  border-color: rgba(166, 227, 161, 0.22);
-}
-
-/* Profile-specific menu-bar identities. These are not theme clones: each mini OS
-   gets a restrained signal language aligned with its job. */
-#custom-profile.profile-forge,
-#custom-mini-context.profile-forge,
-#custom-experience.profile-forge {
-  color: #FFE4A3;
-  border-color: rgba(255, 198, 96, 0.24);
-  background:
-    linear-gradient(180deg, rgba(255, 184, 76, 0.105), rgba(255, 255, 255, 0.018)),
-    rgba(18, 16, 12, 0.10);
-  box-shadow: inset 0 1px 0 rgba(255, 238, 196, 0.11);
-}
-
-#custom-mini-context.signal-dev {
-  min-width: 24px;
-}
-
-#custom-profile.profile-shield,
-#custom-mini-context.profile-shield,
-#custom-experience.profile-shield,
-#custom-vpn.active {
-  color: #BFFFEF;
-  border-color: rgba(77, 255, 206, 0.28);
-  background:
-    linear-gradient(180deg, rgba(77, 255, 206, 0.110), rgba(255, 255, 255, 0.016)),
-    rgba(4, 18, 17, 0.12);
-  box-shadow: inset 0 1px 0 rgba(208, 255, 244, 0.12);
-}
-
-#custom-mini-context.signal-secure {
-  min-width: 24px;
-}
-
-#custom-profile.profile-studio,
-#custom-mini-context.profile-studio,
-#custom-experience.profile-studio,
-#custom-recorder.recording {
-  color: #FFE0F1;
-  border-color: rgba(255, 151, 204, 0.24);
-  background:
-    linear-gradient(180deg, rgba(255, 151, 204, 0.105), rgba(155, 133, 255, 0.026)),
-    rgba(20, 13, 22, 0.10);
-  box-shadow: inset 0 1px 0 rgba(255, 230, 244, 0.12);
-}
-
-#custom-mini-context.signal-creative {
-  min-width: 24px;
-}
-
-#custom-profile.profile-pulse,
-#custom-mini-context.profile-pulse,
-#custom-experience.profile-pulse {
-  color: #B9F4FF;
-  border-color: rgba(64, 218, 255, 0.30);
-  background:
-    linear-gradient(180deg, rgba(64, 218, 255, 0.115), rgba(255, 255, 255, 0.014)),
-    rgba(3, 12, 22, 0.14);
-  box-shadow: inset 0 1px 0 rgba(210, 250, 255, 0.12);
-}
-
-#custom-mini-context.signal-gaming,
-#custom-mini-context.profile-pulse.density-immersive {
-  min-width: 24px;
-  border-color: rgba(64, 218, 255, 0.36);
-}
-
-#custom-profile.profile-baobab,
-#custom-mini-context.profile-baobab,
-#custom-experience.profile-baobab {
-  color: #E4FFD3;
-  border-color: rgba(186, 226, 133, 0.26);
-  background:
-    linear-gradient(180deg, rgba(186, 226, 133, 0.105), rgba(255, 233, 172, 0.020)),
-    rgba(13, 18, 11, 0.12);
-  box-shadow: inset 0 1px 0 rgba(240, 255, 224, 0.10);
-}
-
-#custom-mini-context.signal-culture {
-  min-width: 24px;
+#custom-profile.profile-windows {
+  color: #7EC8E8;
+  border-color: rgba(126, 200, 232, 0.15);
 }
 
 #custom-profile.warn {
-  border-color: rgba(249, 226, 175, 0.36);
+  border-color: @accent_warm;
 }
 
 #custom-profile.miss {
-  border-color: rgba(243, 139, 168, 0.36);
+  border-color: @accent_rose;
 }
 
-#custom-spotlight {
+/* ============================================================
+   9. ESPACES DE TRAVAIL - Minimalistes et Animés
+   ============================================================ */
+
+#workspaces {
+  padding: 0 4px;
+}
+
+#workspaces button {
   min-width: 24px;
-  padding-left: 7px;
-  padding-right: 7px;
+  min-height: 22px;
+  padding: 0 6px;
+  margin: 0 2px;
   border: 1px solid transparent;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.82);
-  background:
-    transparent;
-  box-shadow: none;
-  font-family: "Noto Sans", "Inter", sans-serif;
-  font-size: 12px;
+  border-radius: 10px;
+  color: @text_tertiary;
+  background: transparent;
+  font-weight: 500;
+  font-size: 11px;
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+#workspaces button:hover {
+  color: @text_primary;
+  background: @bg_hover;
+}
+
+#workspaces button.active {
+  color: @text_primary;
+  background: @bg_active;
+  border-color: @border_focus;
+  font-weight: 500;
+}
+
+#workspaces button.urgent {
+  color: @accent_rose;
+  background: rgba(245, 168, 184, 0.08);
+}
+
+#workspaces button.empty {
+  color: @text_muted;
+}
+
+#workspaces button.persistent {
+  opacity: 0.50;
+}
+
+/* Flèches de navigation */
+#custom-workspace-prev,
+#custom-workspace-next {
+  min-width: 18px;
+  padding: 0 4px;
+  color: @text_tertiary;
+  font-size: 13px;
+  font-weight: 300;
+}
+
+#custom-workspace-prev:hover,
+#custom-workspace-next:hover {
+  color: @text_primary;
+  background: @bg_hover;
+}
+
+/* ============================================================
+   10. SPOTLIGHT - Élégant et Accessible
+   ============================================================ */
+
+#custom-spotlight {
+  padding: 0 12px;
+  color: @text_tertiary;
+  font-size: 13px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: all 0.25s ease;
 }
 
 #custom-spotlight:hover {
+  color: @text_primary;
+  border-color: @border_focus;
+  background: @bg_hover;
+}
+
+/* ============================================================
+   11. INDICATEURS SYSTÈME - Discrets et Informatifs
+   ============================================================ */
+
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#custom-vpn,
+#custom-recorder {
   min-width: 24px;
-  color: rgba(255, 255, 255, 0.96);
-  border-color: rgba(156, 203, 255, 0.26);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 0 16px rgba(110, 168, 255, 0.090);
+  padding: 0 8px;
+  font-size: 13px;
+  color: @text_secondary;
+  transition: all 0.2s ease;
 }
 
-#custom-experience {
-  min-width: 0;
-  padding-left: 7px;
-  padding-right: 7px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  color: rgba(235, 241, 255, 0.88);
-  background:
-    linear-gradient(180deg, rgba(156, 203, 255, 0.120), rgba(255, 255, 255, 0.038)),
-    rgba(255, 255, 255, 0.018);
-  font-family: "Noto Sans", "Inter", sans-serif;
-  font-size: 12px;
+#custom-wifi:hover,
+#custom-bluetooth:hover,
+#pulseaudio:hover,
+#battery:hover {
+  color: @text_primary;
 }
 
-#custom-experience.experience-ready {
+/* États réseau */
+#custom-wifi.connected,
+#custom-wifi.on {
+  color: @accent_blue;
+}
+
+#custom-wifi.off,
+#custom-wifi.missing {
+  color: @text_tertiary;
+}
+
+#custom-wifi.weak {
+  color: @accent_warm;
+}
+
+/* Bluetooth */
+#custom-bluetooth.connected,
+#custom-bluetooth.on {
+  color: @accent_blue;
+}
+
+#custom-bluetooth.off,
+#custom-bluetooth.missing {
+  color: @text_tertiary;
+}
+
+/* Audio */
+#pulseaudio.muted {
+  color: @text_tertiary;
+}
+
+/* Batterie */
+#battery {
+  min-width: 54px;
+}
+
+#battery.warning:not(.charging) {
+  color: @accent_warm;
+}
+
+#battery.critical:not(.charging) {
+  color: @accent_rose;
+}
+
+#battery.charging {
+  color: @accent_green;
+}
+
+/* VPN */
+#custom-vpn.active {
+  color: @accent_green;
+}
+
+#custom-vpn.hidden {
   min-width: 0;
   padding: 0;
   margin: 0;
   opacity: 0;
 }
 
-#custom-experience.recommended,
+/* ============================================================
+   12. ENREGISTREUR - Signal Élégant
+   ============================================================ */
+
+#custom-recorder.idle {
+  min-width: 24px;
+  color: @text_tertiary;
+  border: 1px solid transparent;
+}
+
+#custom-recorder.idle:hover {
+  color: @accent_rose;
+  border-color: rgba(245, 168, 184, 0.15);
+  background: rgba(245, 168, 184, 0.06);
+}
+
+#custom-recorder.recording {
+  color: @accent_rose;
+}
+
+/* ============================================================
+   13. STATUT SYSTÈME - Intuitif
+   ============================================================ */
+
+#custom-system-status {
+  min-width: 24px;
+  padding: 0 8px;
+  color: @text_secondary;
+}
+
+#custom-system-status.secure {
+  color: @accent_green;
+}
+
+#custom-system-status.warn {
+  color: @accent_warm;
+}
+
+#custom-system-status.critical {
+  color: @accent_rose;
+}
+
+#custom-system-status.hidden {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+}
+
+/* ============================================================
+   14. EXPÉRIENCE SEVEN - Intelligence Contextuelle
+   ============================================================ */
+
+#custom-experience {
+  min-width: 0;
+  padding: 0 10px;
+  color: @text_tertiary;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
 #custom-experience.active {
-  color: #FFFFFF;
-  border-color: rgba(156, 203, 255, 0.24);
-  animation: sevenExperiencePulse 5.2s ease-in-out infinite;
+  color: @text_primary;
+  border-color: @border_focus;
+  background: rgba(156, 203, 255, 0.04);
+}
+
+#custom-experience.recommended {
+  color: @accent_gold;
+  border-color: rgba(245, 215, 168, 0.15);
+  background: rgba(245, 215, 168, 0.04);
 }
 
 #custom-experience.experience-warn {
-  color: rgba(255, 228, 172, 0.96);
-  border-color: rgba(249, 226, 175, 0.28);
+  color: @accent_warm;
 }
 
 #custom-experience.hidden {
@@ -783,31 +503,144 @@ window#waybar {
   opacity: 0;
 }
 
-#custom-app-more {
-  min-width: 18px;
-  padding-left: 7px;
-  padding-right: 7px;
-  color: rgba(255, 255, 255, 0.76);
+/* ============================================================
+   15. CENTRE DE CONTRÔLE - Accessible et Élégant
+   ============================================================ */
+
+#custom-control-center {
+  padding: 0 14px;
+  border-radius: 10px;
+  background: rgba(126, 184, 255, 0.03);
+  border: 1px solid transparent;
+  font-weight: 500;
+  transition: all 0.25s ease;
 }
 
-#custom-app-more.hidden,
-#custom-app-extra.hidden,
-#custom-app-tools.hidden,
-#custom-app-window.hidden,
-#custom-app-help.hidden {
-  min-width: 0;
-  padding: 0;
-  margin: 0;
-  opacity: 0;
+#custom-control-center:hover {
+  background: rgba(126, 184, 255, 0.06);
+  border-color: @border_focus;
 }
+
+#custom-control-center.secure {
+  color: @accent_green;
+}
+
+#custom-control-center.attention {
+  color: @accent_warm;
+}
+
+/* ============================================================
+   16. HORLOGE - Élégante et Lisible
+   ============================================================ */
+
+#clock {
+  min-width: 50px;
+  color: @text_primary;
+  font-weight: 500;
+  font-size: 12px;
+  font-feature-settings: "tnum";
+  letter-spacing: 0.03em;
+}
+
+/* ============================================================
+   17. TRAY - Intégration Discrète
+   ============================================================ */
+
+#tray {
+  padding: 0 6px;
+}
+
+#tray > .passive {
+  -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+  -gtk-icon-effect: highlight;
+}
+
+/* ============================================================
+   18. INFOBULLES - Élégantes et Lisibles
+   ============================================================ */
+
+tooltip {
+  padding: 10px 16px;
+  border: 1px solid @border_soft;
+  border-radius: 14px;
+  background: rgba(16, 18, 30, 0.92);
+  color: @text_primary;
+  box-shadow: 0 8px 32px @shadow_system;
+  font-family: "Inter", "Noto Sans", sans-serif;
+}
+
+tooltip label {
+  color: @text_primary;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+/* ============================================================
+   19. CONTEXTE MINI-OS - Élégant et Informé
+   ============================================================ */
+
+#custom-mini-context {
+  min-width: 24px;
+  padding: 0 10px;
+  color: @text_tertiary;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+#custom-mini-context.active {
+  color: @text_primary;
+  border-color: @border_focus;
+  background: rgba(156, 203, 255, 0.04);
+}
+
+#custom-mini-context.profile-shield {
+  color: @accent_green;
+  border-color: rgba(122, 224, 192, 0.12);
+}
+
+#custom-mini-context.profile-studio {
+  color: @accent_rose;
+  border-color: rgba(245, 168, 184, 0.12);
+}
+
+#custom-mini-context.profile-forge {
+  color: @accent_warm;
+  border-color: rgba(245, 215, 168, 0.12);
+}
+
+#custom-mini-context.profile-pulse {
+  color: @accent_blue;
+  border-color: rgba(126, 184, 255, 0.12);
+}
+
+#custom-mini-context.profile-baobab {
+  color: #8FD47A;
+  border-color: rgba(143, 212, 122, 0.12);
+}
+
+#custom-mini-context.profile-windows {
+  color: #7EC8E8;
+  border-color: rgba(126, 200, 232, 0.12);
+}
+
+/* ============================================================
+   20. MODULES SPÉCIAUX - Média et Applications
+   ============================================================ */
 
 #custom-media {
   min-width: 0;
-  padding-left: 10px;
-  padding-right: 10px;
-  color: rgba(255, 255, 255, 0.72);
-  font-family: "Noto Sans", "Inter", sans-serif;
-  font-size: 12px;
+  padding: 0 10px;
+  color: @text_tertiary;
+  font-size: 11px;
+}
+
+#custom-media.playing {
+  color: @text_primary;
 }
 
 #custom-media.hidden {
@@ -817,23 +650,93 @@ window#waybar {
   opacity: 0;
 }
 
-#custom-media.playing {
-  color: rgba(255, 255, 255, 0.92);
+#custom-app-menu {
+  padding: 0 8px;
+  color: @text_tertiary;
+  font-size: 11px;
 }
 
-#custom-workspace-prev,
-#custom-workspace-next {
-  min-width: 0;
-  min-height: 0;
-  padding: 0;
-  margin: 0 1px;
-  color: rgba(255, 255, 255, 0.84);
-  font-family: "Inter", "Noto Sans", sans-serif;
-  font-size: 0;
+#custom-app-menu:hover {
+  color: @text_primary;
+  background: @bg_hover;
+}
+
+/* ============================================================
+   21. SOFT BAR - Calme, sans contexte de fenêtre active
+   ============================================================ */
+
+window#waybar {
+  color: rgba(244, 247, 252, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.080), rgba(255, 255, 255, 0.035)),
+    rgba(15, 17, 27, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  min-height: 28px;
+  padding: 2px 6px;
+}
+
+.modules-center {
+  min-width: 112px;
+  border-left: 0;
+  border-right: 0;
+}
+
+#custom-sevenos,
+#custom-recorder,
+#custom-profile,
+#custom-system-status,
+#custom-wifi,
+#custom-bluetooth,
+#custom-spotlight,
+#clock,
+#custom-control-center,
+#workspaces button {
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
+
+#custom-sevenos {
+  min-width: 32px;
+  border-color: rgba(156, 203, 255, 0.12);
+  background: rgba(255, 255, 255, 0.030);
+  animation: none;
+}
+
+#custom-profile {
+  min-width: 58px;
+}
+
+#custom-recorder,
+#custom-recorder.idle {
+  min-width: 24px;
+}
+
+#custom-sevenos:hover,
+#custom-profile:hover,
+#custom-system-status:hover,
+#custom-wifi:hover,
+#custom-bluetooth:hover,
+#custom-spotlight:hover,
+#clock:hover,
+#custom-control-center:hover,
+#workspaces button:hover {
+  color: rgba(255, 255, 255, 0.96);
+  border-color: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.055);
 }
 
 #workspaces {
-  padding: 0 2px;
+  padding: 0 3px;
 }
 
 #workspaces button {
@@ -841,194 +744,31 @@ window#waybar {
   min-height: 22px;
   margin: 0 1px;
   padding: 0 6px;
-  border: 1px solid transparent;
-  border-radius: 14px;
-  color: rgba(255, 255, 255, 0.58);
-  background: transparent;
-  transition:
-    background 180ms ease,
-    color 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-#workspaces button:hover {
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.065);
+  color: rgba(244, 247, 252, 0.34);
 }
 
 #workspaces button.active {
-  min-width: 24px;
-  color: #FFFFFF;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055)),
-    rgba(255, 255, 255, 0.075);
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 0 12px rgba(255, 255, 255, 0.045);
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(156, 203, 255, 0.14);
+  background: rgba(255, 255, 255, 0.070);
+  animation: none;
 }
 
-#workspaces button.urgent {
-  color: #FFFFFF;
-  background: rgba(255, 91, 122, 0.26);
-}
-
-#custom-wifi,
-#custom-bluetooth,
-#pulseaudio,
-#battery,
-#custom-vpn,
-#custom-recorder,
-#tray {
-  min-width: 24px;
-  padding-left: 7px;
-  padding-right: 7px;
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.90);
-}
-
-#tray {
-  padding-left: 4px;
-  padding-right: 4px;
-}
-
-#custom-wifi,
-#custom-bluetooth,
-#pulseaudio,
-#battery,
-#custom-vpn,
-#custom-recorder,
-#clock {
-  background: transparent;
-}
-
-#custom-recorder.idle {
-  min-width: 24px;
-  padding-left: 5px;
-  padding-right: 5px;
-  color: rgba(255, 91, 122, 0.78);
-  border: 1px solid rgba(255, 91, 122, 0.13);
-  background: transparent;
-}
-
-#custom-recorder.idle:hover {
-  color: #FFFFFF;
-  border-color: rgba(255, 91, 122, 0.34);
-  background: rgba(255, 91, 122, 0.12);
-}
-
-#battery {
-  min-width: 52px;
-}
-
-#custom-wifi.off,
-#custom-wifi.missing,
-#custom-wifi.weak,
-#custom-bluetooth.off,
-#custom-bluetooth.missing,
-#pulseaudio.muted,
-#battery.warning:not(.charging),
-#battery.critical:not(.charging) {
-  color: rgba(255, 179, 195, 0.95);
-}
-
-#custom-wifi.connected,
-#custom-bluetooth.connected,
-#custom-bluetooth.on,
-#custom-vpn.active {
-  color: rgba(156, 203, 255, 0.96);
-}
-
-#custom-vpn.hidden,
-#custom-system-status.hidden {
+#window,
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help {
   min-width: 0;
-  padding: 0;
+  min-height: 0;
   margin: 0;
+  padding: 0;
   opacity: 0;
-  border-left: 0;
-}
-
-#custom-system-status {
-  min-width: 0;
-  padding-left: 8px;
-  padding-right: 8px;
-  color: rgba(255, 255, 255, 0.82);
-  font-family: "Noto Sans", "Inter", sans-serif;
-  font-size: 12px;
-}
-
-#custom-system-status.secure {
-  color: rgba(156, 203, 255, 0.96);
-}
-
-#custom-system-status.muted,
-#custom-system-status.battery-low,
-#custom-system-status.context-warn {
-  color: rgba(255, 228, 172, 0.96);
-}
-
-#custom-system-status.critical,
-#custom-system-status.recording {
-  color: rgba(255, 179, 195, 0.98);
-}
-
-#custom-recorder.recording {
-  color: rgba(255, 111, 139, 0.98);
-  text-shadow: 0 0 14px rgba(255, 91, 122, 0.50);
-}
-
-#clock {
-  min-width: 43px;
-  padding-left: 7px;
-  padding-right: 7px;
-  color: rgba(255, 255, 255, 0.84);
-  font-family: "Noto Sans", "Inter", sans-serif;
-  font-size: 12px;
-}
-
-#custom-control-center {
-  min-width: 24px;
-  min-height: 20px;
-  padding-left: 7px;
-  padding-right: 7px;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.94);
-  font-family: "Noto Sans", "Inter", sans-serif;
-  font-size: 12px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.150), rgba(255, 255, 255, 0.052)),
-    radial-gradient(ellipse at 20% -20%, rgba(156, 203, 255, 0.22), transparent 55%),
-    rgba(255, 255, 255, 0.056);
-  border: 1px solid rgba(156, 203, 255, 0.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 0 14px rgba(110, 168, 255, 0.10);
-}
-
-#custom-control-center.secure {
-  color: rgba(156, 203, 255, 0.98);
-}
-
-#custom-control-center.attention {
-  color: rgba(255, 179, 195, 0.98);
-  border-color: rgba(255, 111, 139, 0.30);
-}
-
-tooltip {
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  color: #FFFFFF;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04)),
-    rgba(20, 20, 28, 0.92);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
-}
-
-tooltip label {
-  color: #FFFFFF;
+  border: 0;
+  background: transparent;
 }

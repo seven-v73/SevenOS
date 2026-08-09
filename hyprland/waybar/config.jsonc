@@ -1,13 +1,13 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 30,
+  "height": 34,
   "spacing": 4,
-  "margin-top": 0,
-  "margin-left": 0,
-  "margin-right": 0,
+  "margin-top": 6,
+  "margin-left": 10,
+  "margin-right": 10,
   "gtk-layer-shell": true,
-  "modules-left": ["custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-menu"],
+  "modules-left": ["custom/sevenos", "custom/recorder"],
   "modules-center": ["hyprland/workspaces"],
   "modules-right": ["custom/profile", "custom/system-status", "custom/wifi", "custom/bluetooth", "custom/spotlight", "clock", "custom/control-center"],
   "custom/sevenos": {

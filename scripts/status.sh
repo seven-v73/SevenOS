@@ -67,9 +67,20 @@ group_member() {
 profile_status() {
   local name="$1"
   local package_file="$2"
+  local requirement_key requirement_state requirement_installed requirement_total
   local installed=0
   local total=0
   local package
+
+  requirement_key="$(profile_requirement_key "$name")"
+  if [[ -n "$requirement_key" ]] && profile_requirement_counts "$requirement_key" requirement_state requirement_installed requirement_total; then
+    case "$requirement_state" in
+      OK) ok "$name: installed ($requirement_installed/$requirement_total packages)" ;;
+      PART) warn "$name: partial ($requirement_installed/$requirement_total packages)" ;;
+      *) missing "$name: not installed ($requirement_installed/$requirement_total packages)" ;;
+    esac
+    return 0
+  fi
 
   while IFS= read -r package; do
     package="${package%%#*}"
@@ -91,6 +102,55 @@ profile_status() {
   else
     missing "$name: not installed (0/$total packages)"
   fi
+}
+
+profile_requirement_key() {
+  case "$1" in
+    DEV|Forge|Forge\ DevOps*) printf 'forge' ;;
+    ATLAS|Atlas) printf 'atlas' ;;
+    CREATION|Studio) printf 'studio' ;;
+    CYBERSECURITY|Shield) printf 'shield' ;;
+    *) return 0 ;;
+  esac
+}
+
+profile_requirement_counts() {
+  local key="$1"
+  local __state="$2"
+  local __installed="$3"
+  local __total="$4"
+  local line state installed total
+
+  [[ -x "$ROOT_DIR/bin/seven-profile-requirements" ]] || return 1
+  line="$(
+    "$ROOT_DIR/bin/seven-profile-requirements" status "$key" --json 2>/dev/null |
+      python -c '
+import json
+import sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(1)
+summary = data.get("summary") or {}
+total = int(summary.get("required") or 0)
+missing = int(summary.get("required_missing") or 0)
+installed = max(0, total - missing)
+if total <= 0:
+    state = "MISS"
+elif missing == 0:
+    state = "OK"
+elif installed > 0:
+    state = "PART"
+else:
+    state = "MISS"
+print(f"{state}\t{installed}\t{total}")
+' 2>/dev/null
+  )" || return 1
+  IFS=$'\t' read -r state installed total <<<"$line"
+  [[ -n "$state" && "$installed" =~ ^[0-9]+$ && "$total" =~ ^[0-9]+$ ]] || return 1
+  printf -v "$__state" '%s' "$state"
+  printf -v "$__installed" '%s' "$installed"
+  printf -v "$__total" '%s' "$total"
 }
 
 service_status() {
@@ -154,9 +214,21 @@ profile_json() {
   local key="$1"
   local name="$2"
   local package_file="$3"
+  local requirement_key
   local installed=0
   local total=0
   local package state
+
+  requirement_key="$(profile_requirement_key "$name")"
+  if [[ -n "$requirement_key" ]] && profile_requirement_counts "$requirement_key" state installed total; then
+    printf '{"key":%s,"name":%s,"state":%s,"installed":%s,"total":%s}' \
+      "$(printf '%s' "$key" | json_escape)" \
+      "$(printf '%s' "$name" | json_escape)" \
+      "$(printf '%s' "$state" | json_escape)" \
+      "$installed" \
+      "$total"
+    return 0
+  fi
 
   while IFS= read -r package; do
     package="${package%%#*}"

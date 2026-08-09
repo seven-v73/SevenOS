@@ -33,7 +33,7 @@ read_persisted_theme() {
   elif [[ "${SEVENOS_THEME_MODE:-}" == "dark" || "${SEVENOS_THEME_MODE:-}" == "light" ]]; then
     printf '%s' "$SEVENOS_THEME_MODE"
   else
-    printf 'dark'
+    printf 'light'
   fi
 }
 

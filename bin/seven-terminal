@@ -103,7 +103,7 @@ current_theme_mode() {
     printf '%s\n' "$SEVENOS_THEME_MODE"
     return 0
   fi
-  printf 'dark\n'
+  printf 'light\n'
 }
 
 profile_terminal_mode() {

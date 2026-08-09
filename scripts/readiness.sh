@@ -121,13 +121,51 @@ profile_state() {
   fi
 }
 
+profile_requirement_state() {
+  local label="$1"
+  local key
+
+  case "$label" in
+    Forge|Forge\ DevOps*) key="forge" ;;
+    Shield) key="shield" ;;
+    Studio) key="studio" ;;
+    Atlas) key="atlas" ;;
+    *) return 1 ;;
+  esac
+
+  [[ -x "$ROOT_DIR/bin/seven-profile-requirements" ]] || return 1
+  "$ROOT_DIR/bin/seven-profile-requirements" status "$key" --json 2>/dev/null |
+    python -c '
+import json
+import sys
+
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(1)
+summary = data.get("summary") or {}
+total = int(summary.get("required") or 0)
+missing = int(summary.get("required_missing") or 0)
+installed = max(0, total - missing)
+if total <= 0:
+    state = "MISS"
+elif missing == 0:
+    state = "OK"
+elif installed > 0:
+    state = "PART"
+else:
+    state = "MISS"
+print(f"{state} {installed}/{total}")
+' 2>/dev/null
+}
+
 profile_check() {
   local label="$1"
   local package_file="$2"
   local recommendation="${3:-}"
   local state
 
-  state="$(profile_state "$package_file")"
+  state="$(profile_requirement_state "$label" || profile_state "$package_file")"
   case "$state" in
     OK*) pass "$label profile installed ($state)" ;;
     PART*)

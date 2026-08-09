@@ -741,7 +741,7 @@ for arg in "$@"; do
   esac
 done
 case "$action" in
-  serve|install-user-service|start|stop|logs)
+  install-user-service|start|stop|logs)
     require_forge_profile "$action" || exit 1
     ;;
 esac

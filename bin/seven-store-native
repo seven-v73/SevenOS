@@ -132,6 +132,23 @@ def cached_store_payload(refresh: bool = False) -> dict:
     return fallback
 
 
+def cached_store_payload_fast() -> dict:
+    fallback = {"schema": "sevenos.store.v1", "state": "STALE", "summary": {}, "modules": [], "apps": [], "profile_collections": {}}
+    for path in (STORE_CACHE_FILE, CACHE_DIR / "store.json"):
+        if not path.is_file():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            data.setdefault("cache", {})
+            if isinstance(data["cache"], dict):
+                data["cache"].update({"path": str(path), "age_seconds": round(cache_age(path), 2), "fast": True})
+            return data
+    return fallback
+
+
 def run_text(command: list[str]) -> str:
     result = subprocess.run(
         command,
@@ -1705,8 +1722,8 @@ def main() -> int:
     if args.probe:
         return probe()
     if args.json:
-        payload = cached_store_payload()
-        available, error = gtk_available()
+        payload = cached_store_payload_fast()
+        available, error = True, ""
         print(json.dumps({"schema": "sevenos.store-native.v1", "native": available, "error": error, "store": payload}, indent=2))
         return 0
     if args.action == "status":

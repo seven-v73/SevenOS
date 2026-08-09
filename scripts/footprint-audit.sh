@@ -209,18 +209,24 @@ def bytes_of(path: Path) -> int:
             return path.stat().st_size
         if not path.exists():
             return 0
-        total = 0
-        for current, dirs, files in os.walk(path, onerror=lambda exc: None):
-            for name in files:
-                try:
-                    total += (Path(current) / name).stat().st_size
-                except Exception:
-                    continue
-        return total
+        result = subprocess.run(
+            ["du", "-sb", str(path)],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=float(os.environ.get("SEVENOS_FOOTPRINT_DU_TIMEOUT", "4.0")),
+        )
+        if result.stdout.strip():
+            return int(result.stdout.split()[0])
+    except subprocess.TimeoutExpired:
+        return -1
     except Exception:
-        return 0
+        pass
+    return -2
 
 def human(size: int) -> str:
+    if size < 0:
+        return "timeout" if size == -1 else "unavailable"
     units = ["B", "KiB", "MiB", "GiB", "TiB"]
     value = float(size)
     for unit in units:
@@ -333,9 +339,9 @@ if fast:
     check("opt-size", "SKIP", "Installed runtime footprint", "Skipped in fast mode for /opt/SevenOS", "seven footprint --json")
     check("sevenos-share-size", "SKIP", "SevenOS local state footprint", f"Skipped in fast mode for {sevenos_share}", "seven footprint plan")
 else:
-    check("repo-size", "ATTENTION" if repo_bytes > 10 * 1024**3 else "OK", "Source repository footprint", f"{human(repo_bytes)} in {root}")
-    check("opt-size", "ATTENTION" if opt_bytes > 12 * 1024**3 else "OK", "Installed runtime footprint", f"{human(opt_bytes)} in /opt/SevenOS")
-    check("sevenos-share-size", "ATTENTION" if sevenos_share_bytes > 70 * 1024**3 else "OK", "SevenOS local state footprint", f"{human(sevenos_share_bytes)} in {sevenos_share}", "seven footprint plan")
+    check("repo-size", "SKIP" if repo_bytes < 0 else ("ATTENTION" if repo_bytes > 10 * 1024**3 else "OK"), "Source repository footprint", f"{human(repo_bytes)} in {root}", "SEVENOS_FOOTPRINT_DU_TIMEOUT=20 seven footprint --json" if repo_bytes < 0 else "")
+    check("opt-size", "SKIP" if opt_bytes < 0 else ("ATTENTION" if opt_bytes > 12 * 1024**3 else "OK"), "Installed runtime footprint", f"{human(opt_bytes)} in /opt/SevenOS", "SEVENOS_FOOTPRINT_DU_TIMEOUT=20 seven footprint --json" if opt_bytes < 0 else "")
+    check("sevenos-share-size", "SKIP" if sevenos_share_bytes < 0 else ("ATTENTION" if sevenos_share_bytes > 70 * 1024**3 else "OK"), "SevenOS local state footprint", f"{human(sevenos_share_bytes)} in {sevenos_share}", "seven footprint plan")
 check(
     "rootfs-duplication",
     "ATTENTION" if duplicated_packages > 800 else "OK",

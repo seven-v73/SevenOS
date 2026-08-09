@@ -45,7 +45,7 @@ theme_mode() {
     printf '%s' "$SEVENOS_THEME_MODE"
     return 0
   fi
-  printf 'dark'
+  printf 'light'
 }
 
 toolkit_value() {

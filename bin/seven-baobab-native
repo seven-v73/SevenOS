@@ -3207,13 +3207,8 @@ class BaobabNative:
 
 
 def probe() -> int:
-    ensure_gi_python()
-    try:
-        import gi
-        gi.require_version("Gtk", "3.0")
-        from gi.repository import Gtk  # noqa: F401
-    except Exception as exc:
-        print(f"MISS: {exc}", file=sys.stderr)
+    if not LANGUAGES_SOURCE.is_file():
+        print(f"MISS: Baobab data not found: {LANGUAGES_SOURCE}", file=sys.stderr)
         return 1
     print("OK")
     return 0

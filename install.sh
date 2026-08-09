@@ -382,3 +382,23 @@ if [[ " $* " == *" --json "* ]]; then
 fi
 
 log_success "SevenOS target '$TARGET' completed."
+
+# --- Waybar Installation ---
+install_waybar() {
+    echo "🎨 Installing SevenOS Waybar configuration..."
+    
+    mkdir -p ~/.config/waybar
+    
+    if [ -d "$SCRIPT_DIR/waybar" ]; then
+        cp "$SCRIPT_DIR/waybar/config.jsonc" ~/.config/waybar/
+        cp "$SCRIPT_DIR/waybar/style.css" ~/.config/waybar/
+        echo "✅ Waybar configuration installed"
+    else
+        echo "⚠️ Waybar directory not found, skipping"
+    fi
+}
+
+# Ajouter dans la fonction principale
+if [[ "$*" == *"--waybar"* ]] || [[ "$*" == *"--all"* ]]; then
+    install_waybar
+fi

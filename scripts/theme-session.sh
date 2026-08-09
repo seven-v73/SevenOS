@@ -16,7 +16,7 @@ theme_pref() {
   if [[ "$mode" == "light" || "$mode" == "dark" ]]; then
     printf '%s' "$mode"
   else
-    printf 'dark'
+    printf 'light'
   fi
 }
 

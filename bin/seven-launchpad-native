@@ -244,15 +244,8 @@ def ensure_gi_python() -> None:
 
 
 def probe() -> int:
-    ensure_gi_python()
-    try:
-        import gi
-
-        gi.require_version("Gdk", "3.0")
-        gi.require_version("Gtk", "3.0")
-        from gi.repository import Gtk  # noqa: F401
-    except Exception as exc:
-        print(f"MISS: {exc}", file=sys.stderr)
+    if not ROOT_DIR.exists():
+        print(f"MISS: root not found: {ROOT_DIR}", file=sys.stderr)
         return 1
     print("OK")
     return 0

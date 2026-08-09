@@ -51,7 +51,7 @@ theme_mode() {
   fi
   case "$mode" in
     dark|light) printf '%s' "$mode" ;;
-    *) printf 'dark' ;;
+    *) printf 'light' ;;
   esac
 }
 
@@ -104,7 +104,7 @@ modules |= essential_left | essential_right
 recorder_command = "sh -lc 'cmd=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin/seven-waybar-status\"; [ -x \"$cmd\" ] || cmd=seven-waybar-status; exec \"$cmd\" recorder'"
 recorder_click = "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder ACTION'"
 
-left = ["custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-menu"]
+left = ["custom/sevenos", "custom/recorder"]
 config["modules-left"] = left
 config["modules-center"] = ["hyprland/workspaces"]
 config["hyprland/window"] = {

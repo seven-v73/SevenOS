@@ -2255,11 +2255,10 @@ PY
 
 profile_list_cache_valid() {
   [[ "${SEVENOS_PROFILE_REFRESH:-0}" != "1" && -s "$PROFILE_LIST_CACHE" ]] || return 1
-  [[ ! -e "$STATE_FILE" || "$PROFILE_LIST_CACHE" -nt "$STATE_FILE" ]] || return 1
   if command -v stat >/dev/null 2>&1; then
     local age
     age=$(( $(date +%s) - $(stat -c %Y "$PROFILE_LIST_CACHE" 2>/dev/null || printf 0) ))
-    [[ "$age" -le "${SEVENOS_PROFILE_LIST_CACHE_TTL:-600}" ]] || return 1
+    [[ "$age" -le "${SEVENOS_PROFILE_LIST_CACHE_TTL:-86400}" ]] || return 1
   fi
 }
 

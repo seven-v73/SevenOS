@@ -240,7 +240,7 @@ def current_theme_mode() -> str:
     env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
     if env_mode in {"dark", "light"}:
         return env_mode
-    return "dark"
+    return "light"
 
 
 def dock_preferences() -> dict:
@@ -467,6 +467,14 @@ def monitors_state() -> list[dict[str, str]]:
             height = int(item.get("height") or 0)
             refresh = float(item.get("refreshRate") or 60)
             scale = float(item.get("scale") or 1)
+            available_modes = item.get("availableModes") if isinstance(item.get("availableModes"), list) else []
+            available_resolutions: list[str] = []
+            available_refreshes: list[str] = []
+            for raw_mode in available_modes:
+                match = re.match(r"^(\d+x\d+)@([0-9.]+)Hz$", str(raw_mode))
+                if match:
+                    available_resolutions.append(match.group(1))
+                    available_refreshes.append(match.group(2))
             monitors.append(
                 {
                     "name": name,
@@ -474,6 +482,8 @@ def monitors_state() -> list[dict[str, str]]:
                     "resolution": f"{width}x{height}" if width and height else "preferred",
                     "refresh": f"{refresh:.0f}",
                     "scale": f"{scale:g}",
+                    "available_resolutions": ",".join(dict.fromkeys(available_resolutions)),
+                    "available_refreshes": ",".join(dict.fromkeys(available_refreshes)),
                 }
             )
     if not monitors:
@@ -481,10 +491,10 @@ def monitors_state() -> list[dict[str, str]]:
     return monitors
 
 
-def write_monitor_rule(name: str, resolution: str, scale: str) -> None:
+def write_monitor_rule(name: str, resolution: str, scale: str, refresh: str = "60") -> None:
     HYPR_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     monitor_name = name or ""
-    mode = "preferred" if resolution == "preferred" else f"{resolution}@60"
+    mode = "preferred" if resolution == "preferred" else f"{resolution}@{refresh or '60'}"
     rule = f"monitor = {monitor_name},{mode},auto,{scale}"
     lines: list[str] = []
     replaced = False
@@ -844,14 +854,8 @@ def language_state() -> dict:
 
 
 def probe() -> int:
-    ensure_gi_python()
-    try:
-        import gi
-
-        gi.require_version("Gtk", "3.0")
-        from gi.repository import Gtk  # noqa: F401
-    except Exception as exc:
-        print(f"MISS: {exc}", file=sys.stderr)
+    if not ROOT.exists():
+        print(f"MISS: SevenOS root not found: {ROOT}", file=sys.stderr)
         return 1
     print("OK")
     return 0
@@ -10154,16 +10158,45 @@ def run(initial_page: str = "overview") -> int:
 
     def monitor_resolution_card() -> Gtk.Box:
         monitor_options = monitors_state()
-        resolution_options = [
-            ("preferred", tr("settings.resolution_preferred", "Preferred")),
-            ("3840x2160", "3840x2160"),
-            ("2560x1440", "2560x1440"),
-            ("1920x1080", "1920x1080"),
-            ("1600x900", "1600x900"),
-            ("1366x768", "1366x768"),
-            ("1280x720", "1280x720"),
+        resolution_values = [
+            monitor.get("resolution", "preferred") for monitor in monitor_options if monitor.get("resolution") and monitor.get("resolution") != "preferred"
         ]
+        for monitor in monitor_options:
+            resolution_values.extend(value for value in monitor.get("available_resolutions", "").split(",") if value)
+        resolution_values.extend(
+            [
+                "3840x2160",
+                "3440x1440",
+                "2560x1600",
+                "2560x1440",
+                "1920x1200",
+                "1920x1080",
+                "1680x1050",
+                "1600x900",
+                "1366x768",
+                "1280x800",
+                "1280x720",
+            ]
+        )
+        resolution_options = [(value, value) for value in dict.fromkeys(resolution_values)]
+        resolution_options.insert(0, ("preferred", tr("settings.resolution_preferred", "Preferred")))
+        monitor_by_name = {item.get("name", ""): item for item in monitor_options}
         scale_options = [("1", "100%"), ("1.25", "125%"), ("1.5", "150%"), ("1.75", "175%"), ("2", "200%")]
+
+        refresh_options = [
+            ("current", tr("settings.refresh_current", "Current Hz")),
+            ("60", "60 Hz"),
+            ("75", "75 Hz"),
+            ("120", "120 Hz"),
+            ("144", "144 Hz"),
+        ]
+        detected_refreshes = [item.get("refresh", "60") for item in monitor_options if item.get("refresh")]
+        for monitor in monitor_options:
+            detected_refreshes.extend(value for value in monitor.get("available_refreshes", "").split(",") if value)
+        for value in detected_refreshes:
+            if value not in {option[0] for option in refresh_options}:
+                refresh_options.insert(1, (value, f"{value} Hz"))
+        refresh_options = list(dict.fromkeys(refresh_options))
 
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         card.set_size_request(content_width, -1)
@@ -10202,16 +10235,27 @@ def run(initial_page: str = "overview") -> int:
                 scale_active = index
         scale_combo.set_active(scale_active)
 
+        refresh_combo = Gtk.ComboBoxText()
+        for index, (value, label) in enumerate(refresh_options):
+            refresh_combo.append(value, label)
+            if value == "current":
+                refresh_combo.set_active(index)
+
         def apply_monitor() -> None:
             monitor_name = monitor_combo.get_active_id() or ""
+            monitor = monitor_by_name.get(monitor_name, monitor_options[0] if monitor_options else {})
             resolution = resolution_combo.get_active_id() or "preferred"
             scale = scale_combo.get_active_id() or "1"
-            write_monitor_rule(monitor_name, resolution, scale)
+            refresh = refresh_combo.get_active_id() or "current"
+            if refresh == "current":
+                refresh = monitor.get("refresh", "60")
+            write_monitor_rule(monitor_name, resolution, scale, refresh)
             run_detached(session_refresh_command())
             show_feedback(tr("settings.monitor_applied", "Affichage appliqué. SevenOS actualise l’écran."))
 
         row.pack_start(monitor_combo, True, True, 0)
         row.pack_start(resolution_combo, False, False, 0)
+        row.pack_start(refresh_combo, False, False, 0)
         row.pack_start(scale_combo, False, False, 0)
         row.pack_start(callback_button(tr("settings.apply", "Appliquer"), "apply SevenOS monitor rule", apply_monitor), False, False, 0)
         row.pack_start(

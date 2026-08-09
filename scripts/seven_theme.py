@@ -53,7 +53,7 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def current_theme_mode(default: str = "dark") -> str:
+def current_theme_mode(default: str = "light") -> str:
     theme_file = seven_config_dir() / "theme.conf"
     if theme_file.exists():
         for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
