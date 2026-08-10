@@ -94,6 +94,32 @@ select_profile_waybar() {
 
 select_profile_waybar
 
+restore_default_waybar_file() {
+  local target="$1"
+  local name="$2"
+  local source=""
+
+  if [[ -n "$ROOT_DIR" && -s "$ROOT_DIR/waybar/$name" ]]; then
+    source="$ROOT_DIR/waybar/$name"
+  elif [[ -n "$ROOT_DIR" && -s "$ROOT_DIR/hyprland/waybar/$name" ]]; then
+    source="$ROOT_DIR/hyprland/waybar/$name"
+  elif [[ -s "/opt/SevenOS/waybar/$name" ]]; then
+    source="/opt/SevenOS/waybar/$name"
+  fi
+
+  [[ -n "$source" ]] || return 1
+  mkdir -p "$(dirname -- "$target")"
+  if [[ -e "$target" && ! -s "$target" ]]; then
+    cp -a "$target" "$target.empty.$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+  fi
+  install -m 644 "$source" "$target"
+}
+
+ensure_waybar_files() {
+  [[ -s "$CONFIG" ]] || restore_default_waybar_file "$CONFIG" config.jsonc || true
+  [[ -s "$STYLE" ]] || restore_default_waybar_file "$STYLE" style.css || true
+}
+
 count_waybar() {
   pgrep -u "$USER" -x waybar | wc -l
 }
@@ -759,6 +785,7 @@ start_waybar() {
   if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-profile-theme" ]]; then
     "$ROOT_DIR/bin/seven-profile-theme" apply >/tmp/sevenos-waybar-apply.log 2>&1 || true
   fi
+  ensure_waybar_files
 
   if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-waybar-context" ]]; then
     if systemctl --user list-unit-files sevenos-waybar-context.service >/dev/null 2>&1; then
@@ -786,6 +813,7 @@ run_waybar() {
     # shellcheck disable=SC1091
     source "$CONFIG_HOME/sevenos/language.env" || true
   fi
+  ensure_waybar_files
   exec waybar -c "$CONFIG" -s "$STYLE"
 }
 
