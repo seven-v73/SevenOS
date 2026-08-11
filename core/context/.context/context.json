@@ -1,0 +1,241 @@
+{
+  "schema": "sevenos.context.state.v1",
+  "last_context": {
+    "schema": "sevenos.contextd.cycle.v1",
+    "mode": "apply",
+    "state": {
+      "activity": "development",
+      "power_state": "high",
+      "connectivity": "online",
+      "security_state": "exposed",
+      "focus": "focused"
+    },
+    "decisions": {
+      "schema": "sevenos.decisions.v1",
+      "state": {
+        "activity": "development",
+        "power_state": "high",
+        "connectivity": "online",
+        "security_state": "exposed",
+        "focus": "focused"
+      },
+      "signals": {
+        "power_saving": false,
+        "secure_connection": false,
+        "focus_mode": true,
+        "creative_mode": false,
+        "relaxed_mode": false,
+        "security_attention": true,
+        "offline": false,
+        "limited_connectivity": false
+      },
+      "decisions": [
+        {
+          "id": "security_attention",
+          "priority": "high",
+          "category": "security",
+          "reason": "security_state is exposed",
+          "recommendation": "notify_security"
+        },
+        {
+          "id": "focus_mode",
+          "priority": "low",
+          "category": "focus",
+          "reason": "user is in a focused activity",
+          "recommendation": "minimize_interruptions"
+        }
+      ]
+    },
+    "policies": {
+      "schema": "sevenos.policy.v1",
+      "source": {
+        "decision_schema": "sevenos.decisions.v1"
+      },
+      "policies": [
+        {
+          "id": "security_attention",
+          "category": "security",
+          "priority": "high",
+          "reason": "security_state is exposed",
+          "recommendation": "notify_security",
+          "allowed": true,
+          "mode": "notify",
+          "risk": "low",
+          "actions": [
+            "notify_security"
+          ]
+        },
+        {
+          "id": "focus_mode",
+          "category": "focus",
+          "priority": "low",
+          "reason": "user is in a focused activity",
+          "recommendation": "minimize_interruptions",
+          "allowed": true,
+          "mode": "automatic",
+          "risk": "low",
+          "actions": [
+            "minimize_interruptions"
+          ]
+        }
+      ]
+    },
+    "actions": {
+      "schema": "sevenos.actions.v1",
+      "source": {
+        "policy_schema": "sevenos.policy.v1"
+      },
+      "actions": [
+        {
+          "id": "notify_security",
+          "source": "security_attention",
+          "category": "security",
+          "priority": "high",
+          "mode": "notify",
+          "risk": "low",
+          "status": "proposed"
+        },
+        {
+          "id": "minimize_interruptions",
+          "source": "focus_mode",
+          "category": "focus",
+          "priority": "low",
+          "mode": "automatic",
+          "risk": "low",
+          "status": "proposed"
+        }
+      ]
+    },
+    "execution": {
+      "schema": "sevenos.execution.v1",
+      "mode": "apply",
+      "source": {
+        "action_schema": "sevenos.actions.v1",
+        "policy_schema": "sevenos.policy.v1"
+      },
+      "executions": [
+        {
+          "id": "notify_security",
+          "source": "security_attention",
+          "category": "security",
+          "priority": "high",
+          "mode": "notify",
+          "risk": "low",
+          "executable": false,
+          "execution": "blocked_by_mode",
+          "execution_id": "exec-20260811T214548Z-1818982-17922"
+        },
+        {
+          "id": "minimize_interruptions",
+          "source": "focus_mode",
+          "category": "focus",
+          "priority": "low",
+          "mode": "automatic",
+          "risk": "low",
+          "executable": true,
+          "execution": "executed",
+          "result": {
+            "schema": "sevenos.execution.result.v1",
+            "timestamp": "2026-08-11T21:45:48Z",
+            "action": "minimize_interruptions",
+            "handler": "focus",
+            "status": "success",
+            "message": "Focus environment prepared"
+          },
+          "execution_id": "exec-20260811T214548Z-1818982-17922"
+        }
+      ]
+    }
+  },
+  "last_fingerprint": {
+    "actions": [
+      {
+        "category": "security",
+        "id": "notify_security",
+        "mode": "notify",
+        "priority": "high",
+        "risk": "low",
+        "source": "security_attention",
+        "status": "proposed"
+      },
+      {
+        "category": "focus",
+        "id": "minimize_interruptions",
+        "mode": "automatic",
+        "priority": "low",
+        "risk": "low",
+        "source": "focus_mode",
+        "status": "proposed"
+      }
+    ],
+    "decisions": [
+      {
+        "category": "security",
+        "id": "security_attention",
+        "priority": "high",
+        "reason": "security_state is exposed",
+        "recommendation": "notify_security"
+      },
+      {
+        "category": "focus",
+        "id": "focus_mode",
+        "priority": "low",
+        "reason": "user is in a focused activity",
+        "recommendation": "minimize_interruptions"
+      }
+    ],
+    "policies": [
+      {
+        "actions": [
+          "notify_security"
+        ],
+        "allowed": true,
+        "category": "security",
+        "id": "security_attention",
+        "mode": "notify",
+        "priority": "high",
+        "reason": "security_state is exposed",
+        "recommendation": "notify_security",
+        "risk": "low"
+      },
+      {
+        "actions": [
+          "minimize_interruptions"
+        ],
+        "allowed": true,
+        "category": "focus",
+        "id": "focus_mode",
+        "mode": "automatic",
+        "priority": "low",
+        "reason": "user is in a focused activity",
+        "recommendation": "minimize_interruptions",
+        "risk": "low"
+      }
+    ],
+    "signals": {
+      "creative_mode": false,
+      "focus_mode": true,
+      "limited_connectivity": false,
+      "offline": false,
+      "power_saving": false,
+      "relaxed_mode": false,
+      "secure_connection": false,
+      "security_attention": true
+    },
+    "state": {
+      "activity": "development",
+      "connectivity": "online",
+      "focus": "focused",
+      "power_state": "high",
+      "security_state": "exposed"
+    }
+  },
+  "last_actions": [
+    {
+      "id": "minimize_interruptions",
+      "execution": "executed",
+      "execution_id": "exec-20260811T214548Z-1818982-17922"
+    }
+  ],
+  "updated_at": "2026-08-11T21:45:48Z"
+}

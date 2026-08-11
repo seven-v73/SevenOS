@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+CONTEXT_ENGINE="$SCRIPT_DIR/context.sh"
+
+die() {
+    echo "sevenos-context: $*" >&2
+    exit 1
+}
+
+[[ -x "$CONTEXT_ENGINE" ]] || die "context engine not found"
+
+usage() {
+    cat <<'EOF'
+SevenOS Context
+
+Usage:
+    sevenos-context status
+    sevenos-context get <key>
+
+Available keys:
+    profile
+    workspace
+    application
+    network
+    vpn
+    battery
+    audio
+    security
+    performance
+
+Examples:
+    sevenos-context status
+    sevenos-context get profile
+    sevenos-context get network
+EOF
+}
+
+case "${1:-}" in
+    status)
+        exec "$CONTEXT_ENGINE" status "${2:-}"
+        ;;
+
+    get)
+        [[ $# -ge 2 ]] || die "missing context key"
+        exec "$CONTEXT_ENGINE" get "$2"
+        ;;
+
+    -h|--help|help)
+        usage
+        ;;
+
+    *)
+        usage
+        exit 1
+        ;;
+esac
