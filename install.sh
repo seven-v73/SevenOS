@@ -384,18 +384,37 @@ fi
 log_success "SevenOS target '$TARGET' completed."
 
 # --- Waybar Installation ---
+
 install_waybar() {
-    echo "🎨 Installing SevenOS Waybar configuration..."
-    
-    mkdir -p ~/.config/waybar
-    
-    if [ -d "$SCRIPT_DIR/waybar" ]; then
-        cp "$SCRIPT_DIR/waybar/config.jsonc" ~/.config/waybar/
-        cp "$SCRIPT_DIR/waybar/style.css" ~/.config/waybar/
-        echo "✅ Waybar configuration installed"
-    else
-        echo "⚠️ Waybar directory not found, skipping"
+    echo "Installing SevenOS Waybar configuration..."
+
+    local waybar_source="$SCRIPT_DIR/hyprland/waybar"
+    local waybar_target="$HOME/.config/waybar"
+
+    if [[ ! -d "$waybar_source" ]]; then
+        echo "SevenOS Waybar source not found: $waybar_source"
+        return 0
     fi
+
+    if [[ ! -s "$waybar_source/config.jsonc" ]]; then
+        echo "Waybar config is missing or empty"
+        return 0
+    fi
+
+    if [[ ! -s "$waybar_source/style.css" ]]; then
+        echo "Waybar stylesheet is missing or empty"
+        return 0
+    fi
+
+    mkdir -p "$waybar_target"
+
+    cp -a "$waybar_source/." "$waybar_target/"
+
+    chmod 644 \
+        "$waybar_target/config.jsonc" \
+        "$waybar_target/style.css"
+
+    echo "SevenOS Waybar configuration installed"
 }
 
 # Ajouter dans la fonction principale

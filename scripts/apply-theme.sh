@@ -78,6 +78,28 @@ theme_source_or_common() {
   fi
 }
 
+flatten_waybar_style() {
+  local style_file="$1" color_file="$2"
+  if [[ -f "$style_file" && -f "$color_file" ]]; then
+    python - "$style_file" "$color_file" <<'PY'
+import sys
+from pathlib import Path
+style_path, color_path = Path(sys.argv[1]), Path(sys.argv[2])
+style_text = style_path.read_text(encoding='utf-8')
+color_text = color_path.read_text(encoding='utf-8')
+marker = '@import "sevenos-colors.css";'
+if marker in style_text:
+    style_text = style_text.replace(marker, color_text, 1)
+    style_path.write_text(style_text, encoding='utf-8')
+PY
+  fi
+}
+
+generate_theme_assets() {
+  log_info "Generating SevenOS palette assets from core/design/palette.sh..."
+  run_cmd "$ROOT_DIR/scripts/generate-theme.sh"
+}
+
 resolve_icon_theme() {
   SEVENOS_THEME_MODE_ACTIVE="$THEME_MODE" python - <<'PY'
 import os
@@ -799,6 +821,7 @@ log_info "Applying SevenOS Beyond the Desktop theme: $THEME_LABEL..."
 THEME_TRANSITION_ACTIVE=1
 trap mark_theme_failed_on_exit EXIT
 write_theme_transition "running" "prepare"
+generate_theme_assets
 persist_theme_mode
 sync_theme_environment
 normalize_profile_theme_modes
@@ -809,6 +832,7 @@ install_preserved_config_file "$ROOT_DIR/hyprland/conf/keyboard.conf" "$CONFIG_H
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/custom.conf" "$CONFIG_HOME/hypr/conf/custom.conf"
 write_hyprland_theme_environment
 copy_config_dir "$THEME_SOURCE_DIR/waybar" "$CONFIG_HOME/waybar"
+flatten_waybar_style "$CONFIG_HOME/waybar/style.css" "$CONFIG_HOME/waybar/sevenos-colors.css"
 if is_dry_run; then
   printf '%q refresh-waybars\n' "$ROOT_DIR/bin/seven-profile-theme"
 elif [[ -x "$ROOT_DIR/bin/seven-profile-theme" ]]; then

@@ -1,26 +1,4 @@
-* {
-  seven-blue: #2F7BFF;
-  seven-violet: #6A5CFF;
-  seven-cyan: #00B8D9;
-  pure-white: #F3F7FC;
-  soft-gray: #EFF5FD;
-  light-surface: #E6EFFB;
-  border-light: #D4DEEE;
-  text-1: #20283A;
-  text-2: #465168;
-  text-3: #667287;
-  glass: rgba(250, 252, 255, 0.70);
-  glass-2: rgba(246, 250, 255, 0.84);
-  glass-3: rgba(239, 245, 253, 0.90);
-  glass-border: rgba(54, 76, 112, 0.11);
-  glass-border-2: rgba(77, 127, 230, 0.25);
-
-  background-color: transparent;
-  text-color: @text-1;
-  font: "SF Pro Text 13";
-  margin: 0;
-  padding: 0;
-}
+@import "sevenos-palette.rasi";
 
 window {
   width: 58%;

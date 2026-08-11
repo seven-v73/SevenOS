@@ -1,0 +1,213 @@
+/* SevenOS Files - Dynamic Edition v2 */
+@define-color files_bg rgba(26,26,46,0.92);
+@define-color files_panel rgba(22,33,62,0.88);
+@define-color files_sidebar rgba(15,52,96,0.85);
+@define-color files_text #e0e0e0;
+@define-color files_text_soft rgba(224,224,224,0.70);
+@define-color files_muted #8888aa;
+@define-color files_accent #89B4FA;
+@define-color files_accent_dim rgba(137,180,250,0.12);
+@define-color files_hover rgba(255,255,255,0.06);
+@define-color files_hover_strong rgba(255,255,255,0.10);
+@define-color files_selected rgba(137,180,250,0.10);
+@define-color files_border rgba(255,255,255,0.05);
+@define-color files_shadow rgba(0,0,0,0.30);
+
+* {
+  font-family: "Inter", "Noto Sans", system-ui, sans-serif;
+}
+
+window.seven-files {
+  background: @files_bg;
+  color: @files_text;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px @files_shadow;
+}
+
+.files-sidebar {
+  background: @files_sidebar;
+  border-right: 1px solid @files_border;
+  padding: 12px 10px;
+  backdrop-filter: blur(4px);
+}
+
+.sidebar-row {
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: @files_text;
+  transition: all 150ms ease;
+}
+
+.sidebar-row:hover {
+  background: @files_hover;
+  padding-left: 14px;
+}
+
+.sidebar-row.active {
+  background: @files_selected;
+  border-left: 2px solid @files_accent;
+}
+
+.sidebar-heading {
+  color: @files_muted;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 10px 0 4px 8px;
+}
+
+.files-toolbar {
+  background: @files_panel;
+  border-bottom: 1px solid @files_border;
+  padding: 6px 12px;
+  backdrop-filter: blur(4px);
+}
+
+.toolbar-button {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: @files_text_soft;
+  transition: all 150ms ease;
+}
+
+.toolbar-button:hover {
+  background: @files_hover;
+  color: @files_text;
+}
+
+.toolbar-button.active {
+  background: @files_selected;
+  color: @files_accent;
+}
+
+.files-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: @files_text;
+}
+
+.files-search {
+  padding: 4px 10px;
+  border-radius: 14px;
+  background: @files_sidebar;
+  border: 1px solid @files_border;
+  color: @files_text;
+  transition: all 150ms ease;
+}
+
+.files-search:focus {
+  border-color: @files_accent;
+  outline: none;
+}
+
+.files-grid {
+  padding: 16px;
+}
+
+.file-tile {
+  padding: 10px 6px;
+  border-radius: 10px;
+  color: @files_text;
+  text-align: center;
+  transition: all 180ms ease;
+}
+
+.file-tile:hover {
+  background: @files_hover;
+  transform: translateY(-3px);
+}
+
+.file-tile:selected {
+  background: @files_selected;
+  border: 1px solid alpha(@files_accent, 0.20);
+}
+
+.file-name {
+  font-weight: 500;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.file-meta {
+  font-size: 10px;
+  color: @files_muted;
+}
+
+.files-preview {
+  background: @files_sidebar;
+  border-left: 1px solid @files_border;
+  padding: 12px 14px;
+}
+
+.files-statusbar {
+  background: @files_panel;
+  border-top: 1px solid @files_border;
+  padding: 3px 16px;
+}
+
+.files-status-label {
+  font-size: 10px;
+  color: @files_muted;
+}
+
+.tag-pill {
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: @files_hover;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+menu {
+  background: @files_panel;
+  border: 1px solid @files_border;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+menuitem {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+menuitem:hover {
+  background: @files_hover;
+}
+
+.selection-bar {
+  padding: 4px 12px;
+  background: alpha(@files_accent, 0.04);
+  border-top: 1px solid @files_border;
+}
+
+.selection-action {
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: @files_panel;
+  border: 1px solid @files_border;
+  font-size: 10px;
+}
+
+.selection-action:hover {
+  background: @files_hover;
+}
+
+@keyframes fileAppear {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.file-tile {
+  animation: fileAppear 150ms ease backwards;
+}
+
+.file-tile:nth-child(1) { animation-delay: 15ms; }
+.file-tile:nth-child(2) { animation-delay: 30ms; }
+.file-tile:nth-child(3) { animation-delay: 45ms; }
+.file-tile:nth-child(4) { animation-delay: 60ms; }
+.file-tile:nth-child(5) { animation-delay: 75ms; }
+.file-tile:nth-child(6) { animation-delay: 90ms; }

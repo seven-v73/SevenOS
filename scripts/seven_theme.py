@@ -516,3 +516,23 @@ def surface_css(surface: str, fallback: str = "", mode: str | None = None) -> st
     if css_parts:
         return "\n\n".join(css_parts)
     return fallback
+
+def generate_tokens_css(mode: str | None = None) -> str:
+    """Generate CSS tokens from palette."""
+    palette = mode_palette(mode or current_theme_mode())
+    return f"""
+:root {{
+    --seven-primary: {palette["accent"]};
+    --seven-secondary: {palette["secondary"]};
+    --seven-accent: #00D4FF;
+    --seven-success: #00FFB3;
+    --seven-bg: {palette["bg"]};
+    --seven-surface: {palette["panel"]};
+    --seven-panel: {palette["panel_2"]};
+    --seven-text: {palette["text"]};
+    --seven-muted: {palette["muted"]};
+    --seven-border: {palette["border"]};
+    --seven-hover: {palette["hover"]};
+    --seven-selected: {palette["selected"]};
+}}
+"""

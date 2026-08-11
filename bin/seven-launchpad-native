@@ -1810,7 +1810,7 @@ def run_launchpad() -> int:
     apply_responsive_layout()
     window.show_all()
     GLib.idle_add(apply_responsive_layout)
-    refresh_apps_async()
+    GLib.timeout_add(900, lambda: (refresh_apps_async(), False)[1])
 
     def focus_launchpad():
         window.fullscreen()

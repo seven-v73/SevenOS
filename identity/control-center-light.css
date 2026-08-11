@@ -1,71 +1,211 @@
+
+/*
+ * ============================================================================
+ * SevenOS — Control Center Light v2.0
+ * ============================================================================
+ *
+ * Light Control Center
+ *
+ * Visual language:
+ *
+ *   SevenOS identity
+ *   ├── Blue       → primary interaction
+ *   ├── Violet     → intelligence / active selection
+ *   ├── Cyan       → information / connectivity
+ *   ├── Green      → success / healthy state
+ *   └── Error      → critical state
+ *
+ * This file consumes:
+ *
+ *   tokens-light.css
+ *   design-engine.css
+ *
+ * It must not define a secondary palette.
+ *
+ * ============================================================================
+ */
+
+
+/* ============================================================================
+ * 01 — BASE
+ * ============================================================================ */
+
 * {
-  font-family: "Inter", "Noto Sans", system-ui, sans-serif;
-  font-size: 12px;
+  font-family:
+    var(--font-interface);
+
+  font-size:
+    var(--font-size-body-small);
 }
+
+
+/* ============================================================================
+ * 02 — WINDOW
+ * ============================================================================ */
 
 window.quick-window {
   background: transparent;
 }
 
+
+/* ============================================================================
+ * 03 — ENTRY ANIMATION
+ * ============================================================================ */
+
 @keyframes sevenControlIn {
-  0% { opacity: 0; margin-top: -8px; }
-  100% { opacity: 1; margin-top: 0; }
+
+  0% {
+    opacity: 0;
+    margin-top: -8px;
+  }
+
+  100% {
+    opacity: 1;
+    margin-top: 0;
+  }
+
 }
+
+
+/* ============================================================================
+ * 04 — ROOT
+ * ============================================================================ */
 
 .quick-root {
-  padding: 16px;
-  border-radius: 28px;
-  color: rgba(32, 38, 52, 0.94);
+
+  padding: var(--space-4);
+
+  border-radius: var(--r-window);
+
+  color:
+    var(--engine-text-primary);
+
   background:
-    radial-gradient(circle at 18% 0%, rgba(77, 127, 230, 0.11), transparent 34%),
-    linear-gradient(145deg, rgba(232, 238, 248, 0.88), rgba(217, 227, 242, 0.78) 58%, rgba(205, 217, 235, 0.74)),
-    rgba(217, 227, 242, 0.76);
-  border: 1px solid rgba(32, 38, 52, 0.10);
-  animation: sevenControlIn 180ms ease-out;
+
+    radial-gradient(
+      circle at 18% 0%,
+      rgba(77, 163, 255, 0.11),
+      transparent 34%
+    ),
+
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.90),
+      rgba(245, 247, 250, 0.90) 58%,
+      rgba(238, 241, 245, 0.88)
+    );
+
+  border:
+    1px solid var(--glass-border);
+
+  box-shadow:
+    0 18px 48px rgba(50, 67, 98, 0.12);
+
+  animation:
+    sevenControlIn var(--t-fade) var(--ease-soft);
 }
 
+
 .quick-root.compact {
-  padding: 12px;
-  border-radius: 23px;
+
+  padding: var(--space-3);
+
+  border-radius:
+    var(--radius-lg);
 }
+
+
+/* ============================================================================
+ * 05 — HEADER
+ * ============================================================================ */
 
 .quick-header {
   padding: 2px 2px 4px;
 }
 
+
+/* ============================================================================
+ * 06 — NAVIGATION
+ * ============================================================================ */
+
 .nav-strip {
+
   padding: 3px;
-  border-radius: 16px;
-  background: rgba(205, 217, 235, 0.44);
-  border: 1px solid rgba(32, 38, 52, 0.07);
+
+  border-radius:
+    var(--radius-md);
+
+  background:
+    rgba(221, 227, 234, 0.58);
+
+  border:
+    1px solid var(--glass-border);
 }
+
 
 .nav-pill {
+
   min-height: 30px;
-  border-radius: 13px;
-  color: rgba(32, 38, 52, 0.74);
-  background: transparent;
-  border: 1px solid transparent;
+
+  border-radius:
+    var(--radius-sm);
+
+  color:
+    var(--text-secondary);
+
+  background:
+    transparent;
+
+  border:
+    1px solid transparent;
 }
+
 
 .nav-pill:hover {
-  color: rgba(32, 38, 52, 0.96);
-  background: rgba(77, 127, 230, 0.10);
+
+  color:
+    var(--text-primary);
+
+  background:
+    var(--focus-blue);
 }
+
 
 .nav-pill.active {
-  color: #ffffff;
+
+  color:
+    #FFFFFF;
+
   background:
-    linear-gradient(135deg, rgba(77, 127, 230, 0.82), rgba(117, 108, 224, 0.68));
-  border-color: rgba(77, 127, 230, 0.22);
-  box-shadow: inset 0 1px 0 rgba(245, 248, 252, 0.36);
+    linear-gradient(
+      135deg,
+      var(--seven-primary),
+      var(--seven-secondary)
+    );
+
+  border-color:
+    var(--border-primary);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36);
 }
 
+
+/* ============================================================================
+ * 07 — TYPOGRAPHY
+ * ============================================================================ */
+
 .quick-title {
-  color: rgba(32, 38, 52, 0.96);
+
+  color:
+    var(--text-primary);
+
   font-size: 14px;
-  font-weight: 500;
+
+  font-weight:
+    var(--font-weight-medium);
 }
+
 
 .quick-subtitle,
 .quick-context-note,
@@ -76,83 +216,165 @@ window.quick-window {
 .battery-note,
 .footer-hint,
 .ai-state {
-  color: rgba(107, 114, 128, 0.88);
+
+  color:
+    var(--text-muted);
 }
+
 
 .header-spinner {
+
   opacity: 0.72;
-  color: rgba(30, 102, 245, 0.90);
+
+  color:
+    var(--seven-primary);
 }
+
+
+/* ============================================================================
+ * 08 — QUICK PILLS
+ * ============================================================================ */
 
 .quick-pill {
+
   min-height: 28px;
+
   padding: 0 10px;
-  border-radius: 999px;
-  color: rgba(28, 31, 38, 0.84);
-  background: rgba(28, 31, 38, 0.045);
-  border: 1px solid rgba(28, 31, 38, 0.055);
+
+  border-radius:
+    var(--r-pill);
+
+  color:
+    var(--text-primary);
+
+  background:
+    rgba(28, 31, 38, 0.045);
+
+  border:
+    1px solid var(--glass-border);
 }
+
 
 .quick-icon-pill {
+
   min-width: 30px;
-  padding: 0 8px;
+
+  padding:
+    0 8px;
 }
 
+
 .quick-close {
+
   min-width: 30px;
   min-height: 28px;
-  border-radius: 999px;
-  color: rgba(28, 31, 38, 0.88);
-  background: rgba(28, 31, 38, 0.045);
-  border: 1px solid rgba(28, 31, 38, 0.055);
+
+  border-radius:
+    var(--r-pill);
+
+  color:
+    var(--text-primary);
+
+  background:
+    rgba(28, 31, 38, 0.045);
+
+  border:
+    1px solid var(--glass-border);
+
   font-size: 16px;
 }
 
+
 .quick-close:hover {
-  color: rgba(210, 15, 57, 0.98);
-  background: rgba(210, 15, 57, 0.08);
-  border-color: rgba(210, 15, 57, 0.16);
+
+  color:
+    var(--seven-error);
+
+  background:
+    rgba(217, 54, 90, 0.08);
+
+  border-color:
+    var(--border-error);
 }
+
+
+/* ============================================================================
+ * 09 — CONTROL GRID
+ * ============================================================================ */
 
 .control-grid {
   padding: 4px 0;
 }
 
+
+/* ============================================================================
+ * 10 — CONTROL TILES
+ * ============================================================================ */
+
 .tile {
+
   min-height: 72px;
+
   padding: 10px;
-  border-radius: 20px;
-  color: rgba(32, 40, 58, 0.94);
-  background: rgba(250, 252, 255, 0.68);
-  border: 1px solid rgba(54, 76, 112, 0.085);
+
+  border-radius:
+    var(--radius-lg);
+
+  color:
+    var(--text-primary);
+
+  background:
+    rgba(255, 255, 255, 0.68);
+
+  border:
+    1px solid var(--glass-border);
 }
+
 
 .quick-root.compact .tile {
+
   min-height: 62px;
+
   padding: 8px;
-  border-radius: 17px;
+
+  border-radius:
+    var(--radius-md);
 }
 
+
 .quick-root.compact .tile-glyph {
+
   min-width: 32px;
   min-height: 32px;
 }
+
 
 .quick-root.compact .context-card,
 .quick-root.compact .slider-card,
 .quick-root.compact .detail-card,
 .quick-root.compact .battery-row,
 .quick-root.compact .footer-card {
+
   padding: 10px;
-  border-radius: 17px;
+
+  border-radius:
+    var(--radius-md);
 }
+
+
+/* ============================================================================
+ * 11 — TILE INTERACTION
+ * ============================================================================ */
 
 .tile:hover,
 .detail-button:hover,
 .footer-button:hover,
 .icon-action:hover {
-  background: rgba(47, 123, 255, 0.10);
+
+  background:
+    var(--focus-blue);
 }
+
 
 .tile:focus,
 .detail-button:focus,
@@ -161,54 +383,114 @@ window.quick-window {
 .nav-pill:focus,
 .quick-pill:focus,
 .quick-close:focus {
-  border-color: rgba(30, 102, 245, 0.32);
+
+  border-color:
+    var(--border-primary);
+
   box-shadow:
-    0 0 0 2px rgba(77, 127, 230, 0.13),
-    inset 0 1px 0 rgba(245, 248, 252, 0.42);
+    0 0 0 2px var(--focus-blue),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
+
+
+/* ============================================================================
+ * 12 — ACTIVE / CONNECTED STATES
+ * ============================================================================ */
 
 .tile.connected,
 .tile.active,
 .tile.vpn-active,
 .tile.recording,
 .tile.ai-busy {
-  color: white;
-  background: linear-gradient(135deg, rgba(77, 127, 230, 0.84), rgba(117, 108, 224, 0.70));
-  border-color: rgba(77, 127, 230, 0.24);
+
+  color:
+    #FFFFFF;
+
+  background:
+    linear-gradient(
+      135deg,
+      var(--seven-primary),
+      var(--seven-secondary)
+    );
+
+  border-color:
+    var(--border-primary);
+
+  box-shadow:
+    0 8px 24px var(--glow-blue);
 }
+
 
 .tile.connected .tile-state,
 .tile.active .tile-state,
 .tile.vpn-active .tile-state,
 .tile.recording .tile-state,
 .tile.ai-busy .tile-state {
-  color: rgba(255, 255, 255, 0.76);
+
+  color:
+    rgba(255, 255, 255, 0.76);
 }
+
+
+/* ============================================================================
+ * 13 — DISABLED / CRITICAL
+ * ============================================================================ */
 
 .tile.disabled {
-  color: rgba(107, 114, 128, 0.68);
-  background: rgba(239, 245, 253, 0.58);
+
+  color:
+    var(--text-muted);
+
+  background:
+    rgba(239, 245, 253, 0.58);
 }
+
 
 .tile.critical {
-  background: rgba(210, 15, 57, 0.10);
-  border-color: rgba(210, 15, 57, 0.18);
+
+  background:
+    rgba(217, 54, 90, 0.10);
+
+  border-color:
+    var(--border-error);
 }
 
+
+/* ============================================================================
+ * 14 — TILE ICON
+ * ============================================================================ */
+
 .tile-glyph {
+
   min-width: 36px;
   min-height: 36px;
-  border-radius: 999px;
-  color: #1E66F5;
-  background: rgba(77, 127, 230, 0.12);
+
+  border-radius:
+    var(--r-pill);
+
+  color:
+    var(--seven-primary);
+
+  background:
+    var(--focus-blue);
 }
+
 
 .tile.connected .tile-glyph,
 .tile.active .tile-glyph,
 .tile.vpn-active .tile-glyph {
-  color: white;
-  background: rgba(255, 255, 255, 0.18);
+
+  color:
+    #FFFFFF;
+
+  background:
+    rgba(255, 255, 255, 0.18);
 }
+
+
+/* ============================================================================
+ * 15 — TILE TITLES
+ * ============================================================================ */
 
 .tile-title,
 .slider-title,
@@ -216,15 +498,27 @@ window.quick-window {
 .battery-percent,
 .ai-title,
 .context-title {
-  color: rgba(28, 31, 38, 0.96);
-  font-weight: 500;
+
+  color:
+    var(--text-primary);
+
+  font-weight:
+    var(--font-weight-medium);
 }
+
 
 .tile.connected .tile-title,
 .tile.active .tile-title,
 .tile.vpn-active .tile-title {
-  color: white;
+
+  color:
+    #FFFFFF;
 }
+
+
+/* ============================================================================
+ * 16 — CARDS
+ * ============================================================================ */
 
 .context-card,
 .slider-card,
@@ -232,118 +526,302 @@ window.quick-window {
 .battery-row,
 .ai-row,
 .footer-card {
+
   padding: 12px;
-  border-radius: 20px;
-  background: rgba(250, 252, 255, 0.62);
-  border: 1px solid rgba(54, 76, 112, 0.085);
+
+  border-radius:
+    var(--radius-lg);
+
+  background:
+    rgba(255, 255, 255, 0.62);
+
+  border:
+    1px solid var(--glass-border);
+
+  box-shadow:
+    0 6px 20px rgba(50, 67, 98, 0.05);
 }
 
+
 .detail-scroll {
-  border-radius: 20px;
+
+  border-radius:
+    var(--radius-lg);
 }
+
 
 .detail-body {
   padding-top: 2px;
 }
 
+
+/* ============================================================================
+ * 17 — CONTEXT STATES
+ * ============================================================================ */
+
 .context-card.attention {
-  background: rgba(210, 15, 57, 0.08);
-  border-color: rgba(210, 15, 57, 0.16);
+
+  background:
+    rgba(217, 54, 90, 0.08);
+
+  border-color:
+    var(--border-error);
 }
+
 
 .context-card.success {
-  background: rgba(64, 160, 43, 0.08);
-  border-color: rgba(64, 160, 43, 0.16);
+
+  background:
+    rgba(0, 143, 104, 0.08);
+
+  border-color:
+    var(--border-success);
 }
+
+
+/* ============================================================================
+ * 18 — DETAIL ROWS
+ * ============================================================================ */
 
 .detail-row {
+
   min-height: 30px;
-  padding: 0 8px;
-  border-radius: 12px;
+
+  padding:
+    0 8px;
+
+  border-radius:
+    var(--radius-sm);
 }
+
 
 .detail-row:hover {
-  background: rgba(28, 31, 38, 0.045);
+
+  background:
+    rgba(28, 31, 38, 0.045);
 }
+
+
+/* ============================================================================
+ * 19 — NETWORK
+ * ============================================================================ */
 
 .network-row {
+
   min-height: 42px;
-  margin: 1px 0;
-  background: rgba(218, 228, 242, 0.56);
-  border: 1px solid rgba(32, 38, 52, 0.075);
+
+  margin:
+    1px 0;
+
+  background:
+    rgba(221, 227, 234, 0.56);
+
+  border:
+    1px solid var(--glass-border);
 }
+
 
 .network-row:hover {
-  background: rgba(30, 102, 245, 0.10);
-  border-color: rgba(30, 102, 245, 0.18);
+
+  background:
+    var(--focus-blue);
+
+  border-color:
+    var(--border-primary);
 }
+
 
 .network-row.connected {
-  background: linear-gradient(135deg, rgba(30, 102, 245, 0.13), rgba(64, 160, 43, 0.08));
-  border-color: rgba(30, 102, 245, 0.20);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(77, 163, 255, 0.13),
+      rgba(0, 143, 104, 0.08)
+    );
+
+  border-color:
+    var(--border-primary);
 }
+
 
 .network-row.active {
-  background: linear-gradient(135deg, rgba(30, 102, 245, 0.16), rgba(136, 57, 239, 0.08));
-  border-color: rgba(30, 102, 245, 0.24);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(77, 163, 255, 0.16),
+      rgba(122, 92, 255, 0.08)
+    );
+
+  border-color:
+    var(--border-secondary);
 }
+
 
 .network-row.critical {
-  background: rgba(210, 15, 57, 0.10);
-  border-color: rgba(210, 15, 57, 0.20);
+
+  background:
+    rgba(217, 54, 90, 0.10);
+
+  border-color:
+    var(--border-error);
 }
+
+
+/* ============================================================================
+ * 20 — SLIDERS
+ * ============================================================================ */
 
 .scale trough {
+
   min-height: 4px;
-  border-radius: 999px;
-  background: rgba(28, 31, 38, 0.10);
+
+  border-radius:
+    var(--r-pill);
+
+  background:
+    rgba(28, 31, 38, 0.10);
 }
+
 
 .scale highlight {
-  border-radius: 999px;
-  background: linear-gradient(90deg, #1E66F5, #8839EF);
+
+  border-radius:
+    var(--r-pill);
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--seven-primary),
+      var(--seven-secondary)
+    );
 }
 
+
 .scale slider {
+
   min-width: 15px;
   min-height: 15px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid rgba(28, 31, 38, 0.08);
+
+  border-radius:
+    var(--r-pill);
+
+  background:
+    #FFFFFF;
+
+  border:
+    1px solid var(--glass-border);
 }
+
+
+/* ============================================================================
+ * 21 — BUTTONS
+ * ============================================================================ */
 
 .detail-button,
 .footer-button,
 .icon-action {
+
   min-height: 34px;
-  border-radius: 14px;
-  color: rgba(28, 31, 38, 0.86);
-  background: rgba(28, 31, 38, 0.045);
-  border: 1px solid rgba(28, 31, 38, 0.055);
+
+  border-radius:
+    var(--r-button);
+
+  color:
+    var(--text-primary);
+
+  background:
+    rgba(28, 31, 38, 0.045);
+
+  border:
+    1px solid var(--glass-border);
 }
+
 
 .detail-button.mini-action {
+
   min-height: 30px;
-  border-radius: 999px;
-  padding: 0 8px;
-  color: rgba(28, 31, 38, 0.82);
+
+  border-radius:
+    var(--r-pill);
+
+  padding:
+    0 8px;
+
+  color:
+    var(--text-primary);
 }
+
 
 .detail-button.danger {
-  color: rgba(210, 15, 57, 0.96);
-  background: rgba(210, 15, 57, 0.08);
-  border-color: rgba(210, 15, 57, 0.16);
+
+  color:
+    var(--seven-error);
+
+  background:
+    rgba(217, 54, 90, 0.08);
+
+  border-color:
+    var(--border-error);
 }
+
+
+/* ============================================================================
+ * 22 — SEVEN AI ORB
+ * ============================================================================ */
 
 .ai-orb {
+
   min-width: 38px;
   min-height: 38px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 36% 34%, #ffffff 0%, #04A5E5 18%, #1E66F5 48%, #8839EF 82%);
+
+  border-radius:
+    var(--r-pill);
+
+  background:
+    radial-gradient(
+      circle at 36% 34%,
+      #FFFFFF 0%,
+      var(--seven-accent) 18%,
+      var(--seven-primary) 48%,
+      var(--seven-secondary) 82%
+    );
+
+  box-shadow:
+    0 0 22px var(--glow-violet),
+    0 0 12px var(--glow-cyan);
 }
 
+
+/* ============================================================================
+ * 23 — BATTERY
+ * ============================================================================ */
+
 .battery-meter {
+
   min-height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #40A02B, #04A5E5);
+
+  border-radius:
+    var(--r-pill);
+
+  background:
+    linear-gradient(
+      90deg,
+      #008F68,
+      var(--seven-accent)
+    );
+}
+
+
+/* ============================================================================
+ * 24 — REDUCED MOTION
+ * ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .quick-root {
+    animation: none;
+  }
+
 }

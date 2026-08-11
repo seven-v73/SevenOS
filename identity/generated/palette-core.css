@@ -1,0 +1,30 @@
+/* Generated from core/design/palette.sh — do not edit manually */
+
+:root {
+  --palette-primary: #4DA3FF;
+  --palette-secondary: #7A5CFF;
+  --palette-accent: #00D4FF;
+  --palette-success: #00FFB3;
+  --palette-warning: #FFB547;
+  --palette-error: #FF5976;
+  --palette-surface-0: #09090B;
+  --palette-surface-1: #12131A;
+  --palette-surface-2: #1C1F2C;
+  --palette-surface-3: #272B3D;
+  --palette-text-primary: #EDEDED;
+  --palette-text-muted: #8A8F98;
+  --comfort-dark-bg: #09090B;
+  --comfort-dark-panel: rgba(18, 19, 26, 0.82);
+  --comfort-dark-panel-2: rgba(28, 31, 44, 0.76);
+  --comfort-dark-sidebar: rgba(9, 9, 11, 0.86);
+  --comfort-dark-text: #EDEDED;
+  --comfort-dark-muted: #8A8F98;
+  --comfort-dark-border: rgba(77, 163, 255, 0.10);
+  --comfort-light-bg: #F6F9FD;
+  --comfort-light-panel: #FAFCFF;
+  --comfort-light-panel-2: #F3F7FC;
+  --comfort-light-panel-3: #ECF3FC;
+  --comfort-light-sidebar: #F8FBFF;
+  --comfort-light-text: #20283A;
+  --comfort-light-muted: #667287;
+}

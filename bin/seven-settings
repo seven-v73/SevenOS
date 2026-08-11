@@ -53,6 +53,13 @@ fi
 
 close_control_center
 
+if [[ "$#" -eq 0 && "${SEVENOS_SETTINGS_FULL:-0}" != "1" ]]; then
+  quick="$ROOT_DIR/bin/seven-quick-settings-native"
+  if [[ -x "$quick" ]] && "$quick" --probe >/dev/null 2>&1; then
+    exec "$quick" system
+  fi
+fi
+
 if "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1; then
   exec "$ROOT_DIR/bin/seven-settings-native" "$@"
 fi

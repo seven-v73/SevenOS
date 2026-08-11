@@ -1,64 +1,293 @@
+/*
+ * ============================================================================
+ * SevenOS — Design Tokens
+ * ============================================================================
+ * Theme: SevenOS Dark
+ * Version: 2.0
+ *
+ * Architecture:
+ *
+ * palette.sh
+ *     ↓
+ * semantic tokens
+ *     ↓
+ * design-engine.css
+ *     ↓
+ * UI components
+ *
+ * IMPORTANT:
+ * Components should consume semantic variables instead of raw colors.
+ * ============================================================================
+ */
+
 :root {
-  --prism-ink: #070A10;
-  --graphite-plane: #111722;
-  --mineral-surface: #182131;
-  --frost-line: #A9B7C7;
-  --prism-blue: #4C8DFF;
-  --signal-gold: #D6A84F;
-  --baobab-green: #2FB87A;
-  --atlas-teal: #33B6C4;
-  --forge-ember: #FF7A4D;
-  --shield-mint: #4DE6A8;
-  --studio-iris: #8D6CFF;
-  --pulse-coral: #FF5C7A;
+
+  /* ==========================================================================
+   * 01 — SEVENOS IDENTITY
+   * ========================================================================== */
 
   --seven-blue: #4DA3FF;
   --seven-violet: #7A5CFF;
   --seven-cyan: #00D4FF;
+
   --seven-green: #00FFB3;
   --seven-green-active: #00E676;
-  --deep-void: var(--prism-ink);
-  --cyber-void: #0A0F0D;
-  --surface-dark: var(--graphite-plane);
-  --surface-cyber: #002B22;
-  --soft-white: #EDEDED;
-  --muted-gray: #8A8F98;
 
-  --surface-0: var(--prism-ink);
-  --surface-1: rgba(17, 23, 34, 0.82);
-  --surface-2: rgba(24, 33, 49, 0.76);
-  --surface-3: rgba(37, 49, 69, 0.78);
-  --comfort-dark-bg: #080A12;
-  --comfort-dark-panel: rgba(13, 17, 29, 0.82);
-  --comfort-dark-panel-2: rgba(20, 27, 43, 0.76);
-  --comfort-dark-sidebar: rgba(11, 15, 26, 0.86);
-  --comfort-dark-muted: #9AA7BA;
-  --comfort-dark-border: rgba(164, 190, 255, 0.10);
+  --seven-clay: #FF5976;
+  --seven-clay-dim: #C94563;
+
+
+  /* ==========================================================================
+   * 02 — SEMANTIC BRAND TOKENS
+   * ========================================================================== */
+
+  --seven-primary: var(--seven-blue);
+  --seven-secondary: var(--seven-violet);
+  --seven-accent: var(--seven-cyan);
+
+  --seven-success: var(--seven-green);
+  --seven-success-active: var(--seven-green-active);
+
+  --seven-warning: #FFB86B;
+  --seven-error: var(--seven-clay);
+  --seven-error-dim: var(--seven-clay-dim);
+
+  --seven-info: var(--seven-cyan);
+
+
+  /* ==========================================================================
+   * 03 — CORE SURFACES
+   * ========================================================================== */
+
+  --deep-void: #09090B;
+  --cyber-void: #0A0F0D;
+
+  --surface-dark: #12131A;
+  --surface-cyber: #002B22;
+
+  --surface-0: var(--deep-void);
+  --surface-1: #12131A;
+  --surface-2: #1C1F2C;
+  --surface-3: #272B3D;
+
+
+  /* ==========================================================================
+   * 04 — GLASS
+   * ========================================================================== */
+
   --surface-glass: rgba(255, 255, 255, 0.06);
   --surface-glass-2: rgba(255, 255, 255, 0.09);
   --surface-glass-3: rgba(255, 255, 255, 0.13);
+
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-border-strong: rgba(77, 163, 255, 0.32);
+
+
+  /* ==========================================================================
+   * 05 — TEXT
+   * ========================================================================== */
+
+  --soft-white: #EDEDED;
 
   --text-1: #EDEDED;
   --text-2: #B9C0CC;
   --text-3: #8A8F98;
   --text-4: #606776;
 
-  --gradient-primary: linear-gradient(135deg, var(--prism-blue) 0%, var(--signal-gold) 46%, var(--atlas-teal) 100%);
-  --gradient-prism: linear-gradient(135deg, var(--prism-blue), var(--signal-gold), var(--atlas-teal));
-  --gradient-cyber: linear-gradient(135deg, rgba(0, 255, 179, 0.22), rgba(0, 212, 255, 0.12));
+  --text-primary: var(--text-1);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
+  --text-disabled: var(--text-4);
+
+
+  /* ==========================================================================
+   * 06 — BORDERS
+   * ========================================================================== */
+
+  --border-default: var(--glass-border);
+  --border-strong: var(--glass-border-strong);
+
+  --border-primary: rgba(77, 163, 255, 0.32);
+  --border-secondary: rgba(122, 92, 255, 0.32);
+  --border-accent: rgba(0, 212, 255, 0.32);
+
+  --border-success: rgba(0, 255, 179, 0.22);
+  --border-warning: rgba(255, 184, 107, 0.24);
+  --border-error: rgba(255, 89, 118, 0.28);
+
+
+  /* ==========================================================================
+   * 07 — FOCUS
+   * ========================================================================== */
+
+  --focus-blue: rgba(77, 163, 255, 0.18);
+  --focus-violet: rgba(122, 92, 255, 0.14);
+  --focus-cyan: rgba(0, 212, 255, 0.16);
+
+  --focus-primary: var(--focus-blue);
+  --focus-secondary: var(--focus-violet);
+
+
+  /* ==========================================================================
+   * 08 — GLOW
+   * ========================================================================== */
+
   --glow-blue: rgba(77, 163, 255, 0.25);
   --glow-violet: rgba(122, 92, 255, 0.18);
   --glow-cyan: rgba(0, 212, 255, 0.28);
   --glow-green: rgba(0, 255, 179, 0.26);
 
-  --font-display: "Inter", "Noto Sans", system-ui, sans-serif;
-  --font-interface: "Inter", "Noto Sans", system-ui, sans-serif;
-  --font-text: "Noto Sans", "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
-  --font-cyber: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
-  --font-brand: "Inter", "Noto Sans", system-ui, sans-serif;
+  --glow-primary: var(--glow-blue);
+  --glow-secondary: var(--glow-violet);
+  --glow-accent: var(--glow-cyan);
+  --glow-success: var(--glow-green);
+
+
+  /* ==========================================================================
+   * 09 — GRADIENTS
+   * ========================================================================== */
+
+  --gradient-primary:
+    linear-gradient(
+      135deg,
+      var(--seven-blue) 0%,
+      var(--seven-violet) 50%,
+      var(--seven-cyan) 100%
+    );
+
+  --gradient-seven:
+    linear-gradient(
+      135deg,
+      var(--seven-primary),
+      var(--seven-secondary),
+      var(--seven-accent)
+    );
+
+  --gradient-cyber:
+    linear-gradient(
+      135deg,
+      rgba(0, 255, 179, 0.22),
+      rgba(0, 212, 255, 0.12)
+    );
+
+  --gradient-success:
+    linear-gradient(
+      135deg,
+      var(--seven-green),
+      var(--seven-cyan)
+    );
+
+  --gradient-danger:
+    linear-gradient(
+      135deg,
+      var(--seven-clay),
+      var(--seven-violet)
+    );
+
+
+  /* ==========================================================================
+   * 10 — SEMANTIC STATES
+   * ========================================================================== */
+
+  --state-active: var(--seven-primary);
+  --state-selected: var(--seven-secondary);
+  --state-focus: var(--seven-accent);
+
+  --state-success: var(--seven-success);
+  --state-warning: var(--seven-warning);
+  --state-error: var(--seven-error);
+  --state-info: var(--seven-info);
+
+  --state-disabled: var(--text-disabled);
+
+
+  /* ==========================================================================
+   * 11 — EXPERIENCE COLORS
+   * ========================================================================== */
+
+  /*
+   * SevenOS experience system.
+   *
+   * Learn    → Cyan
+   * Build    → Blue
+   * Protect  → Green
+   * Connect  → Violet
+   */
+
+  --experience-learn: var(--seven-cyan);
+  --experience-build: var(--seven-blue);
+  --experience-protect: var(--seven-green);
+  --experience-connect: var(--seven-violet);
+
+  --experience-learn-bg: rgba(0, 212, 255, 0.10);
+  --experience-build-bg: rgba(77, 163, 255, 0.10);
+  --experience-protect-bg: rgba(0, 255, 179, 0.10);
+  --experience-connect-bg: rgba(122, 92, 255, 0.10);
+
+
+  /* ==========================================================================
+   * 12 — CULTURAL / IDENTITY TOKENS
+   * ========================================================================== */
+
+  --culture-nile: var(--seven-blue);
+  --culture-baobab: var(--seven-green);
+  --culture-kente: var(--seven-violet);
+  --culture-sand: #D8C7A1;
+  --culture-hibiscus: var(--seven-clay);
+
+
+  /* ==========================================================================
+   * 13 — TYPOGRAPHY
+   * ========================================================================== */
+
+  --font-display:
+    "Inter",
+    "Noto Sans",
+    system-ui,
+    sans-serif;
+
+  --font-interface:
+    "Inter",
+    "Noto Sans",
+    system-ui,
+    sans-serif;
+
+  --font-text:
+    "Noto Sans",
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  --font-mono:
+    "JetBrainsMono Nerd Font",
+    "JetBrains Mono",
+    monospace;
+
+  --font-cyber:
+    "JetBrainsMono Nerd Font",
+    "JetBrains Mono",
+    monospace;
+
+  --font-brand:
+    "Inter",
+    "Noto Sans",
+    system-ui,
+    sans-serif;
+
+
+  /* ==========================================================================
+   * 14 — FONT WEIGHTS
+   * ========================================================================== */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+
+  /* ==========================================================================
+   * 15 — RADII
+   * ========================================================================== */
 
   --r-button: 8px;
   --r-widget: 10px;
@@ -73,6 +302,19 @@
   --r-lg: 14px;
   --r-xl: 18px;
 
+
+  /* Semantic aliases */
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+
+
+  /* ==========================================================================
+   * 16 — SPACING
+   * ========================================================================== */
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -82,96 +324,119 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ==========================================================================
+   * 17 — MOTION
+   * ========================================================================== */
+
+  --ease-soft:
+    cubic-bezier(0.22, 1, 0.36, 1);
+
+  --ease-cinematic:
+    cubic-bezier(0.16, 1, 0.3, 1);
+
+  --t-fast: 120ms;
   --t-hover: 120ms;
   --t-fade: 180ms;
+  --t-base: 220ms;
   --t-window: 220ms;
   --t-workspace: 280ms;
-  --t-spotlight: 300ms;
-  --t-fast: 120ms;
-  --t-base: 220ms;
   --t-slow: 300ms;
+  --t-spotlight: 300ms;
 
-  /* Compatibility aliases for older SevenOS surfaces. */
+
+  /* ==========================================================================
+   * 18 — ENGINE
+   * ========================================================================== */
+
+  --seven-mode-name: "SevenOS Dark";
+  --seven-engine-theme: "SevenOS Dark";
+
+
+  /* ==========================================================================
+   * 19 — LEGACY COMPATIBILITY
+   * ========================================================================== */
+
   --ebene: var(--deep-void);
-  --glass: var(--surface-glass);
-  --glass-2: var(--surface-glass-2);
-  --glass-3: var(--surface-glass-3);
-  --glass-border-2: var(--glass-border-strong);
+
+  --ink: var(--deep-void);
+  --graphite: var(--surface-dark);
+  --surface: var(--surface-1);
+  --panel: var(--surface-2);
+
   --indigo: var(--seven-blue);
   --indigo-bright: var(--seven-cyan);
   --indigo-pale: rgba(77, 163, 255, 0.12);
+
   --baobab: var(--seven-green);
   --baobab-bright: var(--seven-green-active);
   --baobab-pale: rgba(0, 255, 179, 0.12);
+
   --gold: var(--seven-violet);
   --gold-bright: var(--seven-cyan);
   --gold-dim: rgba(122, 92, 255, 0.72);
   --gold-pale: rgba(122, 92, 255, 0.12);
-  --clay: #FF5976;
-  --clay-dim: #C94563;
+
+  --clay: var(--seven-clay);
+  --clay-dim: var(--seven-clay-dim);
   --clay-pale: rgba(255, 89, 118, 0.12);
 
-  /* Light Mode reference tokens. The active light runtime is exported through
-     identity/tokens-light.css when the user chooses SevenOS Light Mode. */
-  --light-pure-white: #FFFFFF;
-  --light-soft-gray: #F5F7FA;
-  --light-surface: #EEF1F5;
-  --light-border: #DDE3EA;
-  --light-text-primary: #1C1F26;
-  --light-text-secondary: #6B7280;
-  --light-seven-blue: #2F7BFF;
-  --light-seven-violet: #6A5CFF;
-  --light-seven-cyan: #00B8D9;
 
-  /* Prism Dark compatibility tokens for the Seven Design Engine.
-     Third-party icon themes are optional; the runtime
-     resolver falls back to Papirus-Dark/Papirus when they are unavailable. */
-  --seven-mode-name: "Prism Dark";
-  --cat-base: #11111B;
-  --cat-mantle: #181825;
-  --cat-crust: #0B0B12;
-  --cat-surface0: #313244;
-  --cat-surface1: #45475A;
-  --cat-surface2: #585B70;
-  --cat-text: #CDD6F4;
-  --cat-subtext0: #A6ADC8;
-  --cat-subtext1: #BAC2DE;
-  --cat-blue: #89B4FA;
-  --cat-mauve: #CBA6F7;
-  --cat-sky: #89DCEB;
-  --cat-teal: #94E2D5;
-  --cat-green: #A6E3A1;
-  --cat-red: #F38BA8;
-  --cat-peach: #FAB387;
-  --seven-icon-theme-preferred: "Catppuccin-Mocha, Papirus-Dark, Papirus";
-  --seven-folder-ai: var(--cat-mauve);
-  --seven-folder-dev: var(--cat-blue);
-  --seven-folder-security: var(--cat-red);
-  --seven-folder-media: var(--cat-peach);
-  --seven-folder-studio: #8B7CFF;
-  --seven-folder-cloud: var(--cat-sky);
+  /* ==========================================================================
+   * 20 — LEGACY CULTURAL NAMES
+   * ========================================================================== */
+
+  --brass: var(--seven-violet);
+  --copper: var(--seven-clay);
+  --malachite: var(--seven-green);
+  --cobalt: var(--seven-blue);
+  --oxblood: var(--seven-clay-dim);
+
+  --ivory: var(--soft-white);
+  --raffia: var(--text-2);
+  --shadow: var(--deep-void);
+
+  --void: var(--deep-void);
+  --midnight: var(--surface-dark);
+  --palace: var(--surface-1);
+
+  --kente-gold: var(--seven-violet);
+  --sunfire: var(--seven-clay);
+  --hibiscus: var(--seven-clay-dim);
+  --nile: var(--seven-blue);
+  --emerald: var(--seven-green);
+
+  --obsidian: var(--deep-void);
+  --charcoal: var(--surface-dark);
+  --soil: var(--surface-1);
+  --sand: var(--soft-white);
+
+
+  /* ==========================================================================
+   * 21 — GLASS LEGACY
+   * ========================================================================== */
+
+  --glass: var(--surface-glass);
+  --glass-2: var(--surface-glass-2);
+  --glass-3: var(--surface-glass-3);
+  --glass-border-2: var(--glass-border-strong);
+
 }
 
-@keyframes breathe {
-  0%, 100% { border-color: var(--glass-border); }
-  50% { border-color: var(--glass-border-strong); }
-}
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.72; transform: scale(0.96); }
-}
-
-@keyframes card-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* =============================================================================
+ * REDUCED MOTION
+ * ============================================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
+
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+
   }
+
 }

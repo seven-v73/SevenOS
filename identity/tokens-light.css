@@ -1,53 +1,326 @@
+/*
+ * ============================================================================
+ * SevenOS — Design Tokens
+ * ============================================================================
+ * Theme: SevenOS Light
+ * Version: 2.0
+ *
+ * Same SevenOS identity.
+ * Different surface / contrast system.
+ * ============================================================================
+ */
+
 :root {
+
+  /* ==========================================================================
+   * 01 — CORE LIGHT SURFACES
+   * ========================================================================== */
+
   --pure-white: #FFFFFF;
   --soft-gray: #F5F7FA;
+
   --light-surface: #EEF1F5;
   --border-light: #DDE3EA;
-  --text-primary: #1C1F26;
-  --text-secondary: #6B7280;
+
+  --light-text-primary: #1C1F26;
+  --light-text-secondary: #6B7280;
+
+
+  /* ==========================================================================
+   * 02 — SEVENOS IDENTITY
+   * ========================================================================== */
 
   --seven-blue: #2F7BFF;
   --seven-violet: #6A5CFF;
   --seven-cyan: #00B8D9;
+
   --seven-green: #00A77A;
   --seven-green-active: #008F68;
+
+  --seven-clay: #D9365A;
+  --seven-clay-dim: #B52B48;
+
+
+  /* ==========================================================================
+   * 03 — SEMANTIC BRAND TOKENS
+   * ========================================================================== */
+
+  --seven-primary: var(--seven-blue);
+  --seven-secondary: var(--seven-violet);
+  --seven-accent: var(--seven-cyan);
+
+  --seven-success: var(--seven-green);
+  --seven-success-active: var(--seven-green-active);
+
+  --seven-warning: #C98200;
+  --seven-error: var(--seven-clay);
+  --seven-error-dim: var(--seven-clay-dim);
+
+  --seven-info: var(--seven-cyan);
+
+
+  /* ==========================================================================
+   * 04 — SURFACES
+   * ========================================================================== */
+
   --deep-void: #FFFFFF;
   --cyber-void: #F5F7FA;
+
   --surface-dark: #EEF1F5;
   --surface-cyber: #EAF7F3;
-  --soft-white: #1C1F26;
-  --muted-gray: #6B7280;
 
   --surface-0: #FFFFFF;
   --surface-1: rgba(255, 255, 255, 0.78);
   --surface-2: rgba(245, 247, 250, 0.86);
   --surface-3: rgba(238, 241, 245, 0.92);
-  --surface-glass: rgba(255, 255, 255, 0.70);
-  --surface-glass-2: rgba(255, 255, 255, 0.82);
-  --surface-glass-3: rgba(255, 255, 255, 0.92);
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-border-strong: rgba(47, 123, 255, 0.24);
+
+
+  /* ==========================================================================
+   * 05 — GLASS
+   * ========================================================================== */
+
+  --surface-glass:
+    rgba(255, 255, 255, 0.70);
+
+  --surface-glass-2:
+    rgba(255, 255, 255, 0.82);
+
+  --surface-glass-3:
+    rgba(255, 255, 255, 0.92);
+
+  --glass-border:
+    rgba(0, 0, 0, 0.06);
+
+  --glass-border-strong:
+    rgba(47, 123, 255, 0.24);
+
+
+  /* ==========================================================================
+   * 06 — TEXT
+   * ========================================================================== */
+
+  --soft-white: #1C1F26;
 
   --text-1: #1C1F26;
   --text-2: #384152;
   --text-3: #6B7280;
   --text-4: #9AA3AF;
 
-  --gradient-primary: linear-gradient(135deg, #2F7BFF 0%, #6A5CFF 50%, #00B8D9 100%);
-  --gradient-cyber: linear-gradient(135deg, rgba(23, 146, 153, 0.16), rgba(4, 165, 229, 0.10));
-  --glow-blue: rgba(47, 123, 255, 0.22);
-  --glow-violet: rgba(106, 92, 255, 0.16);
-  --glow-cyan: rgba(0, 184, 217, 0.18);
-  --glow-green: rgba(0, 167, 122, 0.18);
-  --focus-blue: rgba(47, 123, 255, 0.18);
-  --focus-violet: rgba(106, 92, 255, 0.12);
-  --focus-cyan: rgba(0, 184, 217, 0.16);
+  --text-primary: var(--text-1);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
+  --text-disabled: var(--text-4);
 
-  --font-display: "Inter", "Noto Sans", system-ui, sans-serif;
-  --font-interface: "Inter", "Noto Sans", system-ui, sans-serif;
-  --font-text: "Noto Sans", "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
-  --font-brand: "Inter", "Noto Sans", system-ui, sans-serif;
+
+  /* ==========================================================================
+   * 07 — BORDERS
+   * ========================================================================== */
+
+  --border-default:
+    var(--glass-border);
+
+  --border-strong:
+    var(--glass-border-strong);
+
+  --border-primary:
+    rgba(47, 123, 255, 0.24);
+
+  --border-secondary:
+    rgba(106, 92, 255, 0.24);
+
+  --border-accent:
+    rgba(0, 184, 217, 0.24);
+
+  --border-success:
+    rgba(0, 143, 104, 0.22);
+
+  --border-warning:
+    rgba(201, 130, 0, 0.22);
+
+  --border-error:
+    rgba(217, 54, 90, 0.22);
+
+
+  /* ==========================================================================
+   * 08 — FOCUS
+   * ========================================================================== */
+
+  --focus-blue:
+    rgba(47, 123, 255, 0.18);
+
+  --focus-violet:
+    rgba(106, 92, 255, 0.14);
+
+  --focus-cyan:
+    rgba(0, 184, 217, 0.16);
+
+  --focus-primary:
+    var(--focus-blue);
+
+  --focus-secondary:
+    var(--focus-violet);
+
+
+  /* ==========================================================================
+   * 09 — GLOW
+   * ========================================================================== */
+
+  --glow-blue:
+    rgba(47, 123, 255, 0.22);
+
+  --glow-violet:
+    rgba(106, 92, 255, 0.16);
+
+  --glow-cyan:
+    rgba(0, 184, 217, 0.18);
+
+  --glow-green:
+    rgba(0, 167, 122, 0.18);
+
+  --glow-primary:
+    var(--glow-blue);
+
+  --glow-secondary:
+    var(--glow-violet);
+
+  --glow-accent:
+    var(--glow-cyan);
+
+  --glow-success:
+    var(--glow-green);
+
+
+  /* ==========================================================================
+   * 10 — GRADIENTS
+   * ========================================================================== */
+
+  --gradient-primary:
+    linear-gradient(
+      135deg,
+      var(--seven-blue) 0%,
+      var(--seven-violet) 50%,
+      var(--seven-cyan) 100%
+    );
+
+  --gradient-seven:
+    linear-gradient(
+      135deg,
+      var(--seven-primary),
+      var(--seven-secondary),
+      var(--seven-accent)
+    );
+
+  --gradient-cyber:
+    linear-gradient(
+      135deg,
+      rgba(0, 167, 122, 0.16),
+      rgba(0, 184, 217, 0.10)
+    );
+
+  --gradient-success:
+    linear-gradient(
+      135deg,
+      var(--seven-green),
+      var(--seven-cyan)
+    );
+
+  --gradient-danger:
+    linear-gradient(
+      135deg,
+      var(--seven-clay),
+      var(--seven-violet)
+    );
+
+
+  /* ==========================================================================
+   * 11 — SEMANTIC STATES
+   * ========================================================================== */
+
+  --state-active: var(--seven-primary);
+  --state-selected: var(--seven-secondary);
+  --state-focus: var(--seven-accent);
+
+  --state-success: var(--seven-success);
+  --state-warning: var(--seven-warning);
+  --state-error: var(--seven-error);
+  --state-info: var(--seven-info);
+
+  --state-disabled: var(--text-disabled);
+
+
+  /* ==========================================================================
+   * 12 — EXPERIENCE SYSTEM
+   * ========================================================================== */
+
+  --experience-learn: var(--seven-cyan);
+  --experience-build: var(--seven-blue);
+  --experience-protect: var(--seven-green);
+  --experience-connect: var(--seven-violet);
+
+  --experience-learn-bg: rgba(0, 184, 217, 0.10);
+  --experience-build-bg: rgba(47, 123, 255, 0.10);
+  --experience-protect-bg: rgba(0, 167, 122, 0.10);
+  --experience-connect-bg: rgba(106, 92, 255, 0.10);
+
+
+  /* ==========================================================================
+   * 13 — CULTURAL TOKENS
+   * ========================================================================== */
+
+  --culture-nile: var(--seven-blue);
+  --culture-baobab: var(--seven-green);
+  --culture-kente: var(--seven-violet);
+  --culture-sand: #B79C69;
+  --culture-hibiscus: var(--seven-clay);
+
+
+  /* ==========================================================================
+   * 14 — TYPOGRAPHY
+   * ========================================================================== */
+
+  --font-display:
+    "Inter",
+    "Noto Sans",
+    system-ui,
+    sans-serif;
+
+  --font-interface:
+    "Inter",
+    "Noto Sans",
+    system-ui,
+    sans-serif;
+
+  --font-text:
+    "Noto Sans",
+    "Inter",
+    system-ui,
+    sans-serif;
+
+  --font-mono:
+    "JetBrainsMono Nerd Font",
+    "JetBrains Mono",
+    monospace;
+
+  --font-brand:
+    "Inter",
+    "Noto Sans",
+    system-ui,
+    sans-serif;
+
+
+  /* ==========================================================================
+   * 15 — FONT WEIGHTS
+   * ========================================================================== */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+
+  /* ==========================================================================
+   * 16 — RADII
+   * ========================================================================== */
 
   --r-button: 14px;
   --r-widget: 18px;
@@ -56,116 +329,161 @@
   --r-window: 28px;
   --r-pill: 999px;
 
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+
+
+  /* ==========================================================================
+   * 17 — SPACING
+   * ========================================================================== */
+
+  --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
-  --space-1: 4px;
   --space-7: 48px;
   --space-8: 64px;
 
-  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* ==========================================================================
+   * 18 — MOTION
+   * ========================================================================== */
+
+  --ease-soft:
+    cubic-bezier(0.22, 1, 0.36, 1);
+
+  --ease-cinematic:
+    cubic-bezier(0.16, 1, 0.3, 1);
+
+  --t-fast: 100ms;
   --t-hover: 100ms;
   --t-fade: 160ms;
-  --t-window: 200ms;
-  --t-spotlight: 200ms;
-  --t-workspace: 260ms;
-  --t-fast: 100ms;
   --t-base: 200ms;
+  --t-window: 200ms;
+  --t-workspace: 260ms;
   --t-slow: 280ms;
+  --t-spotlight: 200ms;
 
-  /* Compatibility aliases for older SevenOS surfaces. */
+
+  /* ==========================================================================
+   * 19 — ENGINE
+   * ========================================================================== */
+
+  --seven-mode-name: "SevenOS Light";
+  --seven-engine-theme: "SevenOS Light";
+
+
+  /* ==========================================================================
+   * 20 — LEGACY COMPATIBILITY
+   * ========================================================================== */
+
   --ebene: var(--pure-white);
-  --glass: var(--surface-glass);
-  --glass-2: var(--surface-glass-2);
-  --glass-3: var(--surface-glass-3);
-  --glass-border-2: var(--glass-border-strong);
+
+  --ink: var(--pure-white);
+  --graphite: var(--light-surface);
+  --surface: var(--surface-1);
+  --panel: var(--surface-2);
+
   --indigo: var(--seven-blue);
   --indigo-bright: var(--seven-cyan);
   --indigo-pale: rgba(47, 123, 255, 0.10);
+
   --baobab: var(--seven-green);
   --baobab-bright: var(--seven-green-active);
   --baobab-pale: rgba(0, 167, 122, 0.10);
+
   --gold: var(--seven-violet);
   --gold-bright: var(--seven-cyan);
   --gold-dim: rgba(106, 92, 255, 0.70);
   --gold-pale: rgba(106, 92, 255, 0.10);
-  --clay: #D20F39;
-  --clay-dim: #A90D31;
-  --clay-pale: rgba(210, 15, 57, 0.10);
 
-  /* Prism Light compatibility tokens for the clarity-first SevenOS Light Mode. */
-  --seven-mode-name: "Prism Light";
-  --cat-base: #EFF1F5;
-  --cat-mantle: #E6E9EF;
-  --cat-crust: #DCE0E8;
-  --cat-surface0: #CCD0DA;
-  --cat-surface1: #BCC0CC;
-  --cat-surface2: #ACB0BE;
-  --cat-text: #4C4F69;
-  --cat-subtext0: #6C6F85;
-  --cat-subtext1: #5C5F77;
-  --cat-blue: #1E66F5;
-  --cat-mauve: #8839EF;
-  --cat-sky: #04A5E5;
-  --cat-teal: #179299;
-  --cat-green: #40A02B;
-  --cat-red: #D20F39;
-  --cat-peach: #FE640B;
-  --seven-icon-theme-preferred: "Catppuccin-Latte, Papirus";
-  --seven-folder-ai: var(--cat-mauve);
-  --seven-folder-dev: var(--cat-blue);
-  --seven-folder-security: var(--cat-red);
-  --seven-folder-media: var(--cat-peach);
-  --seven-folder-studio: #6A5CFF;
-  --seven-folder-cloud: var(--cat-sky);
+  --clay: var(--seven-clay);
+  --clay-dim: var(--seven-clay-dim);
+  --clay-pale: rgba(217, 54, 90, 0.10);
 
-  /* SevenOS Comfort Glass runtime layer.
-     Compatibility tokens above stay stable for older checks, while newer
-     light surfaces use these values to avoid both glare and flat grey panels. */
+
+  /* ==========================================================================
+   * 21 — GLASS LEGACY
+   * ========================================================================== */
+
+  --glass: var(--surface-glass);
+  --glass-2: var(--surface-glass-2);
+  --glass-3: var(--surface-glass-3);
+  --glass-border-2: var(--glass-border-strong);
+
+
+  /* ==========================================================================
+   * 22 — LIGHT COMFORT LAYER
+   * ========================================================================== */
+
   --comfort-light-bg: #F6F9FD;
   --comfort-light-panel: #FAFCFF;
   --comfort-light-panel-2: #F3F7FC;
   --comfort-light-panel-3: #ECF3FC;
   --comfort-light-sidebar: #F8FBFF;
+
   --comfort-light-text: #20283A;
   --comfort-light-muted: #667287;
-  --comfort-light-border: rgba(54, 76, 112, 0.12);
-  --comfort-light-shadow: rgba(50, 67, 98, 0.16);
-  --soft-latte-bg: var(--comfort-light-bg);
-  --soft-latte-panel: var(--comfort-light-panel);
-  --soft-latte-panel-2: var(--comfort-light-panel-2);
-  --soft-latte-panel-3: var(--comfort-light-panel-3);
-  --soft-latte-sidebar: var(--comfort-light-sidebar);
-  --soft-latte-text: var(--comfort-light-text);
-  --soft-latte-muted: var(--comfort-light-muted);
-  --soft-latte-border: var(--comfort-light-border);
-  --soft-latte-shadow: var(--comfort-light-shadow);
-  --soft-latte-blue: #4D7FE6;
-  --soft-latte-violet: #756CE0;
+
+  --comfort-light-border:
+    rgba(54, 76, 112, 0.12);
+
+  --comfort-light-shadow:
+    rgba(50, 67, 98, 0.16);
+
+  --soft-latte-bg:
+    var(--comfort-light-bg);
+
+  --soft-latte-panel:
+    var(--comfort-light-panel);
+
+  --soft-latte-panel-2:
+    var(--comfort-light-panel-2);
+
+  --soft-latte-panel-3:
+    var(--comfort-light-panel-3);
+
+  --soft-latte-sidebar:
+    var(--comfort-light-sidebar);
+
+  --soft-latte-text:
+    var(--comfort-light-text);
+
+  --soft-latte-muted:
+    var(--comfort-light-muted);
+
+  --soft-latte-border:
+    var(--comfort-light-border);
+
+  --soft-latte-shadow:
+    var(--comfort-light-shadow);
+
 }
 
-@keyframes breathe {
-  0%, 100% { border-color: var(--glass-border); }
-  50% { border-color: var(--glass-border-strong); }
-}
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.76; transform: scale(0.97); }
-}
-
-@keyframes card-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* =============================================================================
+ * REDUCED MOTION
+ * ============================================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
+
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+
   }
+
 }

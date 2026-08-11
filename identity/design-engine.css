@@ -1,49 +1,511 @@
+/*
+ * ============================================================================
+ * SevenOS — Seven Design Engine v2.0
+ * ============================================================================
+ *
+ * The Seven Design Engine is the visual orchestration layer of SevenOS.
+ *
+ * It does NOT define the primary color palette.
+ *
+ * Palette source:
+ *     palette.sh
+ *
+ * Design tokens:
+ *     tokens.css
+ *     tokens-light.css
+ *
+ * This file:
+ *     - maps semantic roles
+ *     - controls theme state
+ *     - defines experience colors
+ *     - defines folder/icon semantics
+ *     - preserves legacy compatibility
+ *
+ * ============================================================================
+ */
+
+
+/* ============================================================================
+ * 01 — ENGINE IDENTITY
+ * ============================================================================ */
+
 :root {
+
   --seven-design-engine: "Seven Design Engine";
-  --seven-mode-name: "Prism Dark";
 
-  --cat-base: #11111B;
-  --cat-mantle: #181825;
-  --cat-crust: #0B0B12;
-  --cat-surface0: #313244;
-  --cat-surface1: #45475A;
-  --cat-surface2: #585B70;
-  --cat-text: #CDD6F4;
-  --cat-subtext0: #A6ADC8;
-  --cat-subtext1: #BAC2DE;
-  --cat-blue: #89B4FA;
-  --cat-mauve: #CBA6F7;
-  --cat-sky: #89DCEB;
-  --cat-teal: #94E2D5;
-  --cat-green: #A6E3A1;
-  --cat-red: #F38BA8;
-  --cat-peach: #FAB387;
+  --seven-engine-version: "2.0.0";
 
-  --seven-folder-ai: var(--cat-mauve);
-  --seven-folder-dev: var(--cat-blue);
-  --seven-folder-security: var(--cat-red);
-  --seven-folder-media: var(--cat-peach);
-  --seven-folder-studio: #8B7CFF;
-  --seven-folder-cloud: var(--cat-sky);
+  --seven-mode-name: "SevenOS Dark";
+
+
+  /* ========================================================================
+   * 02 — CORE IDENTITY MAPPING
+   * ======================================================================== */
+
+  /*
+   * The Design Engine consumes the canonical SevenOS tokens.
+   */
+
+  --engine-primary: var(--seven-primary);
+  --engine-secondary: var(--seven-secondary);
+  --engine-accent: var(--seven-accent);
+
+  --engine-success: var(--seven-success);
+  --engine-warning: var(--seven-warning);
+  --engine-error: var(--seven-error);
+  --engine-info: var(--seven-info);
+
+
+  /* ========================================================================
+   * 03 — ENGINE SURFACES
+   * ======================================================================== */
+
+  --engine-background: var(--surface-0);
+  --engine-surface: var(--surface-1);
+  --engine-panel: var(--surface-2);
+  --engine-elevated: var(--surface-3);
+
+  --engine-glass: var(--surface-glass);
+  --engine-glass-strong: var(--surface-glass-2);
+
+  --engine-border: var(--glass-border);
+  --engine-border-strong: var(--glass-border-strong);
+
+
+  /* ========================================================================
+   * 04 — ENGINE TEXT
+   * ======================================================================== */
+
+  --engine-text-primary: var(--text-primary);
+  --engine-text-secondary: var(--text-secondary);
+  --engine-text-muted: var(--text-muted);
+  --engine-text-disabled: var(--text-disabled);
+
+
+  /* ========================================================================
+   * 05 — ENGINE GRADIENTS
+   * ======================================================================== */
+
+  --engine-gradient-primary: var(--gradient-primary);
+  --engine-gradient-seven: var(--gradient-seven);
+  --engine-gradient-cyber: var(--gradient-cyber);
+
+
+  /* ========================================================================
+   * 06 — ENGINE GLOWS
+   * ======================================================================== */
+
+  --engine-glow-primary: var(--glow-blue);
+  --engine-glow-secondary: var(--glow-violet);
+  --engine-glow-accent: var(--glow-cyan);
+  --engine-glow-success: var(--glow-green);
+
+
+  /* ========================================================================
+   * 07 — EXPERIENCE SYSTEM
+   * ======================================================================== */
+
+  /*
+   * SevenOS is not organized around applications only.
+   * It is organized around experiences.
+   *
+   * Learn    → understand
+   * Build    → create
+   * Protect  → secure
+   * Connect  → collaborate
+   */
+
+  --experience-learn:
+    var(--experience-learn);
+
+  --experience-build:
+    var(--experience-build);
+
+  --experience-protect:
+    var(--experience-protect);
+
+  --experience-connect:
+    var(--experience-connect);
+
+
+  /* ========================================================================
+   * 08 — EXPERIENCE BACKGROUNDS
+   * ======================================================================== */
+
+  --experience-learn-bg:
+    color-mix(
+      in srgb,
+      var(--experience-learn) 10%,
+      transparent
+    );
+
+  --experience-build-bg:
+    color-mix(
+      in srgb,
+      var(--experience-build) 10%,
+      transparent
+    );
+
+  --experience-protect-bg:
+    color-mix(
+      in srgb,
+      var(--experience-protect) 10%,
+      transparent
+    );
+
+  --experience-connect-bg:
+    color-mix(
+      in srgb,
+      var(--experience-connect) 10%,
+      transparent
+    );
+
+
+  /* ========================================================================
+   * 09 — FOLDER / ICON SEMANTICS
+   * ======================================================================== */
+
+  /*
+   * These are semantic categories.
+   * They no longer depend on Catppuccin.
+   */
+
+  --seven-folder-ai:
+    var(--seven-secondary);
+
+  --seven-folder-dev:
+    var(--seven-primary);
+
+  --seven-folder-security:
+    var(--seven-error);
+
+  --seven-folder-media:
+    var(--seven-warning);
+
+  --seven-folder-studio:
+    var(--seven-secondary);
+
+  --seven-folder-cloud:
+    var(--seven-accent);
+
+
+  /* ========================================================================
+   * 10 — CULTURAL SEMANTICS
+   * ======================================================================== */
+
+  --engine-nile:
+    var(--culture-nile);
+
+  --engine-baobab:
+    var(--culture-baobab);
+
+  --engine-kente:
+    var(--culture-kente);
+
+  --engine-sand:
+    var(--culture-sand);
+
+  --engine-hibiscus:
+    var(--culture-hibiscus);
+
+
+  /* ========================================================================
+   * 11 — COMPONENT STATES
+   * ======================================================================== */
+
+  --state-active:
+    var(--seven-primary);
+
+  --state-selected:
+    var(--seven-secondary);
+
+  --state-focus:
+    var(--seven-accent);
+
+  --state-success:
+    var(--seven-success);
+
+  --state-warning:
+    var(--seven-warning);
+
+  --state-error:
+    var(--seven-error);
+
+  --state-disabled:
+    var(--text-disabled);
+
+
+  /* ========================================================================
+   * 12 — ENGINE EFFECTS
+   * ======================================================================== */
+
+  --effect-hover:
+    var(--surface-glass-2);
+
+  --effect-active:
+    var(--surface-glass-3);
+
+  --effect-focus:
+    var(--focus-blue);
+
+  --effect-selection:
+    rgba(122, 92, 255, 0.14);
+
+
+  /* ========================================================================
+   * 13 — ENGINE METADATA
+   * ======================================================================== */
+
+  --seven-engine-theme: "SevenOS Dark";
+
 }
 
-[data-seven-theme="light"] {
-  --seven-mode-name: "Prism Light";
 
-  --cat-base: #EFF1F5;
-  --cat-mantle: #E6E9EF;
-  --cat-crust: #DCE0E8;
-  --cat-surface0: #CCD0DA;
-  --cat-surface1: #BCC0CC;
-  --cat-surface2: #ACB0BE;
-  --cat-text: #4C4F69;
-  --cat-subtext0: #6C6F85;
-  --cat-subtext1: #5C5F77;
-  --cat-blue: #1E66F5;
-  --cat-mauve: #8839EF;
-  --cat-sky: #04A5E5;
-  --cat-teal: #179299;
-  --cat-green: #40A02B;
-  --cat-red: #D20F39;
-  --cat-peach: #FE640B;
+/* ============================================================================
+ * 14 — LIGHT THEME
+ * ============================================================================ */
+
+[data-seven-theme="light"] {
+
+  /*
+   * The identity does not change.
+   *
+   * Only the expression changes:
+   *
+   *     Dark surfaces → Light surfaces
+   *     Light text    → Dark text
+   */
+
+  --seven-mode-name: "SevenOS Light";
+
+  --seven-engine-theme: "SevenOS Light";
+
+
+  /* ========================================================================
+   * Core identity
+   * ======================================================================== */
+
+  --engine-primary: var(--seven-primary);
+  --engine-secondary: var(--seven-secondary);
+  --engine-accent: var(--seven-accent);
+
+  --engine-success: var(--seven-success);
+  --engine-warning: var(--seven-warning);
+  --engine-error: var(--seven-error);
+  --engine-info: var(--seven-info);
+
+
+  /* ========================================================================
+   * Surfaces
+   * ======================================================================== */
+
+  --engine-background: var(--surface-0);
+  --engine-surface: var(--surface-1);
+  --engine-panel: var(--surface-2);
+  --engine-elevated: var(--surface-3);
+
+  --engine-glass: var(--surface-glass);
+  --engine-glass-strong: var(--surface-glass-2);
+
+  --engine-border: var(--glass-border);
+  --engine-border-strong: var(--glass-border-strong);
+
+
+  /* ========================================================================
+   * Text
+   * ======================================================================== */
+
+  --engine-text-primary: var(--text-primary);
+  --engine-text-secondary: var(--text-secondary);
+  --engine-text-muted: var(--text-muted);
+  --engine-text-disabled: var(--text-disabled);
+
+
+  /* ========================================================================
+   * Effects
+   * ======================================================================== */
+
+  --effect-hover:
+    var(--surface-glass-2);
+
+  --effect-active:
+    var(--surface-glass-3);
+
+  --effect-focus:
+    var(--focus-blue);
+
+  --effect-selection:
+    rgba(122, 92, 255, 0.12);
+
+
+  /* ========================================================================
+   * Light experience adjustments
+   * ======================================================================== */
+
+  --experience-protect:
+    #008F68;
+
+  --state-success:
+    #008F68;
+
+}
+
+
+/* ============================================================================
+ * 15 — LEGACY CATPPUCCIN COMPATIBILITY
+ * ============================================================================
+ *
+ * IMPORTANT:
+ *
+ * These variables are retained only because older SevenOS components may
+ * still reference them.
+ *
+ * New components MUST NOT use --cat-* variables.
+ *
+ * Migration target:
+ *
+ *     --cat-blue      → --seven-primary
+ *     --cat-mauve     → --seven-secondary
+ *     --cat-sky       → --seven-accent
+ *     --cat-green     → --seven-success
+ *     --cat-red       → --seven-error
+ *     --cat-peach     → --seven-warning
+ *
+ * ========================================================================== */
+
+:root {
+
+  --cat-base: var(--surface-0);
+  --cat-mantle: var(--surface-1);
+  --cat-crust: var(--surface-0);
+
+  --cat-surface0: var(--surface-2);
+  --cat-surface1: var(--surface-3);
+  --cat-surface2: var(--surface-3);
+
+  --cat-text: var(--text-primary);
+  --cat-subtext0: var(--text-muted);
+  --cat-subtext1: var(--text-secondary);
+
+  --cat-blue: var(--seven-primary);
+  --cat-mauve: var(--seven-secondary);
+  --cat-sky: var(--seven-accent);
+  --cat-teal: var(--seven-accent);
+
+  --cat-green: var(--seven-success);
+  --cat-red: var(--seven-error);
+  --cat-peach: var(--seven-warning);
+}
+
+
+[data-seven-theme="light"] {
+
+  --cat-base: var(--surface-0);
+  --cat-mantle: var(--surface-1);
+  --cat-crust: var(--surface-2);
+
+  --cat-surface0: var(--surface-2);
+  --cat-surface1: var(--surface-3);
+  --cat-surface2: var(--surface-3);
+
+  --cat-text: var(--text-primary);
+  --cat-subtext0: var(--text-muted);
+  --cat-subtext1: var(--text-secondary);
+
+  --cat-blue: var(--seven-primary);
+  --cat-mauve: var(--seven-secondary);
+  --cat-sky: var(--seven-accent);
+  --cat-teal: var(--seven-accent);
+
+  --cat-green: var(--seven-success);
+  --cat-red: var(--seven-error);
+  --cat-peach: var(--seven-warning);
+}
+
+
+/* ============================================================================
+ * 16 — LEGACY FOLDER COMPATIBILITY
+ * ============================================================================ */
+
+:root {
+
+  --seven-folder-ai:
+    var(--seven-secondary);
+
+  --seven-folder-dev:
+    var(--seven-primary);
+
+  --seven-folder-security:
+    var(--seven-error);
+
+  --seven-folder-media:
+    var(--seven-warning);
+
+  --seven-folder-studio:
+    var(--seven-secondary);
+
+  --seven-folder-cloud:
+    var(--seven-accent);
+
+}
+
+
+/* ============================================================================
+ * 17 — ENGINE UTILITY CLASSES
+ * ============================================================================
+ *
+ * Small semantic utilities for SevenOS components.
+ * ========================================================================== */
+
+.seven-engine-primary {
+  color: var(--engine-primary);
+}
+
+.seven-engine-secondary {
+  color: var(--engine-secondary);
+}
+
+.seven-engine-accent {
+  color: var(--engine-accent);
+}
+
+.seven-engine-success {
+  color: var(--engine-success);
+}
+
+.seven-engine-warning {
+  color: var(--engine-warning);
+}
+
+.seven-engine-error {
+  color: var(--engine-error);
+}
+
+.seven-engine-surface {
+  background: var(--engine-surface);
+}
+
+.seven-engine-panel {
+  background: var(--engine-panel);
+}
+
+.seven-engine-glass {
+  background: var(--engine-glass);
+  border: 1px solid var(--engine-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+
+/* ============================================================================
+ * 18 — ACCESSIBILITY
+ * ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .seven-engine-glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
 }

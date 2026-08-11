@@ -1,0 +1,35 @@
+* {
+  seven-blue: #4DA3FF;
+  seven-violet: #7A5CFF;
+  seven-cyan: #00D4FF;
+  seven-green: #00FFB3;
+  deep-void: #09090B;
+  surface-dark: #12131A;
+  surface-0: #09090B;
+  surface-1: rgba(18, 19, 26, 0.86);
+  surface-2: rgba(28, 31, 44, 0.76);
+  surface-3: rgba(39, 43, 61, 0.82);
+  glass: rgba(255,255,255,0.06);
+  glass-2: rgba(255,255,255,0.09);
+  glass-3: rgba(255,255,255,0.13);
+  glass-border: rgba(255,255,255,0.08);
+  glass-border-2: rgba(77,163,255,0.32);
+  text-1: #EDEDED;
+  text-2: #B9C0CC;
+  text-3: #8A8F98;
+  indigo: #4DA3FF;
+  indigo-bright: #00D4FF;
+  gold: #7A5CFF;
+  gold-bright: #00D4FF;
+  gold-dim: rgba(122, 92, 255, 0.72);
+  clay: #FF5976;
+  clay-dim: #C94563;
+  baobab: #00FFB3;
+  baobab-bright: #00E676;
+
+  background-color: transparent;
+  text-color: @text-1;
+  font: "SF Pro Text 13";
+  margin: 0;
+  padding: 0;
+}

@@ -139,18 +139,18 @@ write_motion_conf() {
 
 animations {
     enabled = true
-    bezier = sevenMotion, 0.12, 0.92, 0.18, 1.00
-    bezier = sevenMotionOpen, 0.10, 1.00, 0.20, 1.00
-    bezier = sevenMotionExit, 0.36, 0.00, 0.88, 0.18
-    bezier = sevenMotionWorkspace, 0.10, 0.95, 0.12, 1.00
-    bezier = sevenMotionLayer, 0.08, 1.00, 0.00, 1.00
-    animation = windows, 1, 7, sevenMotionOpen, popin 78%
-    animation = windowsOut, 1, 5, sevenMotionExit, popin 86%
-    animation = border, 1, 9, sevenMotion
-    animation = fade, 1, 7, sevenMotion
-    animation = layers, 1, 7, sevenMotionLayer, popin 88%
-    animation = workspaces, 1, 8, sevenMotionWorkspace, slidefade 45%
-    animation = specialWorkspace, 1, 6, sevenMotionWorkspace, slidevert
+    bezier = sevenMotion, 0.16, 0.92, 0.22, 1.00
+    bezier = sevenMotionOpen, 0.14, 1.00, 0.24, 1.00
+    bezier = sevenMotionExit, 0.32, 0.00, 0.78, 0.16
+    bezier = sevenMotionWorkspace, 0.12, 0.98, 0.18, 1.00
+    bezier = sevenMotionLayer, 0.10, 1.00, 0.08, 1.00
+    animation = windows, 1, 9, sevenMotionOpen, popin 86%
+    animation = windowsOut, 1, 7, sevenMotionExit, popin 92%
+    animation = border, 1, 10, sevenMotion
+    animation = fade, 1, 9, sevenMotion
+    animation = layers, 1, 9, sevenMotionLayer, popin 94%
+    animation = workspaces, 1, 10, sevenMotionWorkspace, slidefade 28%
+    animation = specialWorkspace, 1, 8, sevenMotionWorkspace, slidevert
 }
 EOF
       ;;
