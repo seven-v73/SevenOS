@@ -405,8 +405,177 @@ print_execution() {
 # Single cycle
 # ============================================================
 
-run_once() {
+# run_once() {
 
+#     local output_json="${1:-}"
+
+#     local context
+#     local fingerprint
+#     local previous_state
+
+#     local previous_fingerprint="null"
+#     local previous_actions="[]"
+
+#     local context_changed="true"
+
+#     local execution_id
+#     local executed_actions
+#     local audit_execution
+
+
+#     # --------------------------------------------------------
+#     # Build current context
+#     # --------------------------------------------------------
+
+#     context="$(build_context)"
+
+#     fingerprint="$(context_fingerprint "$context")"
+
+#     execution_id="$(generate_execution_id)"
+
+
+#     # --------------------------------------------------------
+#     # Load previous daemon state
+#     # --------------------------------------------------------
+
+#     previous_state="$(context_state_load)"
+
+#     previous_fingerprint="$(
+#         jq -c '
+#             .last_fingerprint // null
+#         ' <<< "$previous_state"
+#     )"
+
+#     previous_actions="$(
+#         jq -c '
+#             .last_actions // []
+#         ' <<< "$previous_state"
+#     )"
+
+
+#     # --------------------------------------------------------
+#     # Detect context change
+#     # --------------------------------------------------------
+
+#     if [[ "$previous_fingerprint" != "null" ]] &&
+#        [[ "$fingerprint" == "$previous_fingerprint" ]]; then
+
+#         context_changed="false"
+#     fi
+
+
+#     # --------------------------------------------------------
+#     # JSON mode
+#     #
+#     # Important:
+#     # JSON mode always returns the complete cycle.
+#     # It must never be replaced by a NO-OP message.
+#     # --------------------------------------------------------
+
+#     if [[ "$output_json" == "--json" ]]; then
+
+#         jq \
+#             --arg execution_id "$execution_id" \
+#             --argjson changed "$context_changed" \
+#             '
+#             .execution.executions |= map(
+#                 .execution_id = (
+#                     .execution_id
+#                     // $execution_id
+#                 )
+#             )
+#             | .context_changed = $changed
+#             ' <<< "$context"
+
+#         # Persist even JSON cycles.
+#         executed_actions="$(extract_executed_actions "$context")"
+
+#         context_state_save \
+#             "$context" \
+#             "$fingerprint" \
+#             "$executed_actions"
+
+#         return 0
+#     fi
+
+
+#     # --------------------------------------------------------
+#     # Human output
+#     # --------------------------------------------------------
+
+#     print_context_header "$context"
+
+
+#     # --------------------------------------------------------
+#     # Context unchanged
+#     #
+#     # We do NOT silently discard the execution information.
+#     # The daemon still reports what executor decided.
+#     # --------------------------------------------------------
+
+#     if [[ "$context_changed" == "false" ]]; then
+
+#         echo "Context : unchanged"
+#         echo
+
+#         print_execution "$context"
+
+#         echo
+#         echo "NO-OP: context unchanged"
+
+#     else
+
+#         print_execution "$context"
+
+#     fi
+
+
+#     # --------------------------------------------------------
+#     # Extract successfully executed actions
+#     # --------------------------------------------------------
+
+#     executed_actions="$(extract_executed_actions "$context")"
+
+
+#     # --------------------------------------------------------
+#     # Save context state
+#     # --------------------------------------------------------
+
+#     context_state_save \
+#         "$context" \
+#         "$fingerprint" \
+#         "$executed_actions"
+
+
+#     # --------------------------------------------------------
+#     # Audit apply cycles
+#     # --------------------------------------------------------
+
+#     if [[ "$MODE" == "apply" ]]; then
+
+#         audit_execution="$(
+#             build_audit_execution \
+#                 "$(jq '.execution' <<< "$context")" \
+#                 "$execution_id"
+#         )"
+
+#         record_audit "$audit_execution"
+
+#     fi
+# }
+
+# ============================================================
+# Context comparison
+# ============================================================
+
+context_changed() {
+    local current="$1"
+    local previous="$2"
+
+    [[ "$current" != "$previous" ]]
+}
+
+run_once() {
     local output_json="${1:-}"
 
     local context
@@ -416,12 +585,24 @@ run_once() {
     local previous_fingerprint="null"
     local previous_actions="[]"
 
-    local context_changed="true"
-
+    local changed="true"
     local execution_id
-    local executed_actions
+    local execution
     local audit_execution
 
+    # --------------------------------------------------------
+    # Persistent state
+    # --------------------------------------------------------
+
+    previous_state="$(context_state_load)"
+
+    previous_fingerprint="$(
+        jq -c '.last_fingerprint // null' <<< "$previous_state"
+    )"
+
+    previous_actions="$(
+        jq -c '.last_actions // []' <<< "$previous_state"
+    )"
 
     # --------------------------------------------------------
     # Build current context
@@ -429,138 +610,161 @@ run_once() {
 
     context="$(build_context)"
 
-    fingerprint="$(context_fingerprint "$context")"
+    # --------------------------------------------------------
+    # Generate execution identity
+    # --------------------------------------------------------
 
     execution_id="$(generate_execution_id)"
 
-
     # --------------------------------------------------------
-    # Load previous daemon state
-    # --------------------------------------------------------
-
-    previous_state="$(context_state_load)"
-
-    previous_fingerprint="$(
-        jq -c '
-            .last_fingerprint // null
-        ' <<< "$previous_state"
-    )"
-
-    previous_actions="$(
-        jq -c '
-            .last_actions // []
-        ' <<< "$previous_state"
-    )"
-
-
-    # --------------------------------------------------------
-    # Detect context change
+    # Attach execution ID to every execution record
     # --------------------------------------------------------
 
-    if [[ "$previous_fingerprint" != "null" ]] &&
-       [[ "$fingerprint" == "$previous_fingerprint" ]]; then
-
-        context_changed="false"
-    fi
-
-
-    # --------------------------------------------------------
-    # JSON mode
-    #
-    # Important:
-    # JSON mode always returns the complete cycle.
-    # It must never be replaced by a NO-OP message.
-    # --------------------------------------------------------
-
-    if [[ "$output_json" == "--json" ]]; then
-
+    execution="$(
         jq \
             --arg execution_id "$execution_id" \
-            --argjson changed "$context_changed" \
             '
             .execution.executions |= map(
-                .execution_id = (
-                    .execution_id
-                    // $execution_id
-                )
+                .execution_id = $execution_id
             )
-            | .context_changed = $changed
             ' <<< "$context"
-
-        # Persist even JSON cycles.
-        executed_actions="$(extract_executed_actions "$context")"
-
-        context_state_save \
-            "$context" \
-            "$fingerprint" \
-            "$executed_actions"
-
-        return 0
-    fi
-
+    )"
 
     # --------------------------------------------------------
-    # Human output
+    # Extract execution object for audit
     # --------------------------------------------------------
 
-    print_context_header "$context"
-
+    audit_execution="$(
+        jq -c '.execution' <<< "$execution"
+    )"
 
     # --------------------------------------------------------
-    # Context unchanged
+    # ALWAYS AUDIT THE CYCLE
     #
-    # We do NOT silently discard the execution information.
-    # The daemon still reports what executor decided.
+    # Even if the context is unchanged.
+    # A NO-OP is still an observable orchestration decision.
     # --------------------------------------------------------
 
-    if [[ "$context_changed" == "false" ]]; then
+    record_audit "$audit_execution"
 
-        echo "Context : unchanged"
-        echo
+    # --------------------------------------------------------
+    # Calculate current fingerprint
+    # --------------------------------------------------------
 
-        print_execution "$context"
+    fingerprint="$(
+        context_fingerprint "$execution"
+    )"
 
-        echo
-        echo "NO-OP: context unchanged"
+    # --------------------------------------------------------
+    # Compare context
+    # --------------------------------------------------------
 
+    if [[ "$previous_fingerprint" == "null" ]]; then
+        # First cycle is always considered a context change.
+        changed="true"
+    elif context_changed "$fingerprint" "$previous_fingerprint"; then
+        changed="true"
     else
-
-        print_execution "$context"
-
+        changed="false"
     fi
 
-
     # --------------------------------------------------------
-    # Extract successfully executed actions
+    # Persist orchestration state
     # --------------------------------------------------------
 
-    executed_actions="$(extract_executed_actions "$context")"
+    local executed_actions
 
-
-    # --------------------------------------------------------
-    # Save context state
-    # --------------------------------------------------------
+    executed_actions="$(
+        jq -c '
+            .execution.executions
+            | map({
+                id: .id,
+                execution: .execution,
+                executable: .executable
+            })
+        ' <<< "$execution"
+    )"
 
     context_state_save \
-        "$context" \
+        "$(
+            jq -c '.state' <<< "$execution"
+        )" \
         "$fingerprint" \
         "$executed_actions"
 
+    # --------------------------------------------------------
+    # Add change information to public contract
+    # --------------------------------------------------------
+
+    execution="$(
+        jq \
+            --argjson changed "$changed" \
+            '
+            .context_changed = $changed
+            ' <<< "$execution"
+    )"
 
     # --------------------------------------------------------
-    # Audit apply cycles
+    # JSON mode
     # --------------------------------------------------------
 
-    if [[ "$MODE" == "apply" ]]; then
+    if [[ "$output_json" == "--json" ]]; then
+        echo "$execution"
+        return 0
+    fi
 
-        audit_execution="$(
-            build_audit_execution \
-                "$(jq '.execution' <<< "$context")" \
-                "$execution_id"
-        )"
+    # --------------------------------------------------------
+    # Human-readable output
+    # --------------------------------------------------------
 
-        record_audit "$audit_execution"
+    echo "SevenOS Context Daemon"
+    echo "──────────────────────"
+    echo
+    echo "Mode : $MODE"
+    echo "Cycle: once"
+    echo
 
+    echo "State"
+    echo "─────"
+
+    jq -r '
+        "activity     : \(.state.activity)",
+        "power        : \(.state.power_state)",
+        "connectivity : \(.state.connectivity)",
+        "security     : \(.state.security_state)",
+        "focus        : \(.state.focus)"
+    ' <<< "$execution"
+
+    echo
+    echo "Execution"
+    echo "─────────"
+
+    if [[ "$changed" == "false" ]]; then
+        echo "Context : unchanged"
+        echo
+    else
+        echo "Context : changed"
+        echo
+    fi
+
+    jq -r '
+        .execution.executions[] |
+        if .execution == "executed" then
+            "SUCCESS: \(.id) → \(.result.message // "executed")"
+        elif .execution == "dry_run" then
+            "DRY-RUN: \(.id)"
+        elif .execution == "blocked_by_mode" then
+            "SKIP: \(.id) (blocked_by_mode)"
+        elif .execution == "blocked_by_risk" then
+            "SKIP: \(.id) (blocked_by_risk)"
+        else
+            "SKIP: \(.id) (\(.execution))"
+        end
+    ' <<< "$execution"
+
+    if [[ "$changed" == "false" ]]; then
+        echo
+        echo "NO-OP: context unchanged"
     fi
 }
 
@@ -571,12 +775,13 @@ run_once() {
 
 run_daemon() {
 
-    trap '
-        echo
-        echo "SevenOS Context Daemon stopped."
-        exit 0
-    ' INT TERM
+    local running=true
 
+    cleanup_daemon() {
+        running=false
+    }
+
+    trap cleanup_daemon INT TERM
 
     echo "SevenOS Context Daemon"
     echo "──────────────────────"
@@ -587,16 +792,35 @@ run_daemon() {
     echo "Press Ctrl+C to stop."
     echo
 
-
-    while true; do
+    while [[ "$running" == "true" ]]; do
 
         run_once
 
+        [[ "$running" == "true" ]] || break
+
         echo
 
-        sleep "$INTERVAL"
+        # Sleep par petits intervalles afin que SIGTERM/SIGINT
+        # soit traité rapidement.
+        local elapsed=0
+
+        while [[ "$running" == "true" && "$elapsed" -lt "$INTERVAL" ]]; do
+            sleep 1 &
+            local sleep_pid=$!
+
+            wait "$sleep_pid" 2>/dev/null || true
+
+            elapsed=$((elapsed + 1))
+        done
 
     done
+
+    trap - INT TERM
+
+    echo
+    echo "SevenOS Context Daemon stopped."
+
+    return 0
 }
 
 

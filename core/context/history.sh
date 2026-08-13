@@ -3,236 +3,259 @@
 set -Eeuo pipefail
 
 # ============================================================
-# SevenOS Context History Engine
-#
-# Reads the audit stream and provides historical context.
-#
-# IMPORTANT:
-#
-# history.sh does not decide.
-# history.sh does not execute.
-# history.sh does not modify audit events.
-#
-# It only reads and summarizes historical execution data.
-#
-# Contract:
-#
-#   sevenos.history.v1
+# SevenOS Context History
 # ============================================================
 
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-AUDIT_FILE="$SCRIPT_DIR/audit/events.jsonl"
+STATE_DIR="$SCRIPT_DIR/.context"
+STATE_FILE="$STATE_DIR/context.json"
+
+AUDIT_DIR="$SCRIPT_DIR/audit"
+AUDIT_FILE="$AUDIT_DIR/events.jsonl"
+
+mkdir -p "$STATE_DIR" "$AUDIT_DIR"
 
 # ============================================================
-# Validation
+# Helpers
 # ============================================================
 
-require_audit_file() {
-    [[ -f "$AUDIT_FILE" ]] || {
-        echo "history.sh: audit file not found: $AUDIT_FILE" >&2
-        return 1
+die() {
+    echo "history.sh: $*" >&2
+    exit 1
+}
+
+require_command() {
+    command -v "$1" >/dev/null 2>&1 || {
+        die "required command unavailable: $1"
     }
 }
 
+require_command jq
+
 # ============================================================
-# Input
+# State
 # ============================================================
 
-get_events() {
-    require_audit_file
+history_state_json() {
+    if [[ ! -f "$STATE_FILE" ]]; then
+        jq -n '
+            {
+                schema: "sevenos.context.state.v1",
+                last_context: null,
+                last_fingerprint: null,
+                last_actions: [],
+                updated_at: null
+            }
+        '
+        return
+    fi
 
-    cat "$AUDIT_FILE"
+    jq '.' "$STATE_FILE"
 }
 
 # ============================================================
-# JSON history
+# Audit source
+# ============================================================
+
+audit_exists() {
+    [[ -f "$AUDIT_FILE" ]]
+}
+
+audit_count() {
+    if audit_exists; then
+        wc -l < "$AUDIT_FILE"
+    else
+        echo "0"
+    fi
+}
+
+# ============================================================
+# Status
 # ============================================================
 
 show_status_json() {
-    local events
-
-    if [[ ! -f "$AUDIT_FILE" ]]; then
-        jq -n \
-            '{
+    history_state_json |
+        jq '
+            {
                 schema: "sevenos.history.v1",
-                source: {
-                    audit_schema: "sevenos.audit.event.v1"
-                },
-                count: 0,
-                events: []
-            }'
+                state_schema: .schema,
+                updated_at: .updated_at,
+                fingerprint: .last_fingerprint,
+                actions: .last_actions,
+                audit_events: 0
+            }
+        ' |
+        if audit_exists; then
+            jq --slurpfile events "$AUDIT_FILE" '
+                .audit_events = ($events | length)
+            '
+        else
+            cat
+        fi
+}
 
-        return 0
-    fi
+show_status() {
+    local updated
+    local fingerprint
+    local actions
 
-    events="$(
-        jq -s '
-            map(
-                select(.schema == "sevenos.audit.event.v1")
-            )
-        ' "$AUDIT_FILE"
+    updated="$(
+        jq -r '.updated_at // "never"' "$STATE_FILE" 2>/dev/null || echo "never"
     )"
 
-    jq -n \
-        --arg audit_schema "sevenos.audit.event.v1" \
-        --argjson events "$events" \
-        '{
-            schema: "sevenos.history.v1",
+    fingerprint="$(
+        jq -c '.last_fingerprint // null' "$STATE_FILE" 2>/dev/null || echo "null"
+    )"
 
-            source: {
-                audit_schema: $audit_schema
-            },
+    actions="$(
+        jq '.last_actions | length' "$STATE_FILE" 2>/dev/null || echo "0"
+    )"
 
-            count: ($events | length),
-
-            events: $events
-        }'
+    echo "SevenOS Context History"
+    echo "───────────────────────"
+    echo
+    echo "Schema       : sevenos.context.state.v1"
+    echo "Updated      : $updated"
+    echo
+    echo "Fingerprint  : $fingerprint"
+    echo
+    echo "Actions      : $actions"
 }
 
 # ============================================================
-# Statistics
+# Stats
 # ============================================================
 
-show_stats_json() {
-    local events
+show_stats() {
+    local total=0
+    local executed=0
+    local blocked=0
+    local dry_run=0
+    local failed=0
+    local noop=0
 
-    if [[ ! -f "$AUDIT_FILE" ]]; then
-        jq -n '
-            {
-                schema: "sevenos.history.stats.v1",
-                total: 0,
-                executed: 0,
-                blocked: 0,
-                dry_run: 0,
-                failures: 0,
-                successes: 0
-            }
-        '
+    if audit_exists; then
 
-        return 0
-    fi
+        total="$(
+            jq -s 'length' "$AUDIT_FILE"
+        )"
 
-    events="$(
-        jq -s '
-            map(
-                select(.schema == "sevenos.audit.event.v1")
-            )
-        ' "$AUDIT_FILE"
-    )"
-
-    jq -n \
-        --argjson events "$events" \
-        '{
-            schema: "sevenos.history.stats.v1",
-
-            total: ($events | length),
-
-            executed: (
-                $events
-                | map(select(.execution == "executed"))
+        executed="$(
+            jq -s '
+                map(select(.execution == "executed"))
                 | length
-            ),
+            ' "$AUDIT_FILE"
+        )"
 
-            blocked: (
-                $events
-                | map(select(.execution | startswith("blocked")))
+        blocked="$(
+            jq -s '
+                map(
+                    select(
+                        .execution == "blocked_by_mode"
+                        or .execution == "blocked_by_risk"
+                        or .execution == "blocked"
+                    )
+                )
                 | length
-            ),
+            ' "$AUDIT_FILE"
+        )"
 
-            dry_run: (
-                $events
-                | map(select(.execution == "dry_run"))
+        dry_run="$(
+            jq -s '
+                map(select(.execution == "dry_run"))
                 | length
-            ),
+            ' "$AUDIT_FILE"
+        )"
 
-            failures: (
-                $events
-                | map(
+        failed="$(
+            jq -s '
+                map(
                     select(
                         .execution == "handler_failed"
-                        or
-                        (.result.status? == "failure")
+                        or .execution == "invalid_handler_result"
                     )
                 )
                 | length
-            ),
+            ' "$AUDIT_FILE"
+        )"
 
-            successes: (
-                $events
-                | map(
-                    select(
-                        .result.status? == "success"
-                    )
-                )
+        noop="$(
+            jq -s '
+                map(select(.execution == "no_op"))
                 | length
-            )
-        }'
+            ' "$AUDIT_FILE"
+        )"
+    fi
+
+    echo "SevenOS Context History"
+    echo "───────────────────────"
+    echo
+    echo "Total events : $total"
+    echo "Executed     : $executed"
+    echo "Blocked      : $blocked"
+    echo "Dry-run      : $dry_run"
+    echo "Failed       : $failed"
+    echo "No-op        : $noop"
 }
 
 # ============================================================
-# Recent events
+# Recent
 # ============================================================
 
 show_recent_json() {
     local limit="${1:-10}"
 
     [[ "$limit" =~ ^[0-9]+$ ]] || {
-        echo "history.sh: invalid limit: $limit" >&2
-        return 1
+        die "invalid history limit: $limit"
     }
 
-    if [[ ! -f "$AUDIT_FILE" ]]; then
-        jq -n \
-            --argjson limit "$limit" \
-            '{
-                schema: "sevenos.history.recent.v1",
-                limit: $limit,
-                events: []
-            }'
-
-        return 0
+    if ! audit_exists; then
+        echo "[]"
+        return
     fi
 
     jq -s \
         --argjson limit "$limit" '
-        {
-            schema: "sevenos.history.recent.v1",
-            limit: $limit,
-            events: (
-                . |
-                reverse |
-                .[0:$limit] |
-                reverse
-            )
-        }
-    ' "$AUDIT_FILE"
+        if $limit == 0 then
+            []
+        else
+            .[-$limit:]
+        end
+        ' "$AUDIT_FILE"
 }
 
-# ============================================================
-# Human readable
-# ============================================================
+show_recent() {
+    local limit="${1:-10}"
 
-show_status() {
-    local result
+    [[ "$limit" =~ ^[0-9]+$ ]] || {
+        die "invalid history limit: $limit"
+    }
 
-    result="$(show_status_json)"
+    if ! audit_exists; then
+        echo "No history."
+        return
+    fi
 
-    echo "SevenOS History"
-    echo "───────────────"
-    echo
-    echo "Events : $(jq -r '.count' <<< "$result")"
-    echo
-
-    jq -r '
-        .events[] |
-        "[\(.execution)] \(.action)\n" +
-        "  timestamp : \(.timestamp)\n" +
-        "  category  : \(.category)\n" +
-        "  priority  : \(.priority)\n" +
-        "  risk      : \(.risk)"
-    ' <<< "$result"
+    jq -s \
+        --argjson limit "$limit" '
+        if $limit == 0 then
+            []
+        else
+            .[-$limit:]
+        end
+        |
+        .[] |
+        "[\(.execution_mode)] \(.action)",
+        "  time        : \(.timestamp)",
+        "  execution   : \(.execution)",
+        "  execution_id: \(.execution_id)",
+        "  category    : \(.category)",
+        "  priority    : \(.priority)",
+        "  risk        : \(.risk)",
+        ""
+        ' "$AUDIT_FILE"
 }
 
 # ============================================================
@@ -241,40 +264,47 @@ show_status() {
 
 case "${1:-status}" in
 
-status)
-    if [[ "${2:-}" == "--json" ]]; then
-        show_status_json
-    else
-        show_status
-    fi
-    ;;
+    status)
 
-stats)
-    show_stats_json
-    ;;
+        if [[ "${2:-}" == "--json" ]]; then
+            show_status_json
+        else
+            show_status
+        fi
 
-recent)
-    limit="${2:-10}"
+        ;;
 
-    show_recent_json "$limit"
-    ;;
+    stats)
 
-count)
-    if [[ ! -f "$AUDIT_FILE" ]]; then
-        echo "0"
-    else
-        wc -l < "$AUDIT_FILE"
-    fi
-    ;;
+        show_stats
 
-*)
-    echo "Usage:"
-    echo "  history.sh status"
-    echo "  history.sh status --json"
-    echo "  history.sh stats"
-    echo "  history.sh recent [limit]"
-    echo "  history.sh count"
-    exit 1
-    ;;
+        ;;
+
+    recent)
+
+        limit="${2:-10}"
+
+        if [[ "${3:-}" == "--json" ]]; then
+            show_recent_json "$limit"
+        else
+            show_recent "$limit"
+        fi
+
+        ;;
+
+    *)
+
+        echo "Usage:"
+        echo
+        echo "  history.sh status"
+        echo "  history.sh status --json"
+        echo "  history.sh stats"
+        echo "  history.sh recent"
+        echo "  history.sh recent 20"
+        echo "  history.sh recent 20 --json"
+
+        exit 1
+
+        ;;
 
 esac
