@@ -1,34 +1,106 @@
 {
   "schema": "sevenos.context.state.v1",
   "last_context": {
-    "activity": "general",
-    "power_state": "unknown",
-    "connectivity": "unknown",
-    "security_state": "",
-    "focus": "neutral"
+    "activity": "development",
+    "power_state": "high",
+    "connectivity": "online",
+    "security_state": "exposed",
+    "focus": "focused"
   },
   "last_fingerprint": {
-    "actions": [],
-    "decisions": [],
-    "policies": [],
+    "actions": [
+      {
+        "category": "security",
+        "id": "notify_security",
+        "mode": "notify",
+        "priority": "high",
+        "risk": "low",
+        "source": "security_attention",
+        "status": "proposed"
+      },
+      {
+        "category": "focus",
+        "id": "minimize_interruptions",
+        "mode": "automatic",
+        "priority": "low",
+        "risk": "low",
+        "source": "focus_mode",
+        "status": "proposed"
+      }
+    ],
+    "decisions": [
+      {
+        "category": "security",
+        "id": "security_attention",
+        "priority": "high",
+        "reason": "security_state is exposed",
+        "recommendation": "notify_security"
+      },
+      {
+        "category": "focus",
+        "id": "focus_mode",
+        "priority": "low",
+        "reason": "user is in a focused activity",
+        "recommendation": "minimize_interruptions"
+      }
+    ],
+    "policies": [
+      {
+        "actions": [
+          "notify_security"
+        ],
+        "allowed": true,
+        "category": "security",
+        "id": "security_attention",
+        "mode": "notify",
+        "priority": "high",
+        "reason": "security_state is exposed",
+        "recommendation": "notify_security",
+        "risk": "low"
+      },
+      {
+        "actions": [
+          "minimize_interruptions"
+        ],
+        "allowed": true,
+        "category": "focus",
+        "id": "focus_mode",
+        "mode": "automatic",
+        "priority": "low",
+        "reason": "user is in a focused activity",
+        "recommendation": "minimize_interruptions",
+        "risk": "low"
+      }
+    ],
     "signals": {
       "creative_mode": false,
-      "focus_mode": false,
+      "focus_mode": true,
       "limited_connectivity": false,
       "offline": false,
       "power_saving": false,
       "relaxed_mode": false,
       "secure_connection": false,
-      "security_attention": false
+      "security_attention": true
     },
     "state": {
-      "activity": "general",
-      "connectivity": "unknown",
-      "focus": "neutral",
-      "power_state": "unknown",
-      "security_state": ""
+      "activity": "development",
+      "connectivity": "online",
+      "focus": "focused",
+      "power_state": "high",
+      "security_state": "exposed"
     }
   },
-  "last_actions": [],
-  "updated_at": "2026-08-13T22:10:14Z"
+  "last_actions": [
+    {
+      "id": "notify_security",
+      "execution": "blocked_by_mode",
+      "executable": false
+    },
+    {
+      "id": "minimize_interruptions",
+      "execution": "dry_run",
+      "executable": true
+    }
+  ],
+  "updated_at": "2026-08-16T21:49:25Z"
 }

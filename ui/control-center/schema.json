@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SevenOS Control Center",
+  "type": "object",
+  "required": ["schema", "generated_at", "identity", "context", "system", "ui", "sections", "actions"],
+  "properties": {
+    "schema": {"const": "sevenos.control-center.v1"},
+    "generated_at": {"type": "string"},
+    "identity": {"type": "object"},
+    "context": {"type": "object"},
+    "system": {"type": "object"},
+    "ui": {"type": "object"},
+    "sections": {"type": "array", "items": {"type": "string"}},
+    "actions": {"type": "object"}
+  }
+}

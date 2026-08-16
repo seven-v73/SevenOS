@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+# SevenOS Control Center controller.
+# It owns the contract and UI lifecycle, never system policy or providers.
+
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+CONTEXT_BIN="$ROOT/bin/seven-waybar-context"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/sevenos"
+CONTEXT_FILE="$RUNTIME_DIR/waybar-context.json"
+
+native_ui() {
+    if [[ -x "$ROOT/bin/seven-quick-settings-native" ]]; then
+        printf '%s\n' "$ROOT/bin/seven-quick-settings-native"
+    elif command -v seven-quick-settings-native >/dev/null 2>&1; then
+        command -v seven-quick-settings-native
+    else
+        return 1
+    fi
+}
+
+ensure_projection() {
+    [[ -s "$CONTEXT_FILE" ]] || "$CONTEXT_BIN" once >/dev/null
+}
+
+status() {
+    ensure_projection
+
+    jq -c '
+        . as $context |
+        {
+            schema: "sevenos.control-center.v1",
+            generated_at: .generated_at,
+            source: {context_schema: .schema},
+            identity: {
+                name: "SevenOS",
+                profile: (.profile.key // "unknown"),
+                profile_title: (.profile.title // "SevenOS")
+            },
+            context: {
+                activity: (.activity.key // "general"),
+                focus: (.focus.key // "normal"),
+                workspace: .workspace,
+                application: .application
+            },
+            system: {
+                network: .network,
+                power: .power,
+                security: .security
+            },
+            ui: .ui,
+            sections: [
+                "network", "audio", "battery", "security", "context", "workspace"
+                | select(. as $section | $context.ui.visibility[$section] // true)
+            ],
+            actions: {
+                bridge: "seven-control-center-action",
+                enabled: false
+            }
+        }
+    ' "$CONTEXT_FILE"
+}
+
+open() {
+    ensure_projection
+    local ui
+    ui="$(native_ui)" || {
+        echo "seven-control-center: native UI unavailable" >&2
+        return 1
+    }
+    setsid -f "$ui" system >/tmp/sevenos-control-center.log 2>&1 || true
+}
+
+toggle() {
+    local ui
+    ui="$(native_ui)" || {
+        echo "seven-control-center: native UI unavailable" >&2
+        return 1
+    }
+    setsid -f "$ui" toggle >/tmp/sevenos-control-center.log 2>&1 || true
+}
+
+close() {
+    local ui
+    ui="$(native_ui)" || return 0
+    if pgrep -u "$USER" -f 'seven-quick-settings-native' >/dev/null 2>&1; then
+        "$ui" toggle
+    fi
+}
+
+case "${1:-status}" in
+    status|--json) status ;;
+    open) open ;;
+    close) close ;;
+    toggle) toggle ;;
+    *)
+        echo "Usage: seven-control-center [status|open|close|toggle]" >&2
+        exit 2
+        ;;
+esac

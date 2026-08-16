@@ -31,9 +31,26 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 # Snapshot
 # ============================================================
 
+# get_snapshot() {
+#     if [[ ! -t 0 ]]; then
+#         cat
+#     else
+#         "$SCRIPT_DIR/snapshot.sh" json
+#     fi
+# }
+
 get_snapshot() {
-    if [[ ! -t 0 ]]; then
-        cat
+    if [[ -t 0 ]]; then
+        "$SCRIPT_DIR/snapshot.sh" json
+        return
+    fi
+
+    local input
+
+    input="$(cat)"
+
+    if [[ -n "$input" ]]; then
+        printf '%s\n' "$input"
     else
         "$SCRIPT_DIR/snapshot.sh" json
     fi

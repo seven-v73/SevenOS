@@ -180,6 +180,8 @@ install_user_command "$ROOT_DIR/bin/seven-dock-native" seven-dock-native
 install_user_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_user_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
 install_user_command "$ROOT_DIR/bin/seven-quick-settings-native" seven-quick-settings-native
+install_user_command "$ROOT_DIR/bin/seven-control-center" seven-control-center
+install_user_command "$ROOT_DIR/bin/seven-control-center-action" seven-control-center-action
 install_user_command "$ROOT_DIR/bin/seven-recorder" seven-recorder
 install_user_command "$ROOT_DIR/bin/seven-recorder-native" seven-recorder-native
 install_user_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
@@ -276,6 +278,8 @@ install_system_command "$ROOT_DIR/bin/seven-dock-native" seven-dock-native
 install_system_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_system_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
 install_system_command "$ROOT_DIR/bin/seven-quick-settings-native" seven-quick-settings-native
+install_system_command "$ROOT_DIR/bin/seven-control-center" seven-control-center
+install_system_command "$ROOT_DIR/bin/seven-control-center-action" seven-control-center-action
 install_system_command "$ROOT_DIR/bin/seven-recorder" seven-recorder
 install_system_command "$ROOT_DIR/bin/seven-recorder-native" seven-recorder-native
 install_system_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot

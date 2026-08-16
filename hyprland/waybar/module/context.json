@@ -1,0 +1,20 @@
+{
+    "custom/seven-context": {
+        "exec": "seven-waybar-context module",
+        "return-type": "json",
+        "interval": 2,
+        "signal": 8,
+        "format": "{}",
+        "tooltip": true,
+        "on-click": "seven-waybar-action refresh"
+    },
+    "custom/seven-security": {
+        "exec": "seven-waybar-context security",
+        "return-type": "json",
+        "interval": 2,
+        "signal": 8,
+        "tooltip": true,
+        "on-click": "seven-quick-settings",
+        "on-click-right": "seven-settings security"
+    }
+}

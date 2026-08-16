@@ -1,1025 +1,174 @@
 #!/usr/bin/env bash
+
 set -Eeuo pipefail
 
-resolve_root() {
-  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/install.sh" ]]; then
-    printf '%s\n' "$SEVENOS_ROOT"
-    return 0
-  fi
+# ============================================================
+# SevenOS Waybar Action
+# ============================================================
+#
+# Waybar
+#   ↓
+# seven-waybar-action
+#   ↓
+# core/context/action.sh
+#
+# Waybar ne contient aucune politique métier.
+# ============================================================
 
-  local script_dir
-  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-  if [[ -x "$script_dir/../install.sh" ]]; then
-    cd -- "$script_dir/.." && pwd
-    return 0
-  fi
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
-  for candidate in /opt/SevenOS "$HOME/SevenOS" "$HOME/Code/OS/SevenOS"; do
-    if [[ -x "$candidate/install.sh" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
+CONTEXT_DIR="$ROOT/core/context"
+
+ACTION_ENGINE="$CONTEXT_DIR/action.sh"
+CONTEXT_BIN="$ROOT/bin/seven-waybar-context"
+
+die() {
+    echo "seven-waybar-action: $*" >&2
+    exit 1
+}
+
+[[ -x "$ACTION_ENGINE" ]] ||
+    die "Context action engine not found: $ACTION_ENGINE"
+
+[[ -x "$CONTEXT_BIN" ]] ||
+    die "seven-waybar-context not found: $CONTEXT_BIN"
+
+usage() {
+    cat <<'USAGE'
+SevenOS Waybar Action
+
+Usage:
+
+  seven-waybar-action context
+  seven-waybar-action refresh
+
+  seven-waybar-action profile <profile>
+  seven-waybar-action focus <focus>
+  seven-waybar-action workspace <workspace>
+
+  seven-waybar-action execute <action>
+
+  seven-waybar-action request <json>
+USAGE
+}
+
+refresh_context() {
+    "$CONTEXT_BIN" once >/dev/null
+}
+
+context_status() {
+    exec "$CONTEXT_BIN" status
+}
+
+build_request() {
+
+    local category="$1"
+    local value="${2:-}"
+
+    jq -n \
+        --arg category "$category" \
+        --arg value "$value" \
+        '{
+            schema: "sevenos.waybar.action.v1",
+            source: "seven-waybar",
+            category: $category,
+            value: (
+                if $value == "" then null
+                else $value
+                end
+            )
+        }'
+}
+
+execute_action() {
+
+    local category="$1"
+    local value="${2:-}"
+
+    local request
+
+    request="$(build_request "$category" "$value")"
+
+    if "$ACTION_ENGINE" --json <<< "$request"; then
+        refresh_context
+        return 0
     fi
-  done
 
-  printf 'seven-waybar-action: could not find SevenOS repository root\n' >&2
-  exit 1
+    if "$ACTION_ENGINE" "$category" "$value"; then
+        refresh_context
+        return 0
+    fi
+
+    die "Action rejected or unsupported: $category ${value:-}"
 }
 
-ROOT_DIR="$(resolve_root)"
-export SEVENOS_ROOT="$ROOT_DIR"
-TARGET_WINDOW_ADDRESS="${SEVENOS_TARGET_WINDOW_ADDRESS:-}"
+case "${1:-help}" in
 
-notify() {
-  local title="$1"
-  local message="$2"
-  if command -v notify-send >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
-    notify-send "$title" "$message" || true
-  else
-    printf '%s: %s\n' "$title" "$message"
-  fi
-}
+    context)
+        context_bin="$ROOT/bin/seven-waybar-context"
 
-dry_run() {
-  [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
-}
+        [[ -x "$context_bin" ]] ||
+            die "seven-waybar-context not found"
 
-dry_line() {
-  printf 'DRY-RUN > %s\n' "$*"
-}
+        exec "$context_bin" status
+        ;;
 
-run_detached() {
-  if dry_run; then
-    dry_line "Launch > $*"
-    return 0
-  fi
-  setsid -f "$@" >/tmp/sevenos-waybar-action.log 2>&1 || notify "SevenOS Shell Bar" "Action failed: $*"
-}
+    refresh)
+        refresh_context
+        ;;
 
-run_terminal() {
-  local title="$1"
-  local command="$2"
-  local wrapped
-  wrapped="$command; printf '\nPress Enter to close...'; read -r"
-
-  if dry_run; then
-    dry_line "$title > $command"
-    return 0
-  fi
-
-  if command -v seven-terminal >/dev/null 2>&1; then
-    run_detached seven-terminal focus -- bash -lc "$wrapped"
-  elif command -v kitty >/dev/null 2>&1; then
-    run_detached kitty --title "$title" bash -lc "$wrapped"
-  elif command -v foot >/dev/null 2>&1; then
-    run_detached foot -e bash -lc "$wrapped"
-  elif command -v alacritty >/dev/null 2>&1; then
-    run_detached alacritty -e bash -lc "$wrapped"
-  else
-    bash -lc "$command"
-  fi
-}
-
-open_rofi_menu() {
-  local prompt="$1"
-  shift
-  local theme="${SEVENOS_ROFI_THEME:-$HOME/.config/rofi/sevenos.rasi}"
-  local message="${SEVENOS_ROFI_MESSAGE:-}"
-  if [[ ! -s "$theme" && -s "$ROOT_DIR/hyprland/rofi/$(basename "$theme")" ]]; then
-    theme="$ROOT_DIR/hyprland/rofi/$(basename "$theme")"
-  fi
-
-  if dry_run; then
-    dry_line "$prompt > Open panel"
-    printf '%s\n' "$@"
-    return 0
-  fi
-
-  if ! command -v rofi >/dev/null 2>&1; then
-    notify "SevenOS Shell Bar" "SevenOS fallback menu is not installed."
-    return 1
-  fi
-
-  if [[ -n "$message" ]]; then
-    printf '%s\n' "$@" | rofi -dmenu -i -matching fuzzy -p "$prompt" -mesg "$message" -theme "$theme"
-  else
-    printf '%s\n' "$@" | rofi -dmenu -i -matching fuzzy -p "$prompt" -theme "$theme"
-  fi
-}
-
-clean_selection() {
-  local selected="$1"
-  selected="${selected#*  }"
-  selected="${selected%%    *}"
-  printf '%s\n' "$selected"
-}
-
-command_or_terminal() {
-  local title="$1"
-  local preferred="$2"
-  local fallback="$3"
-
-  if command -v "$preferred" >/dev/null 2>&1; then
-    run_detached "$preferred"
-  else
-    run_terminal "$title" "$fallback"
-  fi
-}
-
-native_panel() {
-  local name="$1"
-  shift || true
-  local local_path="$ROOT_DIR/bin/$name"
-  if [[ -x "$local_path" ]] && "$local_path" --probe >/dev/null 2>&1; then
-    run_detached "$local_path" "$@"
-    return 0
-  fi
-  if command -v "$name" >/dev/null 2>&1 && "$name" --probe >/dev/null 2>&1; then
-    run_detached "$name" "$@"
-    return 0
-  fi
-  return 1
-}
-
-native_app_menu_panel() {
-  local area="$1"
-  local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
-  local request_dir="$runtime_dir/sevenos"
-  local request_file="$request_dir/app-menu-request.json"
-  local status_file="$request_dir/app-menu-status.json"
-  mkdir -p "$request_dir"
-  printf '{"area":"%s","time":%s}\n' "$area" "$(date +%s%3N 2>/dev/null || date +%s)" > "$request_file"
-
-  # Keep app menus deterministic: the Waybar click opens a fresh painted panel.
-  # Persistent reuse was elegant, but stale GTK surfaces could stay visible while
-  # their child content stopped repainting on some Hyprland setups.
-  pgrep -u "$USER" -f '(^|/| )seven-app-menu-native( |$)' | while read -r stale_pid; do
-    [[ -n "$stale_pid" ]] && kill "$stale_pid" >/dev/null 2>&1 || true
-  done
-  rm -f "$status_file"
-  # UX contract: native_panel seven-app-menu-native file
-  native_panel seven-app-menu-native "$area"
-}
-
-run_wifi() {
-  local helper="$ROOT_DIR/bin/seven-wifi"
-  if [[ -x "$helper" ]]; then
-    run_detached "$helper" "$@"
-  elif command -v seven-wifi >/dev/null 2>&1; then
-    run_detached seven-wifi "$@"
-  else
-    notify "SevenOS Network" "seven-wifi is not installed. Run ./install.sh cli."
-  fi
-}
-
-run_system_action() {
-  local selected="$1"
-  case "$selected" in
-    "Settings") run_detached seven-settings system ;;
-    "Monitor") run_terminal "SevenOS Monitor" "if command -v btop >/dev/null 2>&1; then btop; else top; fi" ;;
-    "Updates") run_detached seven-settings system ;;
-    "Repair UI") run_detached seven-waybar repair ;;
-    *) return 0 ;;
-  esac
-}
-
-run_sevenos_action() {
-  local selected="$1"
-  case "$selected" in
-    "Éteindre"|"Eteindre") run_detached seven-power poweroff ;;
-    "Redémarrer"|"Redemarrer") run_detached seven-power reboot ;;
-    "Mise à jour") run_detached seven-settings updates ;;
-    *) return 0 ;;
-  esac
-}
-
-run_profile_action() {
-  local selected="$1"
-  case "$selected" in
-    "Profile Center"|"Centre des espaces") run_detached seven-profile-center-native ;;
-    "Workspace"|"Fichiers") run_detached seven-files profile ;;
-    "Settings"|"Réglages") run_detached seven-settings profiles ;;
-    "Activate Equinox"|"Utiliser Equinox") run_detached seven profile activate equinox ;;
-    "Activate Baobab"|"Utiliser Baobab") run_detached seven profile activate baobab ;;
-    "Activate Forge"|"Utiliser Forge") run_terminal "SevenOS Forge" "seven profile activate forge" ;;
-    "Activate Shield"|"Utiliser Shield") run_terminal "SevenOS Shield" "seven profile activate shield" ;;
-    "Activate Studio"|"Utiliser Studio") run_detached seven profile activate studio ;;
-    "Activate Atlas Explorer"|"Utiliser Atlas") run_detached seven profile activate atlas ;;
-    "Activate Pulse"|"Utiliser Pulse") run_detached seven profile activate pulse ;;
-    *) return 0 ;;
-  esac
-}
-
-run_mini_context_action() {
-  local selected="$1"
-  case "$selected" in
-    "Daily Overview") run_detached seven-overview windows ;;
-    "Daily Files") open_path_with_files "$HOME" ;;
-    "Daily Settings") run_detached seven-settings ;;
-    "Daily Help") run_detached seven-help-native ;;
-    "Daily Doctor") run_terminal "SevenOS Doctor" "seven doctor check 2>/dev/null || seven status" ;;
-    "Forge Terminal") run_detached seven-terminal forge ;;
-    "Forge Logs") run_terminal "SevenOS Forge Logs" "git status --short; printf '\n'; git log --oneline -10" ;;
-    "Forge Build") run_terminal "SevenOS Forge Build" "if [[ -x ./build.sh ]]; then ./build.sh; elif [[ -f package.json ]]; then npm run build; elif [[ -f Makefile ]]; then make; else git status --short; fi" ;;
-    "Shield Center") run_detached seven-shield-center-native ;;
-    "Shield Audit") run_terminal "SevenOS Shield Audit" "seven shield status 2>/dev/null || seven doctor check security" ;;
-    "Shield Sandbox") run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
-    "Studio Open") run_detached seven-files profile studio ;;
-    "Studio Pictures") run_detached seven profile open-folder studio Pictures ;;
-    "Studio Videos") run_detached seven profile open-folder studio Videos ;;
-    "Studio Media") open_path_with_files "$HOME/Pictures" ;;
-    "Studio Exports") open_path_with_files "$HOME/Videos" ;;
-    "Studio Recorder") run_detached seven-recorder-native ;;
-    "Atlas Guide"|"Atlas Explorer") run_detached seven atlas open ;;
-    "Atlas Documents") run_detached seven profile open-folder atlas Documents ;;
-    "Atlas Maps") run_detached seven profile open-folder atlas Maps ;;
-    "Atlas Apps") run_detached seven profile apps atlas ;;
-    "Atlas Folders") run_detached seven-files profile atlas ;;
-    "Atlas Requirements") run_terminal "SevenOS Atlas" "seven atlas status" ;;
-    "Atlas Status") run_terminal "SevenOS Atlas" "seven atlas status" ;;
-    "Pulse Open") run_detached seven-files profile pulse ;;
-    "Pulse Games") run_detached seven-hub games ;;
-    "Pulse Captures") run_detached seven profile open-folder pulse Videos ;;
-    "Pulse Recorder") run_detached seven-recorder-native ;;
-    "Pulse Performance") run_detached seven-mini-os-center pulse ;;
-    "Baobab Open") run_detached seven-baobab-native ;;
-    "Baobab Collections") run_detached seven-files profile baobab ;;
-    "Baobab Reader") run_detached seven-reader ;;
-    "Baobab Culture") run_detached seven-baobab-native ;;
-    "Mini OS Center") run_detached seven-mini-os-center ;;
-    *) return 0 ;;
-  esac
-}
-
-run_security_action() {
-  local selected="$1"
-  case "$selected" in
-    "Shield Center") run_detached seven-shield-center-native ;;
-    "Enable Shield") run_terminal "SevenOS Shield" "seven shield enable" ;;
-    "Cyber Lab") run_terminal "SevenOS Cyber Lab" "seven shield lab --preset web" ;;
-    "Settings") run_detached seven-settings security ;;
-    *) return 0 ;;
-  esac
-}
-
-run_network_action() {
-  local selected="$1"
-  case "$selected" in
-    "Wi-Fi Panel") run_wifi menu ;;
-    "Disconnect Wi-Fi") run_wifi disconnect ;;
-    "Toggle Wi-Fi") run_wifi toggle ;;
-    "Settings") run_detached seven-settings network ;;
-    *) return 0 ;;
-  esac
-}
-
-run_bluetooth_action() {
-  local selected="$1"
-  case "$selected" in
-    "Bluetooth Panel") run_detached seven-waybar-center-native bluetooth ;;
-    "Toggle Bluetooth") run_detached seven-bluetooth toggle ;;
-    "Scan Devices") run_detached seven-bluetooth scan ;;
-    "Device Manager") run_detached seven-bluetooth manager ;;
-    "Settings") run_detached seven-settings network ;;
-    *) return 0 ;;
-  esac
-}
-
-run_audio_action() {
-  local selected="$1"
-  case "$selected" in
-    "Volume Mixer") command_or_terminal "SevenOS Audio" pavucontrol "wpctl status" ;;
-    "Mute Toggle") run_detached wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
-    "Volume Up") run_detached wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ ;;
-    "Volume Down") run_detached wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
-    "Settings") run_detached seven-settings sound ;;
-    *) return 0 ;;
-  esac
-}
-
-run_media_action() {
-  local selected="$1"
-  case "$selected" in
-    "Lecture / pause") run_detached playerctl -p playerctld play-pause ;;
-    "Suivant") run_detached playerctl -p playerctld next ;;
-    "Précédent") run_detached playerctl -p playerctld previous ;;
-    "Stop") run_detached playerctl -p playerctld stop ;;
-    "Audio") run_detached seven-quick-settings audio ;;
-    *) return 0 ;;
-  esac
-}
-
-run_battery_action() {
-  local selected="$1"
-  case "$selected" in
-    "Power Menu") run_detached seven-power ;;
-    "Sleep") run_detached seven-power suspend ;;
-    "Lock Session") run_detached seven-power lock ;;
-    "Settings") run_detached seven-settings power ;;
-    *) return 0 ;;
-  esac
-}
-
-run_clock_action() {
-  local selected="$1"
-  case "$selected" in
-    "Calendar") command_or_terminal "SevenOS Calendar" gnome-calendar "cal -3; printf '\n'; timedatectl" ;;
-    "Clock") run_detached seven-spotlight time ;;
-    "World Time") run_detached seven-spotlight "world time" ;;
-    "Settings") run_detached seven-settings system ;;
-    *) return 0 ;;
-  esac
-}
-
-active_window_field() {
-  local field="$1"
-  if ! command -v hyprctl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
-    return 0
-  fi
-  hyprctl activewindow -j 2>/dev/null | jq -r ".$field // empty" 2>/dev/null || true
-}
-
-capture_target_window() {
-  if [[ -z "$TARGET_WINDOW_ADDRESS" ]]; then
-    TARGET_WINDOW_ADDRESS="$(active_window_field address)"
-  fi
-}
-
-focus_target_window() {
-  capture_target_window
-  if [[ -n "$TARGET_WINDOW_ADDRESS" ]] && command -v hyprctl >/dev/null 2>&1; then
-    hyprctl dispatch focuswindow "address:$TARGET_WINDOW_ADDRESS" >/dev/null 2>&1 || true
-    sleep 0.06
-  fi
-}
-
-current_profile_key() {
-  local manager="$ROOT_DIR/profiles/profile-manager.sh"
-  if [[ -x "$manager" ]] && command -v jq >/dev/null 2>&1; then
-    "$manager" current --json 2>/dev/null | jq -r '.key // "equinox"' 2>/dev/null || printf 'equinox\n'
-  else
-    printf '%s\n' "${SEVENOS_PROFILE:-equinox}"
-  fi
-}
-
-app_menu_mode() {
-  local app_class profile
-  app_class="$(active_window_field class)"
-  [[ -n "$app_class" ]] || app_class="$(active_window_field initialClass)"
-  app_class="${app_class,,}"
-  profile="$(current_profile_key)"
-  profile="${profile,,}"
-
-  if [[ "$app_class" =~ (code|codium|jetbrains|terminal|kitty) ]]; then
-    printf 'developer\n'
-  elif [[ "$app_class" =~ (firefox|chrom|brave|browser) ]]; then
-    printf 'browser\n'
-  elif [[ "$app_class" =~ (nautilus|seven-files|file) ]]; then
-    printf 'files\n'
-  elif [[ "$profile" == "studio" || "$profile" == "shield" || "$profile" == "atlas" || "$profile" == "forge" || "$profile" == "pulse" || "$profile" == "baobab" ]]; then
-    printf '%s\n' "$profile"
-  else
-    printf 'default\n'
-  fi
-}
-
-app_menu_key() {
-  local app_class
-  app_class="$(active_window_field class)"
-  [[ -n "$app_class" ]] || app_class="$(active_window_field initialClass)"
-  app_class="${app_class,,}"
-  if [[ "$app_class" == *google-chrome* ]]; then
-    printf 'chrome\n'
-  elif [[ "$app_class" == *chromium* ]]; then
-    printf 'chromium\n'
-  elif [[ "$app_class" == *firefox* || "$app_class" == *librewolf* ]]; then
-    printf 'firefox\n'
-  elif [[ "$app_class" == "code" || "$app_class" == *visual-studio-code* ]]; then
-    printf 'vscode\n'
-  else
-    printf 'generic\n'
-  fi
-}
-
-app_service_key() {
-  local key title
-  key="$(app_menu_key)"
-  title="$(active_window_field title)"
-  title="${title,,}"
-  [[ "$key" =~ ^(chrome|chromium|firefox|brave)$ ]] || { printf '\n'; return 0; }
-  if [[ "$title" == *youtube* ]]; then
-    printf 'youtube\n'
-  elif [[ "$title" == *gmail* || ( "$title" == *inbox* && "$title" == *mail* ) ]]; then
-    printf 'gmail\n'
-  elif [[ "$title" == *"google docs"* || "$title" == *"docs.google"* ]]; then
-    printf 'google-docs\n'
-  elif [[ "$title" == *"google sheets"* || "$title" == *"sheets.google"* ]]; then
-    printf 'google-sheets\n'
-  elif [[ "$title" == *"google drive"* || "$title" == *"drive.google"* ]]; then
-    printf 'google-drive\n'
-  elif [[ "$title" == *github* ]]; then
-    printf 'github\n'
-  elif [[ "$title" == *figma* ]]; then
-    printf 'figma\n'
-  elif [[ "$title" == *notion* ]]; then
-    printf 'notion\n'
-  elif [[ "$title" == *spotify* ]]; then
-    printf 'spotify-web\n'
-  elif [[ "$title" == *netflix* || "$title" == *"prime video"* || "$title" == *"disney+"* ]]; then
-    printf 'streaming\n'
-  else
-    printf '\n'
-  fi
-}
-
-copy_active_window_title() {
-  local title
-  title="$(active_window_field title)"
-  if [[ -z "$title" ]]; then
-    notify "SevenOS Menu" "No active window title to copy."
-    return 0
-  fi
-  if dry_run; then
-    dry_line "Copy window title > $title"
-    return 0
-  fi
-  if command -v wl-copy >/dev/null 2>&1; then
-    printf '%s' "$title" | wl-copy
-    notify "SevenOS Menu" "Window title copied."
-  else
-    notify "SevenOS Menu" "wl-copy is not installed."
-  fi
-}
-
-open_path_with_files() {
-  local path="$1"
-  if [[ -x "$ROOT_DIR/bin/seven-files" ]]; then
-    run_detached "$ROOT_DIR/bin/seven-files" "$path"
-  elif command -v seven-files >/dev/null 2>&1; then
-    run_detached seven-files "$path"
-  else
-    run_detached xdg-open "$path"
-  fi
-}
-
-send_menu_key() {
-  local key="$1"
-  if dry_run; then
-    dry_line "Active app menu > Alt+$key"
-    return 0
-  fi
-  if command -v wtype >/dev/null 2>&1; then
-    wtype -M alt -k "$key" -m alt
-    return 0
-  fi
-  if command -v ydotool >/dev/null 2>&1; then
-    ydotool key "56:1" "${key}:1" "${key}:0" "56:0" >/dev/null 2>&1 || true
-    return 0
-  fi
-  notify "SevenOS Menu" "Install wtype for native app-menu clicks."
-}
-
-send_shortcut() {
-  local spec="$1"
-  local key modifiers modifier
-  IFS='+' read -r -a parts <<<"$spec"
-  key="${parts[-1]}"
-  modifiers=("${parts[@]:0:${#parts[@]}-1}")
-  if dry_run; then
-    dry_line "Active app > ${spec}"
-    return 0
-  fi
-  if ! command -v wtype >/dev/null 2>&1; then
-    notify "SevenOS Menu" "Install wtype to control the active app from the menu bar."
-    return 0
-  fi
-  focus_target_window
-  local -a args=()
-  for modifier in "${modifiers[@]}"; do
-    [[ -n "$modifier" ]] || continue
-    args+=("-M" "${modifier,,}")
-  done
-  args+=("-k" "${key,,}")
-  for ((idx=${#modifiers[@]}-1; idx>=0; idx--)); do
-    modifier="${modifiers[$idx]}"
-    [[ -n "$modifier" ]] || continue
-    args+=("-m" "${modifier,,}")
-  done
-  wtype "${args[@]}"
-}
-
-send_function_key() {
-  local key="$1"
-  if dry_run; then
-    dry_line "Active app > $key"
-    return 0
-  fi
-  if ! command -v wtype >/dev/null 2>&1; then
-    notify "SevenOS Menu" "Install wtype to control the active app from the menu bar."
-    return 0
-  fi
-  focus_target_window
-  wtype -k "$key"
-}
-
-run_active_app_command() {
-  local selected="$1"
-  case "$selected" in
-    "Nouvel onglet"|"New tab") send_shortcut "ctrl+t" ;;
-    "Nouvelle fenêtre"|"New window") send_shortcut "ctrl+n" ;;
-    "Nouvelle fenêtre privée"|"Fenêtre privée"|"Private window") send_shortcut "ctrl+shift+n" ;;
-    "Ouvrir"|"Open") send_shortcut "ctrl+o" ;;
-    "Enregistrer"|"Save") send_shortcut "ctrl+s" ;;
-    "Imprimer"|"Print") send_shortcut "ctrl+p" ;;
-    "Fermer"|"Close") send_shortcut "ctrl+w" ;;
-    "Quitter"|"Quit") send_shortcut "ctrl+q" ;;
-    "Annuler"|"Undo") send_shortcut "ctrl+z" ;;
-    "Rétablir"|"Redo") send_shortcut "ctrl+shift+z" ;;
-    "Couper"|"Cut") send_shortcut "ctrl+x" ;;
-    "Copier"|"Copy"|"Copier titre"|"Copy title") send_shortcut "ctrl+c" ;;
-    "Coller"|"Paste") send_shortcut "ctrl+v" ;;
-    "Tout sélectionner"|"Select all") send_shortcut "ctrl+a" ;;
-    "Rechercher"|"Search"|"Rechercher mail"|"Search mail") send_shortcut "ctrl+f" ;;
-    "Préférences"|"Preferences") send_shortcut "ctrl+comma" ;;
-    "Recharger"|"Reload") send_shortcut "ctrl+r" ;;
-    "Zoom avant"|"Zoom in") send_shortcut "ctrl+plus" ;;
-    "Zoom arrière"|"Zoom out") send_shortcut "ctrl+minus" ;;
-    "Taille réelle"|"Actual size") send_shortcut "ctrl+0" ;;
-    "Plein écran"|"Full screen") send_function_key "F11" ;;
-    "Outils développeur"|"Developer tools") send_shortcut "ctrl+shift+i" ;;
-    "Historique"|"History") send_shortcut "ctrl+h" ;;
-    "Téléchargements"|"Downloads") send_shortcut "ctrl+j" ;;
-    "Barre d'adresse"|"Address bar") send_shortcut "ctrl+l" ;;
-    "Rouvrir l'onglet fermé"|"Reopen closed tab") send_shortcut "ctrl+shift+t" ;;
-    "Onglet suivant"|"Next tab") send_shortcut "ctrl+Tab" ;;
-    "Onglet précédent"|"Previous tab") send_shortcut "ctrl+shift+Tab" ;;
-    "Fermer l'onglet"|"Close tab") send_shortcut "ctrl+w" ;;
-    "Favoris"|"Marque-pages"|"Favorites"|"Bookmarks") send_shortcut "ctrl+shift+o" ;;
-    "Ajouter"|"Ajouter cette page"|"Bookmark this page") send_shortcut "ctrl+d" ;;
-    "Lecture / pause"|"Play / pause") send_shortcut "space" ;;
-    "Vidéo suivante"|"Next video") send_shortcut "shift+n" ;;
-    "Vidéo précédente"|"Previous video") send_shortcut "shift+p" ;;
-    "Mode cinéma"|"Theater mode") send_shortcut "t" ;;
-    "Sous-titres"|"Subtitles") send_shortcut "c" ;;
-    "J'aime"|"Like") send_shortcut "shift+=" ;;
-    "Nouveau message"|"New message") send_shortcut "c" ;;
-    "Archiver"|"Archive") send_shortcut "e" ;;
-    "Spam") send_shortcut "shift+1" ;;
-    "Lien"|"Link") send_shortcut "ctrl+k" ;;
-    "Palette commandes"|"Command palette") send_shortcut "ctrl+shift+p" ;;
-    "Palette terminal"|"Terminal palette") run_detached seven-terminal menu ;;
-    "Nouveau terminal"|"New terminal") send_shortcut "ctrl+shift+grave" ;;
-    "Terminal doctor") run_terminal "Seven Terminal Doctor" "seven-terminal doctor 2>/dev/null || seven doctor check terminal" ;;
-    "Projet Forge"|"Open Forge project") run_detached seven-terminal forge ;;
-    "Seven Files Home") open_path_with_files "$HOME" ;;
-    "Seven Files profil"|"Seven Files profile") run_detached seven-files profile ;;
-    "Exports Studio"|"Studio exports") open_path_with_files "$HOME/Videos" ;;
-    "Shield Center") run_detached seven-shield-center-native ;;
-    "Sandbox Shield"|"Shield sandbox") run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
-    "Atlas Explorer") run_detached seven atlas open ;;
-    "Atlas Apps") run_detached seven profile apps atlas ;;
-    "Jeux Pulse"|"Pulse games") run_detached seven-hub games ;;
-    "Collections Baobab"|"Baobab collections") open_path_with_files "$HOME/Documents" ;;
-    "Contrôles fenêtre"|"Window controls") run_detached seven-window controls ;;
-    "Centrer"|"Center") run_detached hyprctl dispatch centerwindow ;;
-    "Flottante"|"Floating") run_detached seven-window toggle-float ;;
-    "Split gauche"|"Split left") run_detached seven-window split-left ;;
-    "Split droite"|"Split right") run_detached seven-window split-right ;;
-    "Aide app active"|"Active app help") send_function_key "F1" ;;
-    "Aide SevenOS"|"SevenOS help") run_detached seven-help-native ;;
-    *) return 0 ;;
-  esac
-}
-
-show_active_app_menu() {
-  local area="$1"
-  local mode prompt runner selected
-  local title
-  local -a options
-  capture_target_window
-  title="$(active_window_field title)"
-  mode="$(app_menu_mode)"
-  runner="run_active_app_command"
-  export SEVENOS_ROFI_THEME="$HOME/.config/rofi/app-menu.rasi"
-  export SEVENOS_ROFI_MESSAGE="${title:-Application active}"
-  case "$area" in
-    file)
-      if [[ "$(app_menu_key)" =~ ^(chrome|chromium)$ ]]; then
-        prompt="Onglets"
-        options=("󰝒  Nouvel onglet    Ctrl+T" "󰈔  Nouvelle fenêtre    Ctrl+N" "󰈹  Fenêtre privée    Ctrl+Shift+N" "󰑖  Rouvrir l'onglet fermé    Ctrl+Shift+T" "󰓩  Onglet suivant    Ctrl+Tab" "󰓪  Onglet précédent    Ctrl+Shift+Tab" "󰅖  Fermer l'onglet    Ctrl+W")
-      else
-        prompt="Fichier"
-        options=("󰝒  Nouvel onglet    Ctrl+T" "󰈔  Nouvelle fenêtre    Ctrl+N" "󰈹  Nouvelle fenêtre privée    Ctrl+Shift+N" "󰉋  Ouvrir    Ctrl+O" "󰆓  Enregistrer    Ctrl+S" "󰐪  Imprimer    Ctrl+P" "󰅖  Fermer    Ctrl+W")
-      fi
-      ;;
-    edit)
-      prompt="Édition"
-      options=("󰕌  Annuler    Ctrl+Z" "󰑎  Rétablir    Ctrl+Shift+Z" "󰅚  Couper    Ctrl+X" "󰆏  Copier    Ctrl+C" "󰆒  Coller    Ctrl+V" "󰒆  Tout sélectionner    Ctrl+A" "󰍉  Rechercher    Ctrl+F")
-      ;;
-    view)
-      prompt="Affichage"
-      options=("󰑓  Recharger    Ctrl+R" "󰍉  Zoom avant    Ctrl++" "󰍉  Zoom arrière    Ctrl+-" "󰾆  Taille réelle    Ctrl+0" "󰊓  Plein écran    F11")
-      [[ "$mode" == "developer" || "$mode" == "browser" ]] && options+=("󰙨  Outils développeur    Ctrl+Shift+I")
-      ;;
-    extra)
-      case "$mode" in
-        browser)
-          prompt="Historique"
-          options=("󰋚  Historique    Ctrl+H" "󰉍  Téléchargements    Ctrl+J" "󰀂  Barre d'adresse    Ctrl+L")
-          ;;
-        developer)
-          prompt="Terminal"
-          options=("󰆍  Palette terminal" "󰒓  Terminal doctor" "󰌢  Projet Forge")
-          ;;
-        forge)
-          prompt="Forge"
-          options=("󰌢  Projet Forge" "󰆍  Palette terminal")
-          ;;
-        files)
-          prompt="Aller"
-          options=("󰉋  Seven Files Home" "󰉋  Seven Files profil")
-          ;;
-        studio)
-          prompt="Export"
-          options=("󰈙  Exports Studio")
-          ;;
-        shield)
-          prompt="Sandbox"
-          options=("󰒃  Shield Center" "󰛵  Sandbox Shield")
-          ;;
-        atlas)
-          prompt="Atlas"
-          options=("󰙅  Atlas Explorer" "󰉋  Atlas Folders")
-          ;;
-        pulse)
-          prompt="Jeux"
-          options=("󰓅  Jeux Pulse")
-          ;;
-        baobab)
-          prompt="Collections"
-          options=("󰔱  Collections Baobab")
-          ;;
-        *)
-          prompt="Actions"
-          options=("󰍉  Rechercher" "󰊓  Plein écran")
-          ;;
-      esac
-      ;;
-    tools)
-      case "$mode" in
-        browser)
-          prompt="Favoris"
-          options=("󰃀  Favoris" "󰆤  Ajouter cette page    Ctrl+D" "󰈙  Importer")
-          ;;
-        developer|forge)
-          prompt="Terminal"
-          options=("󰆍  Nouveau terminal" "󰒓  Terminal doctor" "󰌢  Projet Forge")
-          ;;
-        files)
-          prompt="Actions"
-          options=("󰉋  Seven Files Home" "󰉋  Seven Files profil" "󰈙  Exporter sélection")
-          ;;
-        media)
-          prompt="Audio"
-          options=("󰕾  Volume" "󰝟  Muet" "󰊓  Plein écran")
-          ;;
-        shield)
-          prompt="Audit"
-          options=("󰒃  Shield Center" "󰛵  Audit rapide")
-          ;;
-        atlas)
-          prompt="Atlas"
-          options=("󰙅  Atlas Explorer" "󰉋  Atlas Folders")
-          ;;
-        *)
-          prompt="Actions"
-          options=("󰍉  Rechercher" "󰊓  Plein écran")
-          ;;
-      esac
-      ;;
-    window)
-      prompt="Fenêtre"
-      options=("󰖲  Contrôles fenêtre" "󰉌  Centrer" "󰹑  Flottante" "󰤼  Split gauche" "󰤽  Split droite" "󰅖  Fermer    Ctrl+W")
-      ;;
-    help)
-      prompt="Aide"
-      options=("󰋖  Aide app active" "󰋖  Aide SevenOS")
-      ;;
-    *)
-      show_menu app-menu
-      return 0
-      ;;
-  esac
-  if dry_run; then
-    open_rofi_menu "$prompt" "${options[@]}"
-    return 0
-  fi
-  selected="$(open_rofi_menu "$prompt" "${options[@]}")"
-  selected="$(clean_selection "$selected")"
-  "$runner" "$selected"
-}
-
-run_direct_app_menu() {
-  local area="$1"
-  local mode
-  mode="$(app_menu_mode)"
-  case "$area" in
-    file)
-      case "$(app_menu_key)" in
-        chrome|chromium) send_shortcut ctrl+t ;;
-        *) send_menu_key f ;;
-      esac
-      ;;
-    edit) send_menu_key e ;;
-    view)
-      case "$mode" in
-        developer) send_menu_key s ;;
-        shield) run_detached seven-shield-center-native ;;
-        atlas) run_detached seven atlas open ;;
-        *) send_menu_key v ;;
-      esac
-      ;;
-    extra)
-      case "$mode" in
-        browser) run_detached xdg-open "chrome://history" ;;
-        developer|forge) run_detached seven-terminal menu ;;
-        files) run_detached seven-files profile ;;
-        studio) open_path_with_files "$HOME/Videos" ;;
-        shield) run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
-        atlas) run_detached seven profile apps atlas ;;
-        pulse) run_detached seven-hub games ;;
-        baobab) open_path_with_files "$HOME/Documents" ;;
-        *) send_menu_key g ;;
-      esac
-      ;;
-    tools)
-      case "$mode" in
-        browser) send_shortcut ctrl+d ;;
-        developer|forge) run_detached seven-terminal menu ;;
-        files) run_detached seven-files profile ;;
-        shield) run_detached seven-shield-center-native ;;
-        atlas) run_detached seven profile apps atlas ;;
-        *) send_menu_key t ;;
-      esac
-      ;;
-    window) run_detached seven-window controls ;;
-    help) send_menu_key h ;;
-    *) show_menu app-menu ;;
-  esac
-}
-
-run_app_menu_action() {
-  local selected="$1"
-  case "$selected" in
-    "Fichier · Nouveau terminal") run_detached seven-terminal focus ;;
-    "Fichier · Ouvrir Seven Files") open_path_with_files "$HOME" ;;
-    "Fichier · Dossier personnel") open_path_with_files "$HOME" ;;
-    "Fichier · Téléchargements") open_path_with_files "$HOME/Downloads" ;;
-    "Édition · Copier titre fenêtre") copy_active_window_title ;;
-    "Édition · Presse-papiers") run_detached seven-clipboard ;;
-    "Affichage · Vue fenêtres") run_detached seven-overview windows ;;
-    "Fenêtre · Contrôles") run_detached seven-window controls ;;
-    "Fenêtre · Centrer") run_detached hyprctl dispatch centerwindow ;;
-    "Fenêtre · Flottante") run_detached seven-window toggle-float ;;
-    "Fenêtre · Plein écran") run_detached seven-window fullscreen ;;
-    "Fenêtre · Split gauche") run_detached seven-window split-left ;;
-    "Fenêtre · Split droite") run_detached seven-window split-right ;;
-    "Fenêtre · Fermer") run_detached hyprctl dispatch killactive ;;
-    "Terminal · Palette") run_detached seven-terminal menu ;;
-    "Terminal · Doctor") run_terminal "Seven Terminal Doctor" "seven-terminal doctor 2>/dev/null || seven doctor check terminal" ;;
-    "Forge · Projet Git") run_detached seven-terminal forge ;;
-    "Forge · Logs") run_terminal "SevenOS Forge Logs" "git status --short; printf '\n'; git log --oneline -10" ;;
-    "Navigateur · Nouvelle fenêtre") run_detached xdg-open about:blank ;;
-    "Navigateur · Téléchargements") open_path_with_files "$HOME/Downloads" ;;
-    "Seven Files · Home") open_path_with_files "$HOME" ;;
-    "Seven Files · Profil actif") run_detached seven-files profile ;;
-    "Studio · Médias") open_path_with_files "$HOME/Pictures" ;;
-    "Studio · Exports") open_path_with_files "$HOME/Videos" ;;
-    "Shield · Centre") run_detached seven-shield-center-native ;;
-    "Shield · Audit rapide") run_terminal "SevenOS Shield Audit" "seven shield status 2>/dev/null || seven doctor check security" ;;
-    "Atlas · Explorer") run_detached seven atlas open ;;
-    "Atlas · Apps") run_detached seven profile apps atlas ;;
-    "Pulse · Captures") open_path_with_files "$HOME/Videos" ;;
-    "Pulse · Jeux") run_detached seven-hub games ;;
-    "Baobab · Collections") open_path_with_files "$HOME/Documents" ;;
-    "Aide · SevenOS") run_detached seven-help-native ;;
-    *) return 0 ;;
-  esac
-}
-
-show_menu() {
-  local area="${1:-system}"
-  shift || true
-  local prompt runner
-  local -a options
-  local selected
-
-  if ! dry_run; then
-    case "$area" in
-      app-file) native_app_menu_panel file && return 0 ;;
-      app-edit) native_app_menu_panel edit && return 0 ;;
-      app-view) native_app_menu_panel view && return 0 ;;
-      app-extra) native_app_menu_panel extra && return 0 ;;
-      app-tools) native_app_menu_panel tools && return 0 ;;
-      app-window) native_app_menu_panel window && return 0 ;;
-      app-help) native_app_menu_panel help && return 0 ;;
-      sevenos-menu) native_panel seven-system-menu-native && return 0 ;;
-      app-menu-window) native_panel seven-window-controls-native && return 0 ;;
-      profile) native_panel seven-profile-center-native && return 0 ;;
-      security) native_panel seven-shield-center-native && return 0 ;;
-      network) native_panel seven-waybar-center-native network && return 0 ;;
-      bluetooth) native_panel seven-waybar-center-native bluetooth && return 0 ;;
-      audio) native_panel seven-waybar-center-native audio && return 0 ;;
-      media-menu) native_panel seven-media-menu-native && return 0 ;;
-      mini-context) native_panel seven-mini-context-menu-native && return 0 ;;
-      battery) native_panel seven-waybar-center-native power && return 0 ;;
-      system) native_panel seven-waybar-center-native system && return 0 ;;
-      clock) native_panel seven-waybar-center-native time && return 0 ;;
-    esac
-  fi
-
-  case "$area" in
-    app-command)
-      run_active_app_command "$*"
-      return 0
-      ;;
-    mini-command)
-      run_mini_context_action "$*"
-      return 0
-      ;;
-    sevenos-menu)
-      prompt="SevenOS"
-      runner="run_sevenos_action"
-      options=("⏻  Éteindre" "↻  Redémarrer" "⇣  Mise à jour")
-      ;;
-    app-file)
-      show_active_app_menu file
-      return 0
-      ;;
-    app-edit)
-      show_active_app_menu edit
-      return 0
-      ;;
-    app-view)
-      show_active_app_menu view
-      return 0
-      ;;
-    app-extra)
-      show_active_app_menu extra
-      return 0
-      ;;
-    app-tools)
-      show_active_app_menu tools
-      return 0
-      ;;
-    app-window)
-      show_active_app_menu window
-      return 0
-      ;;
-    app-help)
-      show_active_app_menu help
-      return 0
-      ;;
-    system)
-      prompt="System"
-      runner="run_system_action"
-      options=("󰒓  Settings" "󰍛  Monitor" "󰚰  Updates" "󰜉  Repair UI")
-      ;;
     profile)
-      prompt="Espaces SevenOS"
-      runner="run_profile_action"
-      options=("󰐃  Centre des espaces" "󰉋  Fichiers" "󰒓  Réglages" "󰘦  Utiliser Equinox" "󰔱  Utiliser Baobab" "󰏗  Utiliser Studio" "󰙅  Utiliser Atlas" "󰓅  Utiliser Pulse" "󰌢  Utiliser Forge" "󰒃  Utiliser Shield")
-      ;;
-    mini-context)
-      prompt="Mini OS"
-      runner="run_mini_context_action"
-      case "$(current_profile_key)" in
-        forge) options=("󰆍  Forge Terminal" "󰑭  Forge Logs" "󰒓  Forge Build" "󰐃  Mini OS Center") ;;
-        shield) options=("󰒃  Shield Center" "󰛵  Shield Audit" "󰞀  Shield Sandbox" "󰐃  Mini OS Center") ;;
-        studio) options=("󰏗  Studio Open" "󰋩  Studio Pictures" "󰕧  Studio Videos" "󰻂  Studio Recorder") ;;
-        atlas) options=("󰙅  Atlas Explorer" "󰉋  Atlas Documents" "󰆋  Atlas Maps" "󰿭  Atlas Apps") ;;
-        pulse) options=("󰓅  Pulse Open" "󰊴  Pulse Games" "󰹑  Pulse Captures" "󰻂  Pulse Recorder") ;;
-        baobab) options=("󰔱  Baobab Open" "󰉋  Baobab Collections" "󰈙  Baobab Reader" "󰐅  Baobab Culture") ;;
-        equinox|*) options=("󰕰  Daily Overview" "󰉋  Daily Files" "󰒓  Daily Settings" "󰞋  Daily Help") ;;
-      esac
-      ;;
-    security)
-      prompt="Security"
-      runner="run_security_action"
-      options=("󰒃  Shield Center" "󰞀  Enable Shield" "󰛵  Cyber Lab" "󰒓  Settings")
-      ;;
-    network)
-      prompt="Network"
-      runner="run_network_action"
-      options=("󰤨  Wi-Fi Panel" "󰖩  Toggle Wi-Fi" "󰤭  Disconnect Wi-Fi" "󰒓  Settings")
-      ;;
-    bluetooth)
-      prompt="Bluetooth"
-      runner="run_bluetooth_action"
-      options=("󰂯  Bluetooth Panel" "󰖩  Toggle Bluetooth" "󰐢  Scan Devices" "󰂱  Device Manager" "󰒓  Settings")
-      ;;
-    audio)
-      prompt="Audio"
-      runner="run_audio_action"
-      options=("󰕾  Volume Mixer" "󰖁  Mute Toggle" "󰝝  Volume Up" "󰝞  Volume Down" "󰒓  Settings")
-      ;;
-    media-menu)
-      prompt="Média"
-      runner="run_media_action"
-      options=("󰐊  Lecture / pause" "󰒭  Suivant" "󰒮  Précédent" "󰓛  Stop" "󰕾  Audio")
-      ;;
-    battery)
-      prompt="Power"
-      runner="run_battery_action"
-      options=("󰐥  Power Menu" "󰒲  Sleep" "󰍁  Lock Session" "󰒓  Settings")
-      ;;
-    clock)
-      prompt="Time"
-      runner="run_clock_action"
-      options=("󰃭  Calendar" "󰥔  Clock" "󰀗  World Time" "󰒓  Settings")
-      ;;
-    app-menu)
-      prompt="SevenOS Menu"
-      runner="run_app_menu_action"
-      options=(
-        "󰆍  Fichier · Nouveau terminal"
-        "󰉋  Fichier · Ouvrir Seven Files"
-        "󰅇  Édition · Copier titre fenêtre"
-        "󰅌  Édition · Presse-papiers"
-        "󰕰  Affichage · Vue fenêtres"
-        "󰖲  Fenêtre · Contrôles"
-        "󰉌  Fenêtre · Centrer"
-        "󰹑  Fenêtre · Flottante"
-        "󰊓  Fenêtre · Plein écran"
-        "󰤼  Fenêtre · Split gauche"
-        "󰤽  Fenêtre · Split droite"
-        "󰅖  Fenêtre · Fermer"
-      )
-      case "$(app_menu_mode)" in
-        developer)
-          options+=("󰆍  Terminal · Palette" "󰒓  Terminal · Doctor" "󰌢  Forge · Projet Git" "󰑭  Forge · Logs")
-          ;;
-        forge)
-          options+=("󰌢  Forge · Projet Git" "󰑭  Forge · Logs" "󰆍  Terminal · Palette")
-          ;;
-        browser)
-          options+=("󰈹  Navigateur · Nouvelle fenêtre" "󰉍  Navigateur · Téléchargements")
-          ;;
-        files)
-          options+=("󰉋  Seven Files · Home" "󰉋  Seven Files · Profil actif" "󰉍  Fichier · Téléchargements")
-          ;;
-        studio)
-          options+=("󰏗  Studio · Médias" "󰈙  Studio · Exports")
-          ;;
-        shield)
-          options+=("󰒃  Shield · Centre" "󰛵  Shield · Audit rapide")
-          ;;
-        atlas)
-          options+=("󰙅  Atlas · Explorer" "󰿭  Atlas · Apps")
-          ;;
-        pulse)
-          options+=("󰓅  Pulse · Jeux" "󰹑  Pulse · Captures")
-          ;;
-        baobab)
-          options+=("󰔱  Baobab · Collections")
-          ;;
-      esac
-      options+=("󰋖  Aide · SevenOS")
-      ;;
-    app-menu-window)
-      prompt="Window"
-      runner="run_app_menu_action"
-      options=("󰖲  Fenêtre · Contrôles" "󰉌  Fenêtre · Centrer" "󰹑  Fenêtre · Flottante" "󰊓  Fenêtre · Plein écran" "󰤼  Fenêtre · Split gauche" "󰤽  Fenêtre · Split droite" "󰅖  Fenêtre · Fermer")
-      ;;
-    network-connect)
-      run_wifi connect
-      return 0
-      ;;
-    network-disconnect)
-      run_wifi disconnect
-      return 0
-      ;;
-    network-settings)
-      run_wifi settings
-      return 0
-      ;;
-    network-status)
-      run_terminal "SevenOS Network" "seven-wifi status 2>/dev/null || nmcli device status"
-      return 0
-      ;;
+        [[ $# -ge 2 ]] ||
+            die "missing profile"
+
+        execute_action profile "$2"
+        ;;
+
+    focus)
+        [[ $# -ge 2 ]] ||
+            die "missing focus"
+
+        execute_action focus "$2"
+        ;;
+
+    workspace)
+        [[ $# -ge 2 ]] ||
+            die "missing workspace"
+
+        execute_action workspace "$2"
+        ;;
+
+    execute)
+        [[ $# -ge 2 ]] ||
+            die "missing action"
+
+        execute_action action "$2"
+        ;;
+
+    request)
+        [[ $# -ge 2 ]] ||
+            die "missing JSON request"
+
+        request="$2"
+
+        jq -e . >/dev/null 2>&1 <<< "$request" ||
+            die "invalid JSON request"
+
+        if "$ACTION_ENGINE" --json <<< "$request"; then
+            refresh_context
+        else
+            die "action request rejected"
+        fi
+        ;;
+
+    -h|--help|help)
+        usage
+        ;;
+
     *)
-      printf 'seven-waybar-action: unknown area: %s\n' "$area" >&2
-      exit 1
-      ;;
-  esac
+        usage
+        exit 1
+        ;;
 
-  if dry_run; then
-    open_rofi_menu "$prompt" "${options[@]}"
-    return 0
-  fi
-
-  selected="$(open_rofi_menu "$prompt" "${options[@]}")"
-  selected="$(clean_selection "$selected")"
-  "$runner" "$selected"
-}
-
-show_menu "$@"
+esac

@@ -1,453 +1,914 @@
-#!/usr/bin/env python3
-"""Event-driven active-window cache for the SevenOS Waybar."""
+#!/usr/bin/env bash
 
-from __future__ import annotations
+set -Eeuo pipefail
 
-import json
-import os
-import select
-import signal
-import shutil
-import subprocess
-import sys
-import time
-from pathlib import Path
+# ============================================================
+# SevenOS Waybar Context
+# ============================================================
+#
+# Projection UI du moteur SevenOS Context.
+#
+# Architecture:
+#
+#   core/context
+#        ↓
+#   seven-waybar-context
+#        ↓
+#   waybar-context.json
+#        ↓
+#   Waybar
+#
+# PRINCIPLE:
+#
+#   core/context = source of truth
+#   seven-waybar-context = projection
+#   Waybar = presentation
+#
+# Contract:
+#   sevenos.waybar.context.v3
+#
+# ============================================================
 
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
-ROOT = Path(__file__).resolve().parent.parent
-RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
-CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
-CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
-PREFS_FILE = CONFIG_HOME / "sevenos" / "waybar.conf"
-WAYBAR_SIGNAL = "RTMIN+8"
-WINDOW_MEMORY_EVENTS = {"startup", "manual", "activewindow", "activewindowv2", "workspace", "openwindow", "closewindow", "movewindow"}
-LAST_MEMORY_REFRESH = 0.0
-LAST_NOTIFIED_CONTEXT = ""
+CONTEXT_DIR="$ROOT/core/context"
+CONTEXT_ENGINE="$CONTEXT_DIR/context.sh"
+CONTEXT_API="$CONTEXT_DIR/sevenos-context"
 
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/sevenos"
+CONTEXT_FILE="$RUNTIME_DIR/waybar-context.json"
+TMP_FILE="$CONTEXT_FILE.tmp"
 
-def run(command: list[str], timeout: float = 0.7) -> str:
-    try:
-        return subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout).stdout.strip()
-    except Exception:
-        return ""
+INTERVAL="${SEVENOS_WAYBAR_CONTEXT_INTERVAL:-2}"
 
+mkdir -p "$RUNTIME_DIR"
 
-def prefs() -> dict[str, str]:
-    values = {
-        "context": os.environ.get("SEVENOS_WAYBAR_CONTEXT", "dynamic"),
-        "signal_min_interval": os.environ.get("SEVENOS_WAYBAR_SIGNAL_MIN_INTERVAL", "1.2"),
-    }
-    if PREFS_FILE.exists():
-        for line in PREFS_FILE.read_text(encoding="utf-8", errors="ignore").splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#") or "=" not in stripped:
-                continue
-            key, value = stripped.split("=", 1)
-            values[key.strip().lower()] = value.strip().strip("'\"")
-    return values
+# ============================================================
+# Logging
+# ============================================================
 
+log() {
+    printf '[seven-waybar-context] %s\n' "$*" >&2
+}
 
-def stable_context() -> bool:
-    return prefs().get("context", "dynamic").lower() in {"stable", "static", "locked", "freeze"}
+die() {
+    log "ERROR: $*"
+    exit 1
+}
 
+# ============================================================
+# Dependencies
+# ============================================================
 
-def preferred_density() -> str:
-    value = prefs().get("density", "").lower()
-    if value in {"normal", "compact", "wide", "immersive"}:
-        return value
-    return ""
+command -v jq >/dev/null 2>&1 ||
+    die "jq is required"
 
+command -v hyprctl >/dev/null 2>&1 ||
+    die "hyprctl is required"
 
-def signal_min_interval() -> float:
-    try:
-        return max(0.2, float(prefs().get("signal_min_interval", "1.2")))
-    except ValueError:
-        return 1.2
+[[ -x "$CONTEXT_ENGINE" ]] ||
+    die "Context engine not found: $CONTEXT_ENGINE"
 
+# ============================================================
+# Helpers
+# ============================================================
 
-def active_window() -> dict:
-    if not shutil.which("hyprctl"):
-        return {}
-    try:
-        return json.loads(run(["hyprctl", "activewindow", "-j"], timeout=0.5) or "{}")
-    except json.JSONDecodeError:
-        return {}
+now_iso() {
+    date -u '+%Y-%m-%dT%H:%M:%SZ'
+}
 
+json_valid() {
+    jq -e . >/dev/null 2>&1 <<< "$1"
+}
 
-def active_profile() -> dict:
-    config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
-    profile_json = config_home / "profile.json"
-    if profile_json.exists():
-        try:
-            data = json.loads(profile_json.read_text(encoding="utf-8") or "{}")
-            if data.get("key"):
-                return data
-        except Exception:
-            pass
-    profile_env = config_home / "profile.env"
-    if profile_env.exists():
-        values: dict[str, str] = {}
-        for line in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
-            key, _, value = line.partition("=")
-            values[key.strip()] = value.strip().strip("'\"")
-        if values.get("SEVENOS_ACTIVE_PROFILE"):
-            return {
-                "key": values.get("SEVENOS_ACTIVE_PROFILE", "equinox"),
-                "title": values.get("SEVENOS_PROFILE_TITLE", "Equinox Balance"),
-                "role": "",
-                "state": "",
+# ============================================================
+# Core context
+# ============================================================
+
+read_core_context() {
+
+    local output
+
+    if output="$("$CONTEXT_ENGINE" status --json 2>/dev/null)"; then
+
+        if json_valid "$output"; then
+            printf '%s\n' "$output"
+            return 0
+        fi
+
+    fi
+
+    if [[ -x "$CONTEXT_API" ]]; then
+
+        if output="$("$CONTEXT_API" status 2>/dev/null)"; then
+
+            if json_valid "$output"; then
+                printf '%s\n' "$output"
+                return 0
+            fi
+
+        fi
+
+    fi
+
+    return 1
+}
+
+# ============================================================
+# Hyprland context
+# ============================================================
+
+read_hyprland_context() {
+
+    local active
+    local workspace_id
+    local workspace_name
+    local class
+    local initial_class
+    local title
+    local address
+    local floating
+    local fullscreen
+
+    active="$(hyprctl activewindow -j 2>/dev/null || printf '{}')"
+
+    workspace_id="$(
+        jq -r '
+            if (.workspace.id? // null) != null
+            then .workspace.id
+            else null
+            end
+        ' <<< "$active"
+    )"
+
+    workspace_name="$(
+        jq -r '
+            if (.workspace.name? // null) != null
+            then .workspace.name
+            else ""
+            end
+        ' <<< "$active"
+    )"
+
+    class="$(
+        jq -r '.class // ""' <<< "$active"
+    )"
+
+    initial_class="$(
+        jq -r '.initialClass // ""' <<< "$active"
+    )"
+
+    title="$(
+        jq -r '.title // ""' <<< "$active"
+    )"
+
+    address="$(
+        jq -r '.address // ""' <<< "$active"
+    )"
+
+    floating="$(
+        jq -r '.floating // false' <<< "$active"
+    )"
+
+    fullscreen="$(
+        jq -r '.fullscreen // 0' <<< "$active"
+    )"
+
+    jq -n \
+        --argjson workspace_id "$workspace_id" \
+        --arg workspace_name "$workspace_name" \
+        --arg class "$class" \
+        --arg initial_class "$initial_class" \
+        --arg title "$title" \
+        --arg address "$address" \
+        --argjson floating "$floating" \
+        --argjson fullscreen "$fullscreen" \
+        '{
+            workspace: {
+                id: $workspace_id,
+                name: $workspace_name
+            },
+            window: {
+                class: $class,
+                initial_class: $initial_class,
+                title: $title,
+                address: $address,
+                floating: $floating,
+                fullscreen: $fullscreen
             }
-    manager = ROOT / "profiles/profile-manager.sh"
-    if not manager.exists():
-        return {"key": os.environ.get("SEVENOS_PROFILE", "equinox"), "title": "Equinox Balance"}
-    try:
-        return json.loads(run([str(manager), "current", "--json"], timeout=1.2) or "{}")
-    except json.JSONDecodeError:
-        return {"key": "equinox", "title": "Equinox Balance"}
+        }'
+}
 
+# ============================================================
+# Safe value helpers
+# ============================================================
 
-def service_from_title(app_key: str, title: str) -> str:
-    text = title.lower()
-    if app_key not in {"chrome", "chromium", "firefox", "brave", "browser"}:
-        return ""
-    rules = (
-        ("youtube", ("youtube", "youtu.be")),
-        ("gmail", ("gmail", "mail.google")),
-        ("google-docs", ("google docs", "docs.google")),
-        ("google-sheets", ("google sheets", "sheets.google")),
-        ("google-drive", ("google drive", "drive.google")),
-        ("github", ("github",)),
-        ("figma", ("figma",)),
-        ("notion", ("notion",)),
-        ("streaming", ("netflix", "prime video", "disney+", "canal+", "free movies")),
-    )
-    for service, tokens in rules:
-        if any(token in text for token in tokens):
-            return service
-    return ""
+string_or_empty() {
+    local value="$1"
 
+    jq -r '
+        if . == null then
+            ""
+        elif type == "string" then
+            .
+        else
+            tostring
+        end
+    ' <<< "$value"
+}
 
-def app_key(app_class: str) -> str:
-    klass = app_class.lower()
-    if "google-chrome" in klass:
-        return "chrome"
-    if "chromium" in klass:
-        return "chromium"
-    if "firefox" in klass or "librewolf" in klass:
-        return "firefox"
-    if "brave" in klass:
-        return "brave"
-    if "code" in klass or "codium" in klass or "cursor" in klass:
-        return "developer"
-    if "terminal" in klass or "kitty" in klass:
-        return "terminal"
-    if "sevenfiles" in klass or "seven-files" in klass or "nautilus" in klass:
-        return "files"
-    if any(token in klass for token in ("vlc", "mpv", "spotify")):
-        return "media"
-    if any(token in klass for token in ("krita", "blender", "gimp", "inkscape", "kdenlive", "obs")):
-        return "studio"
-    return klass or "desktop"
+number_or_null() {
+    local value="$1"
 
+    jq -c '
+        if . == null then
+            null
+        elif type == "number" then
+            .
+        elif type == "string" and test("^[0-9]+$") then
+            tonumber
+        else
+            null
+        end
+    ' <<< "$value"
+}
 
-def shell_experience() -> dict:
-    if stable_context():
-        return {}
-    helper = ROOT / "scripts/shell-experience.sh"
-    if not helper.exists():
-        return {}
-    try:
-        return json.loads(run([str(helper), "recommend"], timeout=0.9) or "{}")
-    except json.JSONDecodeError:
-        return {}
+# ============================================================
+# Profile projection
+# ============================================================
 
+profile_projection() {
 
-def window_memory() -> dict:
-    helper = ROOT / "bin/seven-window"
-    if not helper.exists():
-        return {}
-    try:
-        data = json.loads(run([str(helper), "memory", "--json"], timeout=0.9) or "{}")
-    except json.JSONDecodeError:
-        return {}
-    active = data.get("active") if isinstance(data.get("active"), dict) else {}
-    return {
-        "schema": data.get("schema", "sevenos.window-memory.v1"),
-        "updated_at": data.get("updated_at", ""),
-        "active": {
-            "class": active.get("class", ""),
-            "workspace": active.get("workspace", ""),
-            "floating": active.get("floating", False),
-            "fullscreen": active.get("fullscreen", False),
-        },
-        "count": len(data.get("windows") or []),
-    }
+    local source="$1"
 
+    jq -c '
+        .profile as $profile |
 
-def refresh_window_memory(event: str) -> None:
-    global LAST_MEMORY_REFRESH
-    if event not in WINDOW_MEMORY_EVENTS:
+        {
+            key:
+                if ($profile | type) == "object"
+                then ($profile.key // "unknown")
+                elif ($profile | type) == "string"
+                then $profile
+                else "unknown"
+                end,
+
+            title:
+                if ($profile | type) == "object"
+                then ($profile.title // "SevenOS Profile")
+                else "SevenOS Profile"
+                end,
+
+            role:
+                if ($profile | type) == "object"
+                then ($profile.role // "")
+                else ""
+                end,
+
+            state:
+                if ($profile | type) == "object"
+                then ($profile.state // "OK")
+                else "OK"
+                end
+        }
+    ' <<< "$source"
+}
+
+# ============================================================
+# Application projection
+# ============================================================
+
+application_projection() {
+
+    local source="$1"
+    local hypr="$2"
+
+    jq -c '
+        .application as $application |
+        .window as $window |
+
+        {
+            key:
+                if ($application | type) == "object"
+                then ($application.key // $application.label // "desktop")
+                elif ($application | type) == "string"
+                then $application
+                else "desktop"
+                end,
+
+            label:
+                if ($application | type) == "object"
+                then ($application.label // $application.key // "desktop")
+                elif ($application | type) == "string"
+                then $application
+                else "desktop"
+                end,
+
+            class:
+                if ($application | type) == "object"
+                then ($application.class // "")
+                else ($window.class // "")
+                end,
+
+            initial_class:
+                if ($application | type) == "object"
+                then ($application.initial_class // "")
+                else ($window.initial_class // "")
+                end,
+
+            title:
+                if ($application | type) == "object"
+                then ($application.title // "")
+                else ($window.title // "")
+                end
+        }
+    ' \
+    <<< "$(
+        jq -n \
+            --argjson source "$source" \
+            --argjson window "$hypr" \
+            '$source + {window: $window}'
+    )"
+}
+
+# ============================================================
+# Activity
+# ============================================================
+
+activity_projection() {
+
+    local source="$1"
+
+    jq -c '
+        .state.activity as $activity |
+
+        {
+            key:
+                if ($activity | type) == "object"
+                then ($activity.key // "unknown")
+                elif ($activity | type) == "string"
+                then $activity
+                else "unknown"
+                end,
+
+            label:
+                if ($activity | type) == "object"
+                then ($activity.label // $activity.key // "unknown")
+                elif ($activity | type) == "string"
+                then $activity
+                else "unknown"
+                end
+        }
+    ' <<< "$source"
+}
+
+# ============================================================
+# Focus
+# ============================================================
+
+focus_projection() {
+
+    local source="$1"
+
+    jq -c '
+        .state.focus as $focus |
+
+        {
+            key:
+                if ($focus | type) == "object"
+                then ($focus.key // "normal")
+                elif ($focus | type) == "string"
+                then $focus
+                else "normal"
+                end,
+
+            label:
+                if ($focus | type) == "object"
+                then ($focus.label // $focus.key // "normal")
+                elif ($focus | type) == "string"
+                then $focus
+                else "normal"
+                end
+        }
+    ' <<< "$source"
+}
+
+# ============================================================
+# Power
+# ============================================================
+
+power_projection() {
+
+    local source="$1"
+
+    jq -c '
+        {
+            state: (
+                .state.power_state
+                // .power_state
+                // "normal"
+            ),
+
+            battery: (
+                if (.battery | type) == "number"
+                then .battery
+                elif (.battery | type) == "string"
+                     and (.battery | test("^[0-9]+$"))
+                then (.battery | tonumber)
+                else null
+                end
+            )
+        }
+    ' <<< "$source"
+}
+
+# ============================================================
+# Network
+# ============================================================
+
+network_projection() {
+
+    local source="$1"
+
+    jq -c '
+        {
+            state: (
+                .network
+                // .state.connectivity
+                // "unknown"
+            ),
+
+            vpn: (
+                .vpn
+                // null
+            )
+        }
+    ' <<< "$source"
+}
+
+# ============================================================
+# Security
+# ============================================================
+
+security_projection() {
+
+    local source="$1"
+
+    jq -c '
+        {
+            state: (
+                .security
+                // .state.security_state
+                // "unknown"
+            ),
+
+            attention: (
+                .signals.security_attention
+                // false
+            )
+        }
+    ' <<< "$source"
+}
+
+# ============================================================
+# Workspace
+# ============================================================
+
+workspace_projection() {
+
+    local source="$1"
+    local hypr="$2"
+
+    jq -c '
+        {
+            id:
+                (
+                    .workspace
+                    // $hypr.workspace.id
+                    // null
+                ),
+
+            name:
+                (
+                    $hypr.workspace.name
+                    // (
+                        if (.workspace | type) == "string"
+                        then .workspace
+                        else ""
+                        end
+                    )
+                )
+        }
+    ' \
+    --argjson hypr "$hypr" \
+    <<< "$source"
+}
+
+# ============================================================
+# UI policy
+# ============================================================
+
+ui_projection() {
+
+    local source="$1"
+
+    jq -c '
+        {
+            mode: (
+                if .state.activity == "development"
+                then "developer"
+                elif .state.activity == "creative"
+                then "creative"
+                elif .state.activity == "gaming"
+                then "gaming"
+                else "desktop"
+                end
+            ),
+
+            priority: (
+                if .signals.focus_mode == true
+                then "focus"
+                elif .signals.security_attention == true
+                then "security"
+                elif .signals.power_saving == true
+                then "power"
+                else "workflow"
+                end
+            ),
+
+            visibility: {
+                network: true,
+                battery: true,
+                audio: true,
+                security: true
+            }
+        }
+    ' <<< "$source"
+}
+
+# ============================================================
+# Layout policy
+# ============================================================
+
+layout_projection() {
+
+    local source="$1"
+
+    jq -c '
+        {
+            schema: "sevenos.shell-layout-policy.v1",
+
+            density:
+                if .signals.focus_mode == true
+                then "compact"
+                else "compact"
+                end,
+
+            priority:
+                if .signals.security_attention == true
+                then "security"
+                elif .signals.focus_mode == true
+                then "focus"
+                else "workflow"
+                end,
+
+            waybar: {
+                left: "app-menu",
+                center: "context",
+                right: "system-compact"
+            },
+
+            dock: {
+                behavior: "visible"
+            },
+
+            panels: {
+                motion: "standard"
+            }
+        }
+    ' <<< "$source"
+}
+
+# ============================================================
+# Full projection
+# ============================================================
+
+build_projection() {
+
+    local source="$1"
+    local hypr="$2"
+
+    local profile
+    local application
+    local activity
+    local focus
+    local power
+    local network
+    local security
+    local workspace
+    local layout
+    local ui
+
+    profile="$(profile_projection "$source")"
+    application="$(application_projection "$source" "$hypr")"
+    activity="$(activity_projection "$source")"
+    focus="$(focus_projection "$source")"
+    power="$(power_projection "$source")"
+    network="$(network_projection "$source")"
+    security="$(security_projection "$source")"
+    workspace="$(workspace_projection "$source" "$hypr")"
+    layout="$(layout_projection "$source")"
+    ui="$(ui_projection "$source")"
+
+    jq -n \
+        --arg generated_at "$(now_iso)" \
+        --argjson profile "$profile" \
+        --argjson application "$application" \
+        --argjson activity "$activity" \
+        --argjson focus "$focus" \
+        --argjson power "$power" \
+        --argjson network "$network" \
+        --argjson security "$security" \
+        --argjson workspace "$workspace" \
+        --argjson layout "$layout" \
+        --argjson ui "$ui" \
+        --argjson source "$source" \
+        '{
+            schema: "sevenos.waybar.context.v3",
+            generated_at: $generated_at,
+
+            profile: $profile,
+            application: $application,
+            activity: $activity,
+            focus: $focus,
+
+            power: $power,
+            network: $network,
+            security: $security,
+            workspace: $workspace,
+
+            layout: $layout,
+            ui: $ui,
+
+            signals: (
+                $source.signals // {}
+            ),
+
+            source: {
+                schema: ($source.schema // "sevenos.context.v1")
+            }
+        }'
+}
+
+# ============================================================
+# Atomic write
+# ============================================================
+
+write_context() {
+
+    local projection="$1"
+
+    printf '%s\n' "$projection" |
+        jq '.' > "$TMP_FILE"
+
+    mv -f "$TMP_FILE" "$CONTEXT_FILE"
+}
+
+# ============================================================
+# One cycle
+# ============================================================
+
+run_once() {
+
+    local source
+    local hypr
+    local projection
+
+    source="$(read_core_context)" ||
+        die "Unable to read SevenOS Context"
+
+    hypr="$(read_hyprland_context)"
+
+    projection="$(build_projection "$source" "$hypr")"
+
+    write_context "$projection"
+
+    printf '%s\n' "$projection"
+}
+
+# ============================================================
+# Status
+# ============================================================
+
+status() {
+
+    if [[ ! -f "$CONTEXT_FILE" ]]; then
+        jq -n '
+            {
+                schema: "sevenos.waybar.context.status.v3",
+                state: "WARN",
+                instances: 0,
+                context_file: "'"$CONTEXT_FILE"'",
+                context_fresh: false
+            }
+        '
         return
-    helper = ROOT / "bin/seven-window"
-    if not helper.exists():
-        return
-    now = time.time()
-    if stable_context() and event not in {"startup", "manual", "doctor", "repair"}:
-        return
-    if event not in {"startup", "manual"} and now - LAST_MEMORY_REFRESH < 0.7:
-        return
-    LAST_MEMORY_REFRESH = now
-    try:
-        subprocess.run([str(helper), "remember"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.2)
-    except Exception:
-        pass
+    fi
 
+    local age
+    local context
 
-def layout_policy(profile_key: str, app: str, service: str, fullscreen: bool) -> dict:
-    density = "normal"
-    priority = "balanced"
-    if stable_context():
-        density = preferred_density() or "compact"
-        priority = {
-            "compact": "workflow",
-            "wide": "assets",
-            "immersive": "content",
-            "normal": "balanced",
-        }.get(density, "workflow")
-    elif fullscreen or service in {"streaming", "youtube"} or profile_key == "pulse":
-        density = "immersive"
-        priority = "content"
-    elif profile_key in {"shield", "forge"} or app in {"developer", "terminal"}:
-        density = "compact"
-        priority = "workflow"
-    elif profile_key == "studio" or app == "studio":
-        density = "wide"
-        priority = "assets"
-    return {
-        "schema": "sevenos.shell-layout-policy.v1",
-        "density": density,
-        "priority": priority,
-        "waybar": {
-            "left": "app-menu" if density != "immersive" else "app-name",
-            "right": "system-compact" if density in {"compact", "immersive"} else "system-full",
-        },
-        "dock": {
-            "behavior": "autohide" if density == "immersive" else "visible",
-        },
-        "panels": {
-            "motion": "reduced" if profile_key == "shield" else "standard",
-        },
-    }
+    context="$(cat "$CONTEXT_FILE")"
 
+    age="$(
+        jq -r '.generated_at' "$CONTEXT_FILE" |
+            xargs -I{} date -d "{}" +%s 2>/dev/null |
+            awk -v now="$(date +%s)" '{print now - $1}'
+    )"
 
-def payload(event: str = "refresh") -> dict:
-    refresh_window_memory(event)
-    window = active_window()
-    profile = active_profile()
-    profile_key = str(profile.get("key") or "equinox")
-    key = app_key(str(window.get("class") or window.get("initialClass") or ""))
-    service = service_from_title(key, str(window.get("title") or ""))
-    workspace = window.get("workspace", {}) if isinstance(window.get("workspace"), dict) else {}
-    fullscreen = bool(window.get("fullscreen"))
-    return {
-        "schema": "sevenos.waybar.context.v1",
-        "event": event,
-        "time": time.time(),
-        "profile": {
-            "key": profile_key,
-            "title": str(profile.get("title") or "Equinox Balance"),
-            "role": str(profile.get("role") or ""),
-            "state": str(profile.get("state") or ""),
-        },
-        "window": {
-            "address": window.get("address", ""),
-            "class": window.get("class", ""),
-            "initialClass": window.get("initialClass", ""),
-            "title": window.get("title", ""),
-            "workspace": workspace,
-            "fullscreen": window.get("fullscreen", False),
-            "floating": window.get("floating", False),
-        },
-        "app": {
-            "key": key,
-            "service": service,
-            "label": service or key,
-            "fullscreen": fullscreen,
-            "workspace": workspace.get("name") or workspace.get("id") or "",
-        },
-        "layout": layout_policy(profile_key, key, service, fullscreen),
-        "experience": shell_experience(),
-        "window_memory": window_memory(),
-    }
+    age="${age:-999999}"
 
+    jq -n \
+        --argjson context "$context" \
+        --argjson age "$age" \
+        '{
+            schema: "sevenos.waybar.context.status.v3",
+            state: (
+                if $age <= 5 then "OK"
+                elif $age <= 15 then "WARN"
+                else "STALE"
+                end
+            ),
+            instances: 1,
+            context_file: "'"$CONTEXT_FILE"'",
+            context_fresh: ($age <= 5),
+            context_age_seconds: $age,
+            context: $context
+        }'
+}
 
-def write_context(event: str = "refresh", notify_waybar: bool = True) -> None:
-    global LAST_NOTIFIED_CONTEXT
-    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-    data = payload(event)
-    CONTEXT_FILE.write_text(json.dumps(data, ensure_ascii=False) + "\n", encoding="utf-8")
-    if stable_context() and event not in {"startup", "manual", "doctor", "repair"}:
-        notify_waybar = False
-    signature = json.dumps({
-        "profile": data.get("profile", {}).get("key"),
-        "app": data.get("app", {}).get("key"),
-        "service": data.get("app", {}).get("service"),
-        "density": data.get("layout", {}).get("density"),
-        "priority": data.get("layout", {}).get("priority"),
-    }, sort_keys=True)
-    now = time.time()
-    last_signal = getattr(write_context, "_last_signal", 0.0)
-    if notify_waybar and signature == LAST_NOTIFIED_CONTEXT and now - last_signal < signal_min_interval():
-        notify_waybar = False
-    if notify_waybar:
-        LAST_NOTIFIED_CONTEXT = signature
-        setattr(write_context, "_last_signal", now)
-        subprocess.run(["pkill", f"-{WAYBAR_SIGNAL}", "-x", "waybar"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+# ============================================================
+# Waybar module
+# ============================================================
+#
+# Waybar reads only the projection written by this process.  It must not call
+# core/context itself: that would create a second, potentially inconsistent
+# context snapshot for the same frame.
 
-
-def daemon() -> int:
-    write_context("startup", notify_waybar=True)
-    if not shutil.which("hyprctl"):
-        return 1
-    while True:
-        write_context("reconnect", notify_waybar=False)
-        process = subprocess.Popen(["hyprctl", "events"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        assert process.stdout is not None
-        last_heartbeat = time.time()
-        while process.poll() is None:
-            readable, _, _ = select.select([process.stdout], [], [], 2.0)
-            if readable:
-                line = process.stdout.readline()
-                if not line:
-                    break
-                event = line.strip().split(">>", 1)[0]
-                if event in {"activewindow", "activewindowv2", "workspace", "focusedmon", "openwindow", "closewindow", "movewindow"}:
-                    write_context(event, notify_waybar=True)
-                    last_heartbeat = time.time()
-            elif time.time() - last_heartbeat >= 5.0:
-                write_context("heartbeat", notify_waybar=False)
-                last_heartbeat = time.time()
-        process.wait()
-        time.sleep(1.2)
-
-
-def status() -> int:
-    write_context("manual", notify_waybar=False)
-    print(CONTEXT_FILE.read_text(encoding="utf-8").strip())
-    return 0
-
-
-def process_count(pattern: str) -> int:
-    output = run(["pgrep", "-u", os.environ.get("USER", ""), "-f", pattern], timeout=0.4)
-    return len([line for line in output.splitlines() if line.strip()])
-
-
-def exact_process_count(name: str) -> int:
-    output = run(["pgrep", "-u", os.environ.get("USER", ""), "-x", name], timeout=0.4)
-    return len([line for line in output.splitlines() if line.strip()])
-
-
-def service_state(unit: str) -> str:
-    if not shutil.which("systemctl"):
-        return "unavailable"
-    state = run(["systemctl", "--user", "is-active", unit], timeout=0.6)
-    if state:
-        return state
-    enabled = run(["systemctl", "--user", "is-enabled", unit], timeout=0.6)
-    return enabled or "unknown"
-
-
-def read_cached_context() -> dict:
-    if not CONTEXT_FILE.exists():
-        return {}
-    try:
-        return json.loads(CONTEXT_FILE.read_text(encoding="utf-8") or "{}")
-    except Exception:
-        return {}
-
-
-def doctor() -> int:
-    context = read_cached_context()
-    timestamp = context.get("time") if isinstance(context.get("time"), (int, float)) else 0
-    age = max(0.0, time.time() - float(timestamp)) if timestamp else None
-    if age is None or age > 20.0:
-        write_context("doctor", notify_waybar=False)
-        context = read_cached_context()
-        timestamp = context.get("time") if isinstance(context.get("time"), (int, float)) else 0
-        age = max(0.0, time.time() - float(timestamp)) if timestamp else None
-    daemon_count = process_count(r"(^|/| )seven-waybar-context daemon( |$)")
-    waybar_count = exact_process_count("waybar")
-    service = service_state("sevenos-waybar-context.service")
-    hyprctl_ready = bool(shutil.which("hyprctl"))
-    fresh = age is not None and age <= 20.0
-    ok = bool(context.get("schema") == "sevenos.waybar.context.v1" and fresh and daemon_count == 1)
-    payload = {
-        "schema": "sevenos.waybar.context.doctor.v1",
-        "state": "OK" if ok else "WARN",
-        "context_file": str(CONTEXT_FILE),
-        "context_fresh": fresh,
-        "context_age_seconds": round(age, 2) if age is not None else None,
-        "daemon_count": daemon_count,
-        "waybar_count": waybar_count,
-        "service": service,
-        "hyprctl": hyprctl_ready,
-        "profile": (context.get("profile") or {}).get("key", "") if isinstance(context.get("profile"), dict) else "",
-        "app": (context.get("app") or {}).get("key", "") if isinstance(context.get("app"), dict) else "",
-        "layout": context.get("layout") if isinstance(context.get("layout"), dict) else {},
-    }
-    print(json.dumps(payload, ensure_ascii=False))
-    return 0
-
-
-def repair() -> int:
-    actions: list[str] = []
-    if os.environ.get("SEVENOS_DRY_RUN") == "1":
-        print(json.dumps({
-            "schema": "sevenos.waybar.context.repair.v1",
-            "state": "DRY_RUN",
-            "actions": ["dry-run"],
-            "context_file": str(CONTEXT_FILE),
-        }, ensure_ascii=False))
+module() {
+    if [[ ! -s "$CONTEXT_FILE" ]]; then
+        jq -n '{text: "󰒓 Contexte indisponible", tooltip: "SevenOS Context\nLa projection est indisponible.", class: ["context", "unavailable"]}'
         return 0
-    if shutil.which("systemctl") and service_state("sevenos-waybar-context.service") not in {"unavailable", "unknown"}:
-        subprocess.run(["systemctl", "--user", "daemon-reload"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["systemctl", "--user", "restart", "sevenos-waybar-context.service"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        actions.append("systemd-restart")
-    else:
-        subprocess.run(["pkill", "-u", os.environ.get("USER", ""), "-f", r"(^|/| )seven-waybar-context daemon( |$)"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        write_context("repair", notify_waybar=False)
-        subprocess.Popen([str(Path(__file__).resolve()), "daemon"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        actions.append("fallback-daemon")
+    fi
 
-    time.sleep(0.8)
-    write_context("repair", notify_waybar=True)
-    context = read_cached_context()
-    payload_data = {
-        "schema": "sevenos.waybar.context.repair.v1",
-        "state": "OK",
-        "actions": actions,
-        "context_file": str(CONTEXT_FILE),
-        "profile": (context.get("profile") or {}).get("key", "") if isinstance(context.get("profile"), dict) else "",
-        "app": (context.get("app") or {}).get("key", "") if isinstance(context.get("app"), dict) else "",
+    jq -c '
+        def value_label($value; $fallback):
+            if ($value | type) == "string" and $value != "" then $value else $fallback end;
+        def activity_icon:
+            {development:"󰨞", creative:"󰏘", writing:"󰈙", media:"󰎆", gaming:"󰊗"}[.] // "󰋜";
+        def focus_icon:
+            {focused:"󰌨", relaxed:"󰒲", creative:"󰏘"}[.] // "󰍹";
+
+        . as $context |
+        ($context.activity.key | value_label(.; "general")) as $activity |
+        ($context.focus.key | value_label(.; "normal")) as $focus |
+        ($context.application.label | value_label(.; "Bureau")) as $application |
+        ($context.profile.title | value_label(.; "SevenOS")) as $profile |
+        ($context.workspace.name | value_label(.; "—")) as $workspace |
+        ($context.network.state | value_label(.; "unknown")) as $network |
+        ($context.security.state | value_label(.; "unknown")) as $security |
+        {
+            text: "\($activity | activity_icon) \($activity) · \($focus | focus_icon) \($focus)",
+            tooltip: (
+                "SevenOS Context\n"
+                + "───────────────\n"
+                + "Profil       : \($profile)\n"
+                + "Application  : \($application)\n"
+                + "Espace       : \($workspace)\n"
+                + "Activité     : \($activity)\n"
+                + "Focus        : \($focus)\n"
+                + "Réseau       : \($network)\n"
+                + "Sécurité     : \($security)"
+            ),
+            class: ["context", "activity-\($activity)", "focus-\($focus)", "security-\($security)"]
+        }
+    ' "$CONTEXT_FILE"
+}
+
+security_module() {
+    if [[ ! -s "$CONTEXT_FILE" ]]; then
+        jq -n '{text: "", tooltip: "Sécurité SevenOS indisponible", class: ["security", "hidden"]}'
+        return 0
+    fi
+
+    jq -c '
+        if .signals.security_attention == true then
+            {
+                text: "󰒃",
+                tooltip: "Sécurité SevenOS\nUne information demande votre attention.",
+                class: ["security", "attention"]
+            }
+        else
+            {
+                text: "",
+                tooltip: "Sécurité SevenOS · état normal",
+                class: ["security", "hidden"]
+            }
+        end
+    ' "$CONTEXT_FILE"
+}
+
+# ============================================================
+# Daemon
+# ============================================================
+
+run_daemon() {
+
+    local running=true
+
+    cleanup() {
+        running=false
     }
-    print(json.dumps(payload_data, ensure_ascii=False))
-    return 0
 
+    trap cleanup INT TERM EXIT
 
-def main() -> int:
-    command = sys.argv[1] if len(sys.argv) > 1 else "status"
-    if command in {"daemon", "watch"}:
-        signal.signal(signal.SIGTERM, lambda *_args: sys.exit(0))
-        return daemon()
-    if command in {"status", "once", "refresh"}:
-        return status()
-    if command in {"doctor", "health", "--json"}:
-        return doctor()
-    if command in {"repair", "fix"}:
-        return repair()
-    print("Usage: seven-waybar-context [status|once|daemon|doctor|repair]", file=sys.stderr)
-    return 2
+    log "Starting projection daemon"
+    log "Interval: ${INTERVAL}s"
+    log "Context: $CONTEXT_FILE"
 
+    while [[ "$running" == "true" ]]; do
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+        if ! run_once >/dev/null; then
+            log "Projection cycle failed"
+        fi
+
+        local elapsed=0
+
+        while [[ "$running" == "true" && "$elapsed" -lt "$INTERVAL" ]]; do
+            sleep 1 || true
+            elapsed=$((elapsed + 1))
+        done
+
+    done
+
+    trap - INT TERM EXIT
+
+    log "Projection daemon stopped"
+}
+
+# ============================================================
+# CLI
+# ============================================================
+
+case "${1:-once}" in
+
+    once)
+        run_once
+        ;;
+
+    daemon)
+        run_daemon
+        ;;
+
+    status)
+        status
+        ;;
+
+    doctor)
+        # `status` already checks freshness and the projection contract.
+        status
+        ;;
+
+    module)
+        module
+        ;;
+
+    security)
+        security_module
+        ;;
+
+    *)
+        cat <<'USAGE'
+
+SevenOS Waybar Context
+
+Usage:
+    seven-waybar-context once
+    seven-waybar-context daemon
+    seven-waybar-context status
+    seven-waybar-context doctor
+    seven-waybar-context module
+    seven-waybar-context security
+
+Environment:
+    SEVENOS_WAYBAR_CONTEXT_INTERVAL=2
+
+Contract:
+    sevenos.waybar.context.v3
+
+USAGE
+        exit 1
+        ;;
+
+esac

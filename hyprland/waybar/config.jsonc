@@ -1,4 +1,5 @@
 {
+  "include": ["module/context.json"],
   "layer": "top",
   "position": "top",
   "height": 34,
@@ -7,16 +8,16 @@
   "margin-left": 10,
   "margin-right": 10,
   "gtk-layer-shell": true,
-  "modules-left": ["custom/sevenos", "custom/recorder"],
-  "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/system-status", "custom/wifi", "custom/bluetooth", "custom/spotlight", "clock", "custom/control-center"],
+  "modules-left": ["custom/sevenos", "hyprland/workspaces"],
+  "modules-center": ["custom/seven-context"],
+  "modules-right": ["custom/wifi", "pulseaudio", "custom/seven-security", "battery", "clock", "custom/control-center"],
   "custom/sevenos": {
     "exec": "seven-waybar-status sevenos",
     "return-type": "json",
     "interval": 8,
     "signal": 8,
     "tooltip": true,
-    "on-click": "seven-waybar-action sevenos-menu",
+    "on-click": "seven-spotlight field",
     "on-click-right": "seven-profile-center-native",
     "on-click-middle": "seven-spotlight field"
   },
@@ -199,8 +200,8 @@
     "return-type": "json",
     "interval": 12,
     "tooltip": true,
-    "on-click": "seven-quick-settings wifi",
-    "on-click-right": "seven-quick-settings",
+    "on-click": "seven-wifi nmtui",
+    "on-click-right": "seven-wifi settings",
     "on-click-middle": "seven-wifi toggle"
   },
   "custom/bluetooth": {
@@ -252,7 +253,7 @@
     "return-type": "json",
     "interval": 10,
     "tooltip": true,
-    "on-click": "seven-quick-settings",
+    "on-click": "seven-control-center toggle",
     "on-click-right": "seven-settings",
     "on-click-middle": "seven-waybar repair"
   },
@@ -270,7 +271,7 @@
     "return-type": "json",
     "interval": 10,
     "tooltip": true,
-    "on-click": "seven-quick-settings",
+    "on-click": "seven-control-center toggle",
     "on-click-right": "seven-settings",
     "on-click-middle": "seven-waybar repair"
   }

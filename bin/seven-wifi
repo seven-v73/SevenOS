@@ -359,6 +359,26 @@ open_settings() {
   fi
 }
 
+open_nmtui() {
+  if dry_run; then
+    dry_line "Open nmtui connection manager"
+    return 0
+  fi
+
+  if ! command -v nmtui >/dev/null 2>&1; then
+    notify "SevenOS Wi-Fi" "nmtui est introuvable. Installe NetworkManager."
+    return 1
+  fi
+
+  if command -v seven-terminal >/dev/null 2>&1; then
+    setsid -f seven-terminal focus -- nmtui connect >/tmp/sevenos-wifi.log 2>&1 || true
+  elif command -v kitty >/dev/null 2>&1; then
+    setsid -f kitty --title "SevenOS Network" nmtui connect >/tmp/sevenos-wifi.log 2>&1 || true
+  else
+    nmtui connect
+  fi
+}
+
 restart_networkmanager() {
   if dry_run; then
     dry_line "Restart NetworkManager"
@@ -444,12 +464,13 @@ case "${1:-menu}" in
   disconnect) disconnect_wifi ;;
   toggle) toggle_wifi ;;
   settings) open_settings ;;
+  nmtui) open_nmtui ;;
   status) terminal_status ;;
   status-json|--json) status_json ;;
   restart) restart_networkmanager ;;
   repair|fix) repair_network ;;
   *)
-    printf 'Usage: seven-wifi [menu|connect|disconnect|toggle|settings|status|status-json|restart|repair]\n' >&2
+    printf 'Usage: seven-wifi [menu|connect|disconnect|toggle|settings|nmtui|status|status-json|restart|repair]\n' >&2
     exit 1
     ;;
 esac

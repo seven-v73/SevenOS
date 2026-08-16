@@ -1,935 +1,505 @@
-/* ============================================================
-SevenOS — Waybar
-Design System v2.0
-Dark by nature. Precise by design. Human by experience.
-
-Philosophy:
-
-* Glass is depth, not decoration.
-* Accent colors communicate state.
-* Surfaces stay quiet.
-* Information remains readable first.
-  ============================================================ */
+/*
+ * SevenOS Waybar
+ *
+ * Philosophy:
+ * - quiet
+ * - focused
+ * - glass
+ * - depth
+ * - no visual noise
+ */
 
 @import "sevenos-colors.css";
 
+
 /* ============================================================
-01 — GLOBAL
-============================================================ */
+ * Global
+ * ============================================================ */
 
 * {
-  border: none;
-  border-radius: 0;
+    font-family: "Inter", "FiraCode Nerd Font", "JetBrainsMono Nerd Font", "Noto Sans", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
 
-  font-family: "Inter", "SF Pro Display", "Noto Sans", sans-serif;
-  font-size: 12px;
-  font-weight: 400;
+    border: none;
+    border-radius: 0;
 
-  min-height: 0;
-  }
+    min-height: 0;
+}
 
-/* ============================================================
-02 — WAYBAR SURFACE
-============================================================ */
 
 window#waybar {
-color: @seven_text;
+    background: transparent;
+    color: @seven_text;
 
-/*
-
-* SevenOS glass:
-* dark surface + very subtle white reflection.
-  */
-  background:
-  linear-gradient(
-  180deg,
-  rgba(255, 255, 255, 0.055),
-  rgba(255, 255, 255, 0.018)
-  ),
-  rgba(9, 9, 11, 0.88);
-
-border: 1px solid @seven_border;
-
-border-radius: 12px;
-
-box-shadow:
-inset 0 1px 0 rgba(255, 255, 255, 0.055),
-0 8px 28px rgba(0, 0, 0, 0.28);
-
-transition:
-background 200ms ease,
-box-shadow 200ms ease,
-opacity 200ms ease;
+    transition:
+        background-color 200ms ease,
+        color 200ms ease;
 }
 
-window#waybar.hidden {
-opacity: 0;
-}
 
 /* ============================================================
-03 — MODULE GROUPS
-============================================================ */
-
-.modules-left,
-.modules-center,
-.modules-right {
-min-height: 30px;
-
-padding: 2px 5px;
-
-background: transparent;
-}
-
-.modules-left {
-margin-left: 3px;
-}
-
-.modules-center {
-min-width: 112px;
-}
-
-.modules-right {
-margin-right: 3px;
-}
-
-/* ============================================================
-04 — COMMON MODULE BEHAVIOR
-============================================================ */
+ * Quiet glass surfaces
+ * ============================================================ */
 
 #custom-sevenos,
 #custom-recorder,
+#custom-seven-context,
+#custom-seven-security,
 #custom-profile,
 #custom-system-status,
 #custom-wifi,
 #custom-bluetooth,
 #pulseaudio,
 #battery,
-#custom-vpn,
 #custom-spotlight,
 #clock,
-#custom-control-center,
-#custom-experience,
-#custom-media,
-#custom-mini-context,
-#custom-app-menu {
+#custom-control-center {
 
-min-height: 24px;
+    background: @bg_glass;
 
-padding: 0 9px;
-margin: 0 1px;
+    border: 1px solid @seven_border;
 
-color: @seven_text_secondary;
+    color: @text_primary;
 
-background: transparent;
+    padding: 0 12px;
 
-border: 1px solid transparent;
-border-radius: 8px;
+    margin: 3px 2px;
 
-transition:
-color 160ms ease,
-background 160ms ease,
-border-color 160ms ease;
+    border-radius: 11px;
+
+    box-shadow:
+        0 6px 18px @shadow_system;
+
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        box-shadow 160ms ease;
 }
 
-/* Generic hover */
+/* Context is the sole semantic projection of core/context. */
+#custom-seven-context {
+    background: linear-gradient(
+        135deg,
+        rgba(77, 163, 255, 0.10),
+        rgba(122, 92, 255, 0.10)
+    );
+    border-color: rgba(122, 92, 255, 0.24);
+    color: @seven_text;
+    font-weight: 600;
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+#custom-seven-context.activity-development {
+    border-color: rgba(0, 212, 255, 0.28);
+}
+
+#custom-seven-context.security-exposed {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 181, 71, 0.10),
+        rgba(122, 92, 255, 0.08)
+    );
+    border-color: rgba(255, 181, 71, 0.28);
+}
+
+#custom-seven-context.unavailable {
+    color: @seven_error;
+    border-color: rgba(255, 89, 118, 0.32);
+}
+
+#custom-seven-security {
+    color: @seven_warning;
+    background: rgba(255, 181, 71, 0.08);
+    border-color: rgba(255, 181, 71, 0.28);
+    padding-left: 11px;
+    padding-right: 11px;
+}
+
+#custom-seven-security.hidden {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+
+/* ============================================================
+ * Hover
+ * ============================================================ */
 
 #custom-sevenos:hover,
 #custom-recorder:hover,
+#custom-seven-context:hover,
+#custom-seven-security:hover,
 #custom-profile:hover,
 #custom-system-status:hover,
 #custom-wifi:hover,
 #custom-bluetooth:hover,
 #pulseaudio:hover,
 #battery:hover,
-#custom-vpn:hover,
 #custom-spotlight:hover,
 #clock:hover,
-#custom-control-center:hover,
-#custom-experience:hover,
-#custom-media:hover,
-#custom-mini-context:hover,
-#custom-app-menu:hover {
+#custom-control-center:hover {
 
-color: @seven_text;
+    background: @bg_hover;
 
-background: @bg_hover;
+    border-color: @border_focus;
 
-border-color: @seven_border;
+    color: @seven_text;
+
+    box-shadow:
+        0 8px 22px @shadow_system,
+        0 0 18px @glow_blue;
 }
 
+#custom-seven-context:hover {
+    background: linear-gradient(
+        135deg,
+        rgba(77, 163, 255, 0.16),
+        rgba(122, 92, 255, 0.16)
+    );
+    border-color: rgba(122, 92, 255, 0.40);
+}
+
+
 /* ============================================================
-05 — SEVENOS IDENTITY
-============================================================ */
+ * SevenOS identity
+ * ============================================================ */
 
 #custom-sevenos {
+    background: linear-gradient(
+        135deg,
+        rgba(77, 163, 255, 0.12),
+        rgba(122, 92, 255, 0.10)
+    );
+    border-color: rgba(77, 163, 255, 0.20);
+    color: @seven_text;
 
-min-width: 32px;
+    padding-left: 16px;
+    padding-right: 16px;
 
-padding: 0 10px;
-
-color: @seven_text;
-
-font-size: 14px;
-font-weight: 600;
-
-letter-spacing: 0.02em;
-
-background:
-linear-gradient(
-180deg,
-rgba(77, 163, 255, 0.055),
-rgba(77, 163, 255, 0.018)
-);
-
-border-color: @seven_border;
-
-box-shadow:
-inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    font-weight: 600;
 }
 
-#custom-sevenos:hover {
-
-color: @seven_accent;
-
-background:
-linear-gradient(
-180deg,
-rgba(0, 212, 255, 0.075),
-rgba(77, 163, 255, 0.025)
-);
-
-border-color: @seven_border_focus;
-
-box-shadow:
-0 0 18px @glow_blue;
-}
 
 /* ============================================================
-06 — PROFILE
-============================================================ */
-
-#custom-profile {
-
-min-width: 58px;
-
-font-size: 11px;
-font-weight: 500;
-
-letter-spacing: 0.025em;
-}
-
-/* Default */
-
-#custom-profile.profile-equinox {
-
-color: @seven_text;
-
-border-color: @seven_border;
-}
-
-/* Protect */
-
-#custom-profile.profile-shield {
-
-color: @seven_success;
-
-border-color: rgba(0, 255, 179, 0.18);
-}
-
-/* Studio */
-
-#custom-profile.profile-studio {
-
-color: @seven_error;
-
-border-color: rgba(255, 89, 118, 0.18);
-}
-
-/* Forge */
-
-#custom-profile.profile-forge {
-
-color: @seven_warning;
-
-border-color: rgba(255, 181, 71, 0.18);
-}
-
-/* Pulse */
-
-#custom-profile.profile-pulse {
-
-color: @seven_primary;
-
-border-color: @seven_border_primary;
-}
-
-/* Baobab */
-
-#custom-profile.profile-baobab {
-
-color: @seven_success;
-
-border-color: rgba(0, 255, 179, 0.18);
-}
-
-/* Windows */
-
-#custom-profile.profile-windows {
-
-color: @seven_accent;
-
-border-color: @seven_border_accent;
-}
-
-/* Status */
-
-#custom-profile.warn {
-
-color: @seven_warning;
-
-border-color: @seven_warning;
-}
-
-#custom-profile.miss {
-
-color: @seven_error;
-
-border-color: @seven_error;
-}
-
-/* ============================================================
-07 — WORKSPACES
-============================================================ */
-
-#workspaces {
-
-padding: 0 3px;
-}
-
-#workspaces button {
-
-min-width: 24px;
-min-height: 24px;
-
-padding: 0 6px;
-margin: 0 1px;
-
-color: @seven_text_muted;
-
-background: transparent;
-
-border: 1px solid transparent;
-border-radius: 8px;
-
-font-size: 11px;
-font-weight: 500;
-
-transition:
-color 160ms ease,
-background 160ms ease,
-border-color 160ms ease;
-}
-
-#workspaces button:hover {
-
-color: @seven_text;
-
-background: @bg_hover;
-
-border-color: @seven_border;
-}
-
-#workspaces button.active {
-
-color: @seven_text;
-
-background:
-linear-gradient(
-180deg,
-rgba(255, 255, 255, 0.075),
-rgba(255, 255, 255, 0.035)
-);
-
-border-color: @border_focus;
-
-box-shadow:
-inset 0 1px 0 rgba(255, 255, 255, 0.045),
-0 0 14px @glow_blue;
-}
-
-#workspaces button.empty {
-
-color: @seven_text_disabled;
-}
-
-#workspaces button.persistent {
-
-opacity: 0.45;
-}
-
-#workspaces button.urgent {
-
-color: @seven_error;
-
-background: rgba(255, 89, 118, 0.07);
-
-border-color: rgba(255, 89, 118, 0.18);
-}
-
-/* ============================================================
-08 — ACTIVE WINDOW
-============================================================ */
-
-#window {
-
-min-width: 0;
-
-padding: 0 12px;
-
-color: @seven_text_secondary;
-
-font-size: 11px;
-font-weight: 500;
-
-letter-spacing: 0.015em;
-}
-
-#window.empty {
-
-color: @seven_text_muted;
-}
-
-/* ============================================================
-09 — SPOTLIGHT
-============================================================ */
-
-#custom-spotlight {
-
-min-width: 24px;
-
-padding: 0 10px;
-
-color: @seven_text_muted;
-
-font-size: 13px;
-}
-
-#custom-spotlight:hover {
-
-color: @seven_accent;
-
-background: rgba(0, 212, 255, 0.055);
-
-border-color: @border_accent;
-
-box-shadow:
-0 0 14px @glow_cyan;
-}
-
-/* ============================================================
-10 — NETWORK
-============================================================ */
-
-#custom-wifi,
-#custom-bluetooth {
-
-min-width: 24px;
-
-font-size: 13px;
-}
-
-/* Connected */
-
-#custom-wifi.connected,
-#custom-wifi.on,
-#custom-bluetooth.connected,
-#custom-bluetooth.on {
-
-color: @seven_primary;
-}
-
-/* Disabled */
-
-#custom-wifi.off,
-#custom-wifi.missing,
-#custom-bluetooth.off,
-#custom-bluetooth.missing {
-
-color: @seven_text_muted;
-}
-
-/* Weak signal */
-
-#custom-wifi.weak {
-
-color: @seven_warning;
-}
-
-/* ============================================================
-11 — AUDIO
-============================================================ */
-
-#pulseaudio {
-
-min-width: 24px;
-
-font-size: 13px;
-}
-
-#pulseaudio.muted {
-
-color: @seven_text_muted;
-}
-
-/* ============================================================
-12 — BATTERY
-============================================================ */
-
-#battery {
-
-min-width: 54px;
-}
-
-#battery.warning:not(.charging) {
-
-color: @seven_warning;
-}
-
-#battery.critical:not(.charging) {
-
-color: @seven_error;
-}
-
-#battery.charging {
-
-color: @seven_success;
-}
-
-/* ============================================================
-13 — VPN
-============================================================ */
-
-#custom-vpn.active {
-
-color: @seven_success;
-}
-
-#custom-vpn.hidden {
-
-min-width: 0;
-
-padding: 0;
-margin: 0;
-
-opacity: 0;
-}
-
-/* ============================================================
-14 — RECORDER
-============================================================ */
+ * Recorder
+ * ============================================================ */
 
 #custom-recorder {
 
-min-width: 24px;
+    color: @seven_text_secondary;
 
-padding: 0 8px;
-}
-
-#custom-recorder.idle {
-
-color: @seven_text_muted;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 #custom-recorder.recording {
 
-color: @seven_error;
+    color: @seven_error;
 
-background: rgba(255, 89, 118, 0.055);
+    border-color: rgba(255, 89, 118, 0.35);
 
-border-color: rgba(255, 89, 118, 0.18);
-
-box-shadow:
-0 0 14px rgba(255, 89, 118, 0.08);
+    background: rgba(255, 89, 118, 0.08);
 }
 
-#custom-recorder.idle:hover {
-
-color: @seven_error;
-
-background: rgba(255, 89, 118, 0.045);
-
-border-color: rgba(255, 89, 118, 0.14);
-}
 
 /* ============================================================
-15 — SYSTEM STATUS
-============================================================ */
+ * Profile
+ * ============================================================ */
+
+#custom-profile {
+
+    color: @seven_primary;
+
+    background: rgba(77, 163, 255, 0.07);
+
+    border-color: rgba(77, 163, 255, 0.16);
+}
+
+
+/* ============================================================
+ * System status
+ * ============================================================ */
 
 #custom-system-status {
 
-min-width: 24px;
-
-padding: 0 8px;
+    color: @seven_text_secondary;
 }
 
-#custom-system-status.secure {
-
-color: @seven_success;
-}
-
-#custom-system-status.warn {
-
-color: @seven_warning;
-}
-
-#custom-system-status.critical {
-
-color: @seven_error;
-}
-
-#custom-system-status.hidden {
-
-min-width: 0;
-
-padding: 0;
-margin: 0;
-
-opacity: 0;
-}
 
 /* ============================================================
-16 — EXPERIENCE
-============================================================ */
+ * Network
+ * ============================================================ */
 
-#custom-experience {
+#custom-wifi {
 
-min-width: 0;
-
-padding: 0 9px;
-
-color: @seven_text_muted;
-
-font-size: 11px;
-font-weight: 500;
+    color: @seven_accent;
 }
 
-#custom-experience.active {
+#custom-wifi.disconnected {
 
-color: @seven_text;
+    color: @seven_error;
 
-background: rgba(77, 163, 255, 0.045);
-
-border-color: @border_focus;
+    background: rgba(255, 89, 118, 0.07);
 }
 
-#custom-experience.recommended {
+#custom-wifi.warning {
 
-color: @seven_secondary;
+    color: @seven_warning;
 
-background: rgba(122, 92, 255, 0.045);
-
-border-color: rgba(122, 92, 255, 0.18);
+    background: rgba(255, 181, 71, 0.07);
 }
 
-#custom-experience.experience-warn {
-
-color: @seven_warning;
-}
-
-#custom-experience.hidden {
-
-min-width: 0;
-
-padding: 0;
-margin: 0;
-
-opacity: 0;
-}
 
 /* ============================================================
-17 — CONTROL CENTER
-============================================================ */
+ * Bluetooth
+ * ============================================================ */
 
-#custom-control-center {
+#custom-bluetooth {
 
-min-width: 28px;
-
-padding: 0 11px;
-
-color: @seven_text;
-
-background:
-linear-gradient(
-180deg,
-rgba(255, 255, 255, 0.045),
-rgba(255, 255, 255, 0.018)
-);
-
-border-color: @seven_border;
-
-box-shadow:
-inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    color: @seven_secondary;
 }
 
-#custom-control-center:hover {
-
-color: @seven_accent;
-
-background:
-linear-gradient(
-180deg,
-rgba(0, 212, 255, 0.055),
-rgba(0, 212, 255, 0.018)
-);
-
-border-color: @border_accent;
-
-box-shadow:
-0 0 16px @glow_cyan;
-}
-
-#custom-control-center.secure {
-
-color: @seven_success;
-}
-
-#custom-control-center.attention {
-
-color: @seven_warning;
-}
 
 /* ============================================================
-18 — CLOCK
-============================================================ */
+ * Audio
+ * ============================================================ */
+
+#pulseaudio {
+
+    color: @seven_accent;
+}
+
+#pulseaudio.muted {
+
+    color: @seven_text_muted;
+
+    background: rgba(255, 255, 255, 0.035);
+}
+
+
+/* ============================================================
+ * Battery
+ * ============================================================ */
+
+#battery {
+
+    color: @seven_success;
+}
+
+#battery.warning {
+
+    color: @seven_warning;
+}
+
+#battery.critical {
+
+    color: @seven_error;
+
+    background: rgba(255, 89, 118, 0.08);
+}
+
+
+/* ============================================================
+ * Spotlight
+ * ============================================================ */
+
+#custom-spotlight {
+
+    padding-left: 11px;
+    padding-right: 11px;
+
+    color: @seven_text_secondary;
+}
+
+#custom-spotlight:hover {
+
+    color: @seven_accent;
+
+    background: rgba(0, 212, 255, 0.08);
+
+    border-color: rgba(0, 212, 255, 0.20);
+}
+
+
+/* ============================================================
+ * Clock
+ * ============================================================ */
 
 #clock {
 
-min-width: 50px;
+    color: @seven_text;
 
-color: @seven_text;
+    font-weight: 600;
 
-font-size: 12px;
-font-weight: 500;
-
-font-feature-settings: "tnum";
-
-letter-spacing: 0.035em;
+    padding-left: 13px;
+    padding-right: 13px;
 }
 
+
 /* ============================================================
-19 — TRAY
-============================================================ */
+ * Control center
+ * ============================================================ */
+
+#custom-control-center {
+
+    color: @seven_text;
+
+    background: rgba(255, 255, 255, 0.045);
+
+    padding-left: 11px;
+    padding-right: 11px;
+}
+
+
+/* ============================================================
+ * Workspaces
+ * ============================================================ */
+
+#workspaces {
+
+    background: @bg_glass;
+
+    border: 1px solid @seven_border;
+
+    border-radius: 13px;
+
+    margin: 3px 2px;
+
+    padding: 2px 4px;
+
+    box-shadow:
+        0 6px 18px @shadow_system;
+}
+
+
+/* Workspace buttons */
+
+#workspaces button {
+
+    color: @text_tertiary;
+
+    background: transparent;
+
+    border-radius: 9px;
+
+    padding: 0 9px;
+
+    margin: 1px;
+
+    transition:
+        background-color 160ms ease,
+        color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+
+/* Hover */
+
+#workspaces button:hover {
+
+    color: @seven_text;
+
+    background: @bg_hover;
+
+    box-shadow: none;
+}
+
+
+/* Active */
+
+#workspaces button.active {
+
+    color: @seven_text;
+
+    background: @seven_selected;
+
+    border: 1px solid rgba(77, 163, 255, 0.18);
+
+    box-shadow:
+        0 0 14px @glow_blue;
+}
+
+
+/* Urgent */
+
+#workspaces button.urgent {
+
+    color: @seven_error;
+
+    background: rgba(255, 89, 118, 0.10);
+
+    border-color: rgba(255, 89, 118, 0.20);
+}
+
+
+/* ============================================================
+ * Tray
+ * ============================================================ */
 
 #tray {
 
-padding: 0 6px;
+    background: @bg_glass;
+
+    border: 1px solid @seven_border;
+
+    border-radius: 11px;
+
+    margin: 3px 2px;
+
+    padding: 0 7px;
+
+    box-shadow:
+        0 6px 18px @shadow_system;
 }
 
-#tray > .passive {
-
--gtk-icon-effect: dim;
-}
-
-#tray > .needs-attention {
-
--gtk-icon-effect: highlight;
-}
 
 /* ============================================================
-20 — MINI CONTEXT
-============================================================ */
-
-#custom-mini-context {
-
-min-width: 24px;
-
-padding: 0 9px;
-
-color: @seven_text_muted;
-
-font-size: 11px;
-font-weight: 500;
-}
-
-#custom-mini-context.active {
-
-color: @seven_text;
-
-background: rgba(77, 163, 255, 0.045);
-
-border-color: @border_focus;
-}
-
-#custom-mini-context.profile-shield {
-
-color: @seven_success;
-border-color: rgba(0, 255, 179, 0.14);
-}
-
-#custom-mini-context.profile-studio {
-
-color: @seven_error;
-border-color: rgba(255, 89, 118, 0.14);
-}
-
-#custom-mini-context.profile-forge {
-
-color: @seven_warning;
-border-color: rgba(255, 181, 71, 0.14);
-}
-
-#custom-mini-context.profile-pulse {
-
-color: @seven_primary;
-border-color: @border_focus;
-}
-
-#custom-mini-context.profile-baobab {
-
-color: @seven_success;
-border-color: rgba(0, 255, 179, 0.14);
-}
-
-#custom-mini-context.profile-windows {
-
-color: @seven_accent;
-border-color: @border_accent;
-}
-
-/* ============================================================
-21 — MEDIA
-============================================================ */
-
-#custom-media {
-
-min-width: 0;
-
-padding: 0 9px;
-
-color: @seven_text_muted;
-
-font-size: 11px;
-}
-
-#custom-media.playing {
-
-color: @seven_text;
-}
-
-#custom-media.hidden {
-
-min-width: 0;
-
-padding: 0;
-margin: 0;
-
-opacity: 0;
-}
-
-/* ============================================================
-22 — APP MENU
-============================================================ */
-
-#custom-app-menu {
-
-min-width: 0;
-
-color: @seven_text_muted;
-
-font-size: 11px;
-}
-
-/*
-
-* Application menu remains intentionally invisible
-* when the native application surface is not active.
-  */
-
-#custom-app-menu,
-#custom-app-file,
-#custom-app-edit,
-#custom-app-view,
-#custom-app-extra,
-#custom-app-more,
-#custom-app-tools,
-#custom-app-window,
-#custom-app-help {
-
-min-width: 0;
-min-height: 0;
-
-margin: 0;
-padding: 0;
-
-opacity: 0;
-
-border: 0;
-
-background: transparent;
-}
-
-/* ============================================================
-23 — TOOLTIP
-============================================================ */
+ * Tooltip
+ * ============================================================ */
 
 tooltip {
 
-padding: 9px 13px;
+    background: rgba(18, 19, 26, 0.94);
 
-color: @seven_text;
+    border: 1px solid @seven_border;
 
-background:
-linear-gradient(
-180deg,
-rgba(255, 255, 255, 0.055),
-rgba(255, 255, 255, 0.018)
-),
-rgba(18, 19, 26, 0.94);
+    border-radius: 10px;
 
-border: 1px solid @border_focus;
-
-border-radius: 10px;
-
-box-shadow:
-inset 0 1px 0 rgba(255, 255, 255, 0.045),
-0 10px 30px rgba(0, 0, 0, 0.32);
-
-font-family: "Inter", "Noto Sans", sans-serif;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 tooltip label {
 
-color: @seven_text;
+    color: @seven_text;
 
-font-size: 12px;
-font-weight: 400;
+    padding: 6px 8px;
 }
 
+
 /* ============================================================
-24 — INTERACTION STATES
-============================================================ */
+ * States
+ * ============================================================ */
 
-#custom-sevenos:active,
-#custom-profile:active,
-#custom-spotlight:active,
-#custom-control-center:active {
+.warning {
 
-background: @bg_active;
-
-box-shadow:
-inset 0 1px 3px rgba(0, 0, 0, 0.18);
+    color: @seven_warning;
 }
 
-/* ============================================================
-25 — HIDDEN STATE
-============================================================ */
+.critical {
 
-.hidden {
+    color: @seven_error;
+}
 
-min-width: 0;
+.success {
 
-padding: 0;
-margin: 0;
-
-opacity: 0;
+    color: @seven_success;
 }

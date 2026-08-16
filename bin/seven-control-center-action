@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+# Reserved action bridge for the Control Center UI.
+# Provider actions will be introduced only after the read-only contract is stable.
+
+case "${1:-status}" in
+    status)
+        jq -n '{schema: "sevenos.control-center.actions.v1", state: "foundation", actions: []}'
+        ;;
+    *)
+        echo "seven-control-center-action: actions are not enabled during the read-only foundation phase" >&2
+        exit 2
+        ;;
+esac

@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 from seven_waybar_app_profiles import (
@@ -218,13 +219,20 @@ def waybar_context_health() -> dict:
     except Exception:
         return {"state": "invalid", "fresh": False, "age": None, "profile": "", "app": ""}
     timestamp = context.get("time") if isinstance(context.get("time"), (int, float)) else 0
+    if not timestamp and isinstance(context.get("generated_at"), str):
+        try:
+            timestamp = datetime.fromisoformat(context["generated_at"].replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            timestamp = 0
     age = max(0.0, time.time() - float(timestamp)) if timestamp else None
-    fresh = age is not None and age <= 24.0
+    fresh = age is not None and age <= 5.0
     profile = context.get("profile") if isinstance(context.get("profile"), dict) else {}
-    app = context.get("app") if isinstance(context.get("app"), dict) else {}
+    app = context.get("application") if isinstance(context.get("application"), dict) else {}
+    if not app:
+        app = context.get("app") if isinstance(context.get("app"), dict) else {}
     layout = context.get("layout") if isinstance(context.get("layout"), dict) else {}
     return {
-        "state": "ok" if context.get("schema") == "sevenos.waybar.context.v1" and fresh else "stale",
+        "state": "ok" if context.get("schema") == "sevenos.waybar.context.v3" and fresh else "stale",
         "fresh": fresh,
         "age": age,
         "profile": str(profile.get("key") or ""),
@@ -258,7 +266,7 @@ def sevenos_menu() -> int:
         ]
         if part
     )
-    return emit("◆", tooltip, css, key)
+    return emit("󰣇 SevenOS", tooltip, css, key)
 
 
 def wifi() -> int:
@@ -388,7 +396,7 @@ def control_center() -> int:
         context_label,
         "Click: réglages rapides · Right click: Settings · Middle: réparer UI",
     ])
-    return emit("⌘", tooltip, css, "system")
+    return emit("󰍸", tooltip, css, "system")
 
 
 def system_status() -> int:
@@ -443,7 +451,7 @@ def system_status() -> int:
 
     if not parts:
         return emit("", "Système normal", "hidden", "normal")
-    tooltip_parts.append("Click: réglages rapides · Right click: Settings · Middle: réparer UI")
+    tooltip_parts.append("Click: Control Center · Right click: Settings · Middle: réparer UI")
     return emit("  ".join(parts), "\n".join(tooltip_parts), " ".join(css_parts), "attention")
 
 
